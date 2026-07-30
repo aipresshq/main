@@ -3,6 +3,9 @@ import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import HeroCard from '../components/HeroCard.astro';
 import ListItem from '../components/ListItem.astro';
+import CategoriesRail from '../components/CategoriesRail.astro';
+import CuratedPicks from '../components/CuratedPicks.astro';
+import NewsletterSignup from '../components/NewsletterSignup.astro';
 
 const posts = (await getCollection('posts')).sort(
   (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
@@ -18,4 +21,9 @@ const [heroPosts, restPosts] = [posts.slice(0, 2), posts.slice(2)];
 	<div id="feed-list">
 		{restPosts.map((post) => <ListItem post={post} />)}
 	</div>
+	<Fragment slot="right-rail">
+		<CuratedPicks posts={posts} />
+		<CategoriesRail tags={allTags} />
+		<NewsletterSignup />
+	</Fragment>
 </BaseLayout>

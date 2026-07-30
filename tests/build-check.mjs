@@ -73,6 +73,14 @@ check('homepage renders remaining posts as ListItems with read time', () => {
   assert.match(html, /\d+ min read/);
 });
 
+check('homepage right rail renders Curated Picks, Categories, and Newsletter', () => {
+  const html = dist('index.html');
+  assert.ok(html.includes('Curated Picks'));
+  assert.ok(html.includes('Categories'));
+  assert.ok(html.includes('Newsletter'));
+  assert.match(html, /aisnap\.substack\.com\/embed/);
+});
+
 // --- RUNNER (do not edit below this line) ---
 
 let failed = 0;

@@ -1,0 +1,24 @@
+---
+import type { CollectionEntry } from 'astro:content';
+
+export interface Props {
+  posts: CollectionEntry<'posts'>[];
+}
+
+const { posts } = Astro.props;
+---
+
+<div>
+	<h4>Curated Picks</h4>
+	{
+		posts.slice(0, 3).map((post) => (
+			<a href={`/posts/${post.id}/`} style="display:flex;gap:8px;align-items:center;margin-bottom:8px;text-decoration:none;color:inherit;">
+				<img src={post.data.cover} alt={post.data.coverAlt} style="width:48px;height:48px;object-fit:cover;border-radius:6px;flex-shrink:0;" />
+				<div>
+					<p style="margin:0;font-size:0.85rem;font-weight:600;">{post.data.title}</p>
+					<p style="margin:0;font-size:0.75rem;color:var(--color-text-muted);">{post.data.pubDate.toDateString()}</p>
+				</div>
+			</a>
+		))
+	}
+</div>

@@ -1,0 +1,16 @@
+---
+import TopicPill from './TopicPill.astro';
+
+export interface Props {
+  tags: string[];
+}
+
+const { tags } = Astro.props;
+---
+
+<div>
+	<h4>Categories</h4>
+	<div class="pill-row" style="flex-wrap:wrap;overflow-x:visible;">
+		{tags.map((tag) => <TopicPill tag={tag} />)}
+	</div>
+</div>
