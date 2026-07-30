@@ -1,0 +1,14 @@
+---
+import { slugify } from '../lib/slug';
+
+export interface Props {
+  tag: string;
+  active?: boolean;
+}
+
+const { tag, active = false } = Astro.props;
+---
+
+<a class={`pill${active ? ' active' : ''}`} href={`/tag/${slugify(tag)}/`}>
+	# {tag}
+</a>

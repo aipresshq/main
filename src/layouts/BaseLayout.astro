@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import TopicPill from '../components/TopicPill.astro';
 
 export interface Props {
   title: string;
@@ -24,6 +25,13 @@ const { title, description, activeTab = null, activeTag = null, tags } = Astro.p
 	<body>
 		<header>
 			<a href="/" style="font-size:1.5rem;font-weight:700;">AI Snap</a>
+			<div class="pill-row">
+				{
+					tags.map((tag) => (
+						<TopicPill tag={tag} active={activeTag?.toLowerCase() === tag.toLowerCase()} />
+					))
+				}
+			</div>
 		</header>
 		<div class="page-layout">
 			<main>

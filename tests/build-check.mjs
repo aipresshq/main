@@ -42,6 +42,13 @@ check('homepage uses BaseLayout shell and lists all fixture posts', () => {
   }
 });
 
+check('homepage renders a pill for every tag in use', () => {
+  const html = dist('index.html');
+  for (const tag of ['AI', 'Meta', 'OpenAI', 'Trackers', 'Product Launch']) {
+    assert.ok(html.includes(`/tag/`) && html.includes(`# ${tag}`), `missing pill for ${tag}`);
+  }
+});
+
 // --- RUNNER (do not edit below this line) ---
 
 let failed = 0;
