@@ -14,7 +14,13 @@ const allTags = [...new Set(posts.flatMap((p) => p.data.tags))].sort();
 const [heroPosts, restPosts] = [posts.slice(0, 2), posts.slice(2)];
 ---
 
-<BaseLayout title="AI Snap — Daily AI News" activeTab="latest" tags={allTags}>
+<BaseLayout
+	title="AI Snap — Daily AI News"
+	description="Daily AI news, evergreen comparisons, and usage-limit trackers across every major AI lab."
+	activeTab="latest"
+	tags={allTags}
+>
+	<h1>AI Snap — Daily AI News</h1>
 	<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
 		{heroPosts.map((post, i) => <HeroCard post={post} rank={i + 1} />)}
 	</div>

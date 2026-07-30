@@ -106,10 +106,29 @@ check('/tag/openai/ shows only posts tagged OpenAI, with the pill marked active'
   assert.ok(html.includes('pill active'), 'no active pill rendered on /tag/openai/ (BaseLayout activeTag prop not reaching TopicPill)');
 });
 
-check('Pagefind index is generated and the search box is rendered', () => {
+check('Pagefind index is generated and the custom search box is rendered', () => {
   assert.ok(distExists('pagefind/pagefind.js'), 'Pagefind index not generated — check astro-pagefind integration in astro.config.mjs');
   const html = dist('index.html');
-  assert.ok(html.includes('<pagefind-searchbox'));
+  assert.ok(html.includes('id="search-input"'), 'custom search input not rendered');
+  assert.ok(html.includes('id="search-results"'), 'custom search results container not rendered');
+  assert.ok(!html.includes('<pagefind-searchbox'), 'old pagefind-searchbox web component should no longer be rendered');
+  assert.ok(!html.includes('<pagefind-results'), 'old pagefind-results web component should no longer be rendered');
+});
+
+check('no eager Pagefind/component-ui script or stylesheet in the homepage <head>/body', () => {
+  const html = dist('index.html');
+  assert.ok(!/<link[^>]*rel="modulepreload"[^>]*pagefind/i.test(html), 'unexpected modulepreload hint for pagefind bundle');
+  assert.ok(!/PagefindConfig/i.test(html), 'PagefindConfig component-ui bundle should not be referenced anymore');
+  assert.ok(!/@pagefind\/component-ui/i.test(html), 'component-ui bundle should not be referenced anymore');
+  const headSection = html.slice(html.indexOf('<head'), html.indexOf('</head>'));
+  assert.ok(!/<script[^>]*type="module"[^>]*src=/i.test(headSection), 'no eager module script should be referenced from <head>');
+});
+
+check('astro.config.mjs preserves site, sitemap, and image.remotePatterns config', () => {
+  const config = readFileSync(new URL('../astro.config.mjs', import.meta.url), 'utf-8');
+  assert.match(config, /site:\s*['"]https:\/\/aisnap\.in['"]/);
+  assert.match(config, /sitemap\(\)/);
+  assert.match(config, /remotePatterns/);
 });
 
 check('responsive CSS: right-rail collapses and nav rows scroll instead of wrap', () => {

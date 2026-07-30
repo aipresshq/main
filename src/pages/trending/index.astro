@@ -15,7 +15,13 @@ const posts = allPosts
 const [heroPosts, restPosts] = [posts.slice(0, 2), posts.slice(2)];
 ---
 
-<BaseLayout title="Trending — AI Snap" activeTab="trending" tags={allTags}>
+<BaseLayout
+	title="Trending — AI Snap"
+	description="Hand-picked trending AI news and analysis from AI Snap."
+	activeTab="trending"
+	tags={allTags}
+>
+	<h1>Trending</h1>
 	<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
 		{heroPosts.map((post, i) => <HeroCard post={post} rank={i + 1} />)}
 	</div>

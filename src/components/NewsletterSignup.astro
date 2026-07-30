@@ -5,5 +5,13 @@ const substackUrl = import.meta.env.PUBLIC_SUBSTACK_URL || 'https://aisnap.subst
 <div>
 	<h4>Newsletter</h4>
 	<p style="font-size:0.85rem;color:var(--color-text-muted);">Daily AI news, straight to your inbox.</p>
-	<iframe src={`${substackUrl}/embed`} width="100%" height="150" style="border:1px solid var(--color-border);background:white;" frameborder="0" scrolling="no" />
+	<iframe
+		src={`${substackUrl}/embed`}
+		title="Subscribe to the AI Snap newsletter"
+		width="100%"
+		height="150"
+		style="border:1px solid var(--color-border);background:white;"
+		scrolling="no"
+		loading="lazy"
+	/>
 </div>

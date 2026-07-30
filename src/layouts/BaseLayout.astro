@@ -1,7 +1,6 @@
 ---
 import '../styles/global.css';
 import TopicPill from '../components/TopicPill.astro';
-import PagefindConfig from 'astro-pagefind/components/PagefindConfig.astro';
 
 export interface Props {
   title: string;
@@ -26,9 +25,10 @@ const { title, description, activeTab = null, activeTag = null, tags } = Astro.p
 	<body>
 		<header>
 			<a href="/" style="font-size:1.5rem;font-weight:700;">AI Snap</a>
-			<PagefindConfig instance="site-search" />
-			<pagefind-searchbox instance="site-search" placeholder="Search News"></pagefind-searchbox>
-			<pagefind-results instance="site-search"></pagefind-results>
+			<div class="search-box">
+				<input type="search" id="search-input" placeholder="Search News" aria-label="Search News" />
+				<div id="search-results"></div>
+			</div>
 			<div class="pill-row">
 				{
 					tags.map((tag) => (
@@ -50,5 +50,50 @@ const { title, description, activeTab = null, activeTag = null, tags } = Astro.p
 				<slot name="right-rail" />
 			</aside>
 		</div>
+		<script>
+			// Minimal, zero-JS-by-default search: nothing is fetched until the user
+			// actually types into the search box. Pagefind's raw JS API is dynamically
+			// imported (and initialized) exactly once, on first interaction, instead of
+			// loading the much larger @pagefind/component-ui bundle eagerly on every page.
+			const input = document.getElementById('search-input');
+			const resultsEl = document.getElementById('search-results');
+
+			let pagefindPromise;
+			function loadPagefind() {
+				if (!pagefindPromise) {
+					// @vite-ignore — this path only exists in dist/pagefind/ after the
+					// astro-pagefind build step, so it must not be statically resolved.
+					pagefindPromise = import(/* @vite-ignore */ '/pagefind/pagefind.js').then(async (mod) => {
+						await mod.init();
+						return mod;
+					});
+				}
+				return pagefindPromise;
+			}
+
+			async function renderResults(query) {
+				if (!resultsEl) return;
+				if (!query) {
+					resultsEl.innerHTML = '';
+					return;
+				}
+				const pagefind = await loadPagefind();
+				const search = await pagefind.search(query);
+				const entries = await Promise.all(search.results.slice(0, 10).map((result) => result.data()));
+				resultsEl.innerHTML = entries
+					.map(
+						(entry) =>
+							`<a class="search-result" href="${entry.url}"><strong>${entry.meta?.title ?? entry.url}</strong><span>${entry.excerpt ?? ''}</span></a>`
+					)
+					.join('');
+			}
+
+			let debounceTimer;
+			input?.addEventListener('input', (event) => {
+				const query = event.target.value.trim();
+				clearTimeout(debounceTimer);
+				debounceTimer = setTimeout(() => renderResults(query), 200);
+			});
+		</script>
 	</body>
 </html>
