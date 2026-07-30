@@ -1,0 +1,21 @@
+---
+import type { CollectionEntry } from 'astro:content';
+
+export interface Props {
+  post: CollectionEntry<'posts'>;
+  rank: number;
+}
+
+const { post, rank } = Astro.props;
+const { title, author, cover, coverAlt, tags } = post.data;
+---
+
+<a class="photo-card" href={`/posts/${post.id}/`} style="height:260px;">
+	<img src={cover} alt={coverAlt} />
+	<div class="overlay"></div>
+	<span class="badge">Trending #{rank}</span>
+	<div class="content">
+		<h3>{title}</h3>
+		<p style="margin:0;font-size:0.85rem;opacity:0.9;">{author} · {tags[0]}</p>
+	</div>
+</a>

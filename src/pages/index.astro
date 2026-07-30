@@ -1,17 +1,22 @@
 ---
 import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
+import HeroCard from '../components/HeroCard.astro';
 
 const posts = (await getCollection('posts')).sort(
   (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
 );
 const allTags = [...new Set(posts.flatMap((p) => p.data.tags))].sort();
+const [heroPosts, restPosts] = [posts.slice(0, 2), posts.slice(2)];
 ---
 
 <BaseLayout title="AI Snap — Daily AI News" activeTab="latest" tags={allTags}>
+	<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+		{heroPosts.map((post, i) => <HeroCard post={post} rank={i + 1} />)}
+	</div>
 	<ul>
 		{
-			posts.map((post) => (
+			restPosts.map((post) => (
 				<li>
 					<a href={`/posts/${post.id}/`}>{post.data.title}</a> — {post.data.author}
 				</li>
