@@ -67,6 +67,12 @@ check('homepage renders the 2 most recent posts as hero cards with rank badges',
   assert.ok(heroSection.includes('/posts/codex-usage-limit-tracker/'));
 });
 
+check('homepage renders remaining posts as ListItems with read time', () => {
+  const html = dist('index.html');
+  assert.ok(html.includes('/posts/welcome-to-ai-snap/'));
+  assert.match(html, /\d+ min read/);
+});
+
 // --- RUNNER (do not edit below this line) ---
 
 let failed = 0;

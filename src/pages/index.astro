@@ -2,6 +2,7 @@
 import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import HeroCard from '../components/HeroCard.astro';
+import ListItem from '../components/ListItem.astro';
 
 const posts = (await getCollection('posts')).sort(
   (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
@@ -14,13 +15,7 @@ const [heroPosts, restPosts] = [posts.slice(0, 2), posts.slice(2)];
 	<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
 		{heroPosts.map((post, i) => <HeroCard post={post} rank={i + 1} />)}
 	</div>
-	<ul>
-		{
-			restPosts.map((post) => (
-				<li>
-					<a href={`/posts/${post.id}/`}>{post.data.title}</a> — {post.data.author}
-				</li>
-			))
-		}
-	</ul>
+	<div>
+		{restPosts.map((post) => <ListItem post={post} />)}
+	</div>
 </BaseLayout>
