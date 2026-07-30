@@ -112,6 +112,15 @@ check('Pagefind index is generated and the search box is rendered', () => {
   assert.ok(html.includes('<pagefind-searchbox'));
 });
 
+check('responsive CSS: right-rail collapses and nav rows scroll instead of wrap', () => {
+  const css = readFileSync(new URL('../src/styles/global.css', import.meta.url), 'utf-8');
+  const mediaBlockMatch = css.match(/@media \(max-width: 900px\) \{([\s\S]*?)\n\}/);
+  assert.ok(mediaBlockMatch, 'missing @media (max-width: 900px) block');
+  assert.match(mediaBlockMatch[1], /grid-template-columns:\s*1fr/, 'page-layout does not collapse to a single column on mobile');
+  assert.match(css, /\.tab-row[\s\S]*?overflow-x:\s*auto/);
+  assert.match(css, /\.pill-row[\s\S]*?overflow-x:\s*auto/);
+});
+
 // --- RUNNER (do not edit below this line) ---
 
 let failed = 0;
