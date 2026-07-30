@@ -62,7 +62,7 @@ check('homepage renders the 2 most recent posts as hero cards with rank badges',
   assert.ok(html.includes('Trending #2'), 'missing Trending #2 badge');
   // Most recent by pubDate is openai-ships-new-model (2026-07-30), then
   // codex-usage-limit-tracker (2026-07-29).
-  const heroSection = html.slice(0, html.indexOf('<ul>'));
+  const heroSection = html.slice(0, html.indexOf('id="feed-list"'));
   assert.ok(heroSection.includes('/posts/openai-ships-new-model/'));
   assert.ok(heroSection.includes('/posts/codex-usage-limit-tracker/'));
 });
