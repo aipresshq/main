@@ -24,6 +24,15 @@ check('all three fixture posts built successfully', () => {
   assert.ok(distExists('posts/openai-ships-new-model/index.html'));
 });
 
+check('global.css defines the accent color and required classes', () => {
+  const css = readFileSync(new URL('../src/styles/global.css', import.meta.url), 'utf-8');
+  assert.match(css, /--color-accent:\s*#FF6B35/);
+  for (const cls of ['.pill', '.badge', '.photo-card', '.tab-row', '.page-layout', '.right-rail']) {
+    assert.ok(css.includes(cls), `missing class ${cls}`);
+  }
+  assert.match(css, /@media \(max-width: 900px\)/);
+});
+
 // --- RUNNER (do not edit below this line) ---
 
 let failed = 0;

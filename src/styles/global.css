@@ -1,0 +1,143 @@
+:root {
+  --color-accent: #FF6B35;
+  --color-bg: #ffffff;
+  --color-text: #1a1a1a;
+  --color-text-muted: #666666;
+  --color-border: #e5e5e5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.5;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Topic pills */
+.pill {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--color-accent);
+  color: var(--color-accent);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.pill.active {
+  background: var(--color-accent);
+  color: #fff;
+}
+
+/* Trending badges */
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* Photo-card treatment (HeroCard + ListItem thumbnails) */
+.photo-card {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  color: #fff;
+  display: block;
+}
+
+.photo-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.photo-card .overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0) 60%);
+  pointer-events: none;
+}
+
+.photo-card .content {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 16px;
+}
+
+.photo-card .content h3 {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+}
+
+.photo-card .badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+}
+
+/* Horizontally-scrolling nav rows (pills, tabs) instead of wrapping */
+.tab-row,
+.pill-row {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 4px;
+}
+
+.tab-row::-webkit-scrollbar,
+.pill-row::-webkit-scrollbar {
+  display: none;
+}
+
+.tab-row a {
+  padding-bottom: 8px;
+  border-bottom: 3px solid transparent;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.tab-row a.active {
+  border-bottom-color: var(--color-accent);
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+/* Two-column page layout: main feed + right rail */
+.page-layout {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.right-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+@media (max-width: 900px) {
+  .page-layout {
+    grid-template-columns: 1fr;
+  }
+}
