@@ -50,20 +50,25 @@ const { title, description, activeTab = null, activeTag = null, tags } = Astro.p
 				<slot name="right-rail" />
 			</aside>
 		</div>
-		<script>
+		<script is:inline>
 			// Minimal, zero-JS-by-default search: nothing is fetched until the user
 			// actually types into the search box. Pagefind's raw JS API is dynamically
 			// imported (and initialized) exactly once, on first interaction, instead of
-			// loading the much larger @pagefind/component-ui bundle eagerly on every page.
+			// loading the much larger pre-built search UI component bundle eagerly on
+			// every page.
+			//
+			// is:inline is required here: a plain <script> is processed by Vite, which
+			// rewrites this dynamic import() into its internal preload-helper form and
+			// injects an unresolved `__VITE_PRELOAD__` marker, throwing a ReferenceError
+			// the moment loadPagefind() runs. is:inline ships this script completely
+			// untransformed (no bundling, no rewriting), which avoids that bug entirely.
 			const input = document.getElementById('search-input');
 			const resultsEl = document.getElementById('search-results');
 
 			let pagefindPromise;
 			function loadPagefind() {
 				if (!pagefindPromise) {
-					// @vite-ignore — this path only exists in dist/pagefind/ after the
-					// astro-pagefind build step, so it must not be statically resolved.
-					pagefindPromise = import(/* @vite-ignore */ '/pagefind/pagefind.js').then(async (mod) => {
+					pagefindPromise = import('/pagefind/pagefind.js').then(async (mod) => {
 						await mod.init();
 						return mod;
 					});
