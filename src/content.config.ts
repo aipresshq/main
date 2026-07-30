@@ -55,6 +55,7 @@ const posts = defineCollection({
     // the homepage treat the two differently instead of listing everything
     // as one undifferentiated feed.
     postType: z.enum(['digest', 'evergreen', 'tracker']).default('digest'),
+    featured: z.boolean().default(false),
   }),
 });
 

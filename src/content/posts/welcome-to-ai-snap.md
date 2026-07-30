@@ -2,7 +2,7 @@
 title: "Welcome to AI Snap"
 description: "A placeholder post validating the content collection schema — replace with a real evergreen or tracker piece per the Phase 0 build order."
 author: "AI Snap Editorial"
-pubDate: 2026-07-30
+pubDate: 2026-07-28
 cover: "https://images.unsplash.com/photo-1620712943543-bcc4688e7485"
 coverAlt: "Abstract render of interconnected AI network nodes"
 coverCredit: "Unsplash"
@@ -11,6 +11,7 @@ sourceName: "AI Snap"
 sourceUrl: "https://aisnap.in"
 tags: ["AI", "Meta"]
 postType: "evergreen"
+featured: true
 ---
 
 ## What happened
