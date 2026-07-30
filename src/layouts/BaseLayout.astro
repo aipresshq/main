@@ -1,6 +1,7 @@
 ---
 import '../styles/global.css';
 import TopicPill from '../components/TopicPill.astro';
+import PagefindConfig from 'astro-pagefind/components/PagefindConfig.astro';
 
 export interface Props {
   title: string;
@@ -25,6 +26,9 @@ const { title, description, activeTab = null, activeTag = null, tags } = Astro.p
 	<body>
 		<header>
 			<a href="/" style="font-size:1.5rem;font-weight:700;">AI Snap</a>
+			<PagefindConfig instance="site-search" preload={true} />
+			<pagefind-searchbox instance="site-search" placeholder="Search News"></pagefind-searchbox>
+			<pagefind-results instance="site-search"></pagefind-results>
 			<div class="pill-row">
 				{
 					tags.map((tag) => (

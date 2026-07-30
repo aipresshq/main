@@ -106,6 +106,12 @@ check('/tag/openai/ shows only posts tagged OpenAI, with the pill marked active'
   assert.ok(html.includes('pill active'), 'no active pill rendered on /tag/openai/ (BaseLayout activeTag prop not reaching TopicPill)');
 });
 
+check('Pagefind index is generated and the search box is rendered', () => {
+  assert.ok(distExists('pagefind/pagefind.js'), 'Pagefind index not generated — check astro-pagefind integration in astro.config.mjs');
+  const html = dist('index.html');
+  assert.ok(html.includes('<pagefind-searchbox'));
+});
+
 // --- RUNNER (do not edit below this line) ---
 
 let failed = 0;
