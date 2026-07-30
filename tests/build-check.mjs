@@ -81,6 +81,14 @@ check('homepage right rail renders Curated Picks, Categories, and Newsletter', (
   assert.match(html, /aisnap\.substack\.com\/embed/);
 });
 
+check('/trending/ shows only featured posts', () => {
+  const html = dist('trending/index.html');
+  const feedSection = html.slice(0, html.indexOf('Curated Picks'));
+  assert.ok(feedSection.includes('/posts/welcome-to-ai-snap/'), 'featured post missing from feed');
+  assert.ok(!feedSection.includes('/posts/codex-usage-limit-tracker/'), 'non-featured post leaked into feed');
+  assert.ok(!feedSection.includes('/posts/openai-ships-new-model/'), 'non-featured post leaked into feed');
+});
+
 // --- RUNNER (do not edit below this line) ---
 
 let failed = 0;
