@@ -1,30 +1,21 @@
 ---
 import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
 
 const posts = (await getCollection('posts')).sort(
   (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
 );
+const allTags = [...new Set(posts.flatMap((p) => p.data.tags))].sort();
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>AI Snap — Daily AI News</title>
-	</head>
-	<body>
-		<h1>AI Snap</h1>
-		<ul>
-			{
-				posts.map((post) => (
-					<li>
-						<a href={`/posts/${post.id}/`}>{post.data.title}</a> — {post.data.author}
-					</li>
-				))
-			}
-		</ul>
-	</body>
-</html>
+<BaseLayout title="AI Snap — Daily AI News" activeTab="latest" tags={allTags}>
+	<ul>
+		{
+			posts.map((post) => (
+				<li>
+					<a href={`/posts/${post.id}/`}>{post.data.title}</a> — {post.data.author}
+				</li>
+			))
+		}
+	</ul>
+</BaseLayout>

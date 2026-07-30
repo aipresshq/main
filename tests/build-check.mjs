@@ -33,6 +33,15 @@ check('global.css defines the accent color and required classes', () => {
   assert.match(css, /@media \(max-width: 900px\)/);
 });
 
+check('homepage uses BaseLayout shell and lists all fixture posts', () => {
+  const html = dist('index.html');
+  assert.match(html, /AI Snap/);
+  assert.match(html, /<title>AI Snap — Daily AI News<\/title>/);
+  for (const slug of ['welcome-to-ai-snap', 'codex-usage-limit-tracker', 'openai-ships-new-model']) {
+    assert.ok(html.includes(`/posts/${slug}/`), `missing link to /posts/${slug}/`);
+  }
+});
+
 // --- RUNNER (do not edit below this line) ---
 
 let failed = 0;

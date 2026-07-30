@@ -1,0 +1,37 @@
+---
+import '../styles/global.css';
+
+export interface Props {
+  title: string;
+  description?: string;
+  activeTab?: 'latest' | 'trending' | 'trackers' | null;
+  activeTag?: string | null;
+  tags: string[];
+}
+
+const { title, description, activeTab = null, activeTag = null, tags } = Astro.props;
+---
+
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="icon" href="/favicon.ico" />
+		<meta name="viewport" content="width=device-width" />
+		{description && <meta name="description" content={description} />}
+		<title>{title}</title>
+	</head>
+	<body>
+		<header>
+			<a href="/" style="font-size:1.5rem;font-weight:700;">AI Snap</a>
+		</header>
+		<div class="page-layout">
+			<main>
+				<slot />
+			</main>
+			<aside class="right-rail">
+				<slot name="right-rail" />
+			</aside>
+		</div>
+	</body>
+</html>
