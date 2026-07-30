@@ -23,11 +23,17 @@ const { title, description, activeTab = null, activeTag = null, tags } = Astro.p
 		<title>{title}</title>
 	</head>
 	<body>
-		<header>
-			<a href="/" style="font-size:1.5rem;font-weight:700;">AI Snap</a>
-			<div class="search-box">
-				<input type="search" id="search-input" placeholder="Search News" aria-label="Search News" />
-				<div id="search-results"></div>
+		<header class="site-header">
+			<div class="header-row">
+				<a href="/" class="logo">AI Snap</a>
+				<div class="search-box">
+					<svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<circle cx="11" cy="11" r="8"></circle>
+						<line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+					</svg>
+					<input type="search" id="search-input" placeholder="Search News" aria-label="Search News" />
+					<div id="search-results"></div>
+				</div>
 			</div>
 			<div class="pill-row">
 				{

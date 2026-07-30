@@ -23,19 +23,29 @@ a {
   text-decoration: none;
 }
 
-/* Topic pills */
+/* Topic pills — neutral by default, orange reserved for the active/selected state */
 .pill {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   padding: 6px 14px;
   border-radius: 999px;
-  border: 1px solid var(--color-accent);
-  color: var(--color-accent);
+  border: 1px solid var(--color-border);
+  background: #fff;
+  color: var(--color-text-muted);
   font-size: 0.85rem;
+  font-weight: 500;
   white-space: nowrap;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.pill:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 
 .pill.active {
   background: var(--color-accent);
+  border-color: var(--color-accent);
   color: #fff;
 }
 
@@ -95,19 +105,47 @@ a {
 /* Minimal search box (backed by a lazily-loaded Pagefind script) */
 .search-box {
   position: relative;
+  flex: 1;
+  min-width: 0;
+  max-width: 480px;
+}
+
+.search-box .search-icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+  pointer-events: none;
 }
 
 .search-box input[type='search'] {
   width: 100%;
-  padding: 8px 12px;
+  padding: 11px 16px 11px 42px;
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: 999px;
+  background: #fafafa;
   font-size: 0.9rem;
+  color: var(--color-text);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.search-box input[type='search']::-webkit-search-cancel-button,
+.search-box input[type='search']::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.search-box input[type='search']::placeholder {
+  color: var(--color-text-muted);
 }
 
 .search-box input[type='search']:focus {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 1px;
+  outline: none;
+  border-color: var(--color-accent);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.15);
 }
 
 #search-results {
@@ -151,6 +189,32 @@ a {
   color: var(--color-text-muted);
 }
 
+/* Site header: padded, bounded container so nothing sits flush against the viewport edge */
+.site-header {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 24px 0;
+}
+
+.header-row {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 20px;
+}
+
+.logo {
+  flex-shrink: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--color-text);
+}
+
+.pill-row {
+  margin-bottom: 16px;
+}
+
 /* Horizontally-scrolling nav rows (pills, tabs) instead of wrapping */
 .tab-row,
 .pill-row {
@@ -166,10 +230,17 @@ a {
   display: none;
 }
 
+.tab-row {
+  gap: 24px;
+  border-bottom: 1px solid var(--color-border);
+}
+
 .tab-row a {
-  padding-bottom: 8px;
+  padding-bottom: 12px;
+  margin-bottom: -1px;
   border-bottom: 3px solid transparent;
   color: var(--color-text-muted);
+  font-weight: 500;
   white-space: nowrap;
 }
 
@@ -177,6 +248,14 @@ a {
   border-bottom-color: var(--color-accent);
   color: var(--color-text);
   font-weight: 600;
+}
+
+/* Route page title — de-emphasized relative to the header logo so the two
+   don't read as a duplicated headline stacked on top of each other. */
+.page-title {
+  margin: 24px 0 20px;
+  font-size: 1.4rem;
+  font-weight: 700;
 }
 
 /* Two-column page layout: main feed + right rail */

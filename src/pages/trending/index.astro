@@ -21,7 +21,7 @@ const [heroPosts, restPosts] = [posts.slice(0, 2), posts.slice(2)];
 	activeTab="trending"
 	tags={allTags}
 >
-	<h1>Trending</h1>
+	<h1 class="page-title">Trending</h1>
 	<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
 		{heroPosts.map((post, i) => <HeroCard post={post} rank={i + 1} />)}
 	</div>
