@@ -97,6 +97,15 @@ check('/trackers/ shows only tracker-type posts', () => {
   assert.ok(!feedSection.includes('/posts/welcome-to-ai-snap/'), 'non-tracker post leaked into feed');
 });
 
+check('/tag/openai/ shows only posts tagged OpenAI, with the pill marked active', () => {
+  const html = dist('tag/openai/index.html');
+  const feedSection = html.slice(0, html.indexOf('Curated Picks'));
+  assert.ok(feedSection.includes('/posts/openai-ships-new-model/'));
+  assert.ok(feedSection.includes('/posts/codex-usage-limit-tracker/'));
+  assert.ok(!feedSection.includes('/posts/welcome-to-ai-snap/'), 'wrong-tag post leaked into /tag/openai/');
+  assert.ok(html.includes('pill active'), 'no active pill rendered on /tag/openai/ (BaseLayout activeTag prop not reaching TopicPill)');
+});
+
 // --- RUNNER (do not edit below this line) ---
 
 let failed = 0;
