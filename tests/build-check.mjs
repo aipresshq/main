@@ -94,6 +94,7 @@ check('/trackers/ shows only tracker-type posts', () => {
   const feedSection = html.slice(0, html.indexOf('Curated Picks'));
   assert.ok(feedSection.includes('/posts/codex-usage-limit-tracker/'), 'tracker post missing from feed');
   assert.ok(!feedSection.includes('/posts/openai-ships-new-model/'), 'non-tracker post leaked into feed');
+  assert.ok(!feedSection.includes('/posts/welcome-to-ai-snap/'), 'non-tracker post leaked into feed');
 });
 
 // --- RUNNER (do not edit below this line) ---
