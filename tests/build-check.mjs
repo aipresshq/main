@@ -116,9 +116,10 @@ check('responsive CSS: right-rail collapses and nav rows scroll instead of wrap'
   const css = readFileSync(new URL('../src/styles/global.css', import.meta.url), 'utf-8');
   const mediaBlockMatch = css.match(/@media \(max-width: 900px\) \{([\s\S]*?)\n\}/);
   assert.ok(mediaBlockMatch, 'missing @media (max-width: 900px) block');
-  assert.match(mediaBlockMatch[1], /grid-template-columns:\s*1fr/, 'page-layout does not collapse to a single column on mobile');
-  assert.match(css, /\.tab-row[\s\S]*?overflow-x:\s*auto/);
-  assert.match(css, /\.pill-row[\s\S]*?overflow-x:\s*auto/);
+  assert.match(mediaBlockMatch[1], /grid-template-columns:\s*1fr\s*;/, 'page-layout does not collapse to a single column on mobile');
+  const tabPillBlockMatch = css.match(/\.tab-row,\s*\n\.pill-row\s*\{([\s\S]*?)\n\}/);
+  assert.ok(tabPillBlockMatch, 'missing .tab-row, .pill-row rule block');
+  assert.match(tabPillBlockMatch[1], /overflow-x:\s*auto/, '.tab-row/.pill-row rule block missing overflow-x: auto');
 });
 
 // --- RUNNER (do not edit below this line) ---
