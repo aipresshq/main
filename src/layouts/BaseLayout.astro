@@ -26,7 +26,7 @@ const { title, description, activeTab = null, activeTag = null, tags } = Astro.p
 	<body>
 		<header>
 			<a href="/" style="font-size:1.5rem;font-weight:700;">AI Snap</a>
-			<PagefindConfig instance="site-search" preload={true} />
+			<PagefindConfig instance="site-search" />
 			<pagefind-searchbox instance="site-search" placeholder="Search News"></pagefind-searchbox>
 			<pagefind-results instance="site-search"></pagefind-results>
 			<div class="pill-row">
