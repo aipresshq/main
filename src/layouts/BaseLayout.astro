@@ -32,6 +32,11 @@ const { title, description, activeTab = null, activeTag = null, tags } = Astro.p
 					))
 				}
 			</div>
+			<nav class="tab-row">
+				<a href="/" class={activeTab === 'latest' ? 'active' : ''}>Latest</a>
+				<a href="/trending/" class={activeTab === 'trending' ? 'active' : ''}>Trending</a>
+				<a href="/trackers/" class={activeTab === 'trackers' ? 'active' : ''}>Trackers</a>
+			</nav>
 		</header>
 		<div class="page-layout">
 			<main>

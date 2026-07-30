@@ -49,6 +49,13 @@ check('homepage renders a pill for every tag in use', () => {
   }
 });
 
+check('homepage tab row marks Latest active and links to all three tabs', () => {
+  const html = dist('index.html');
+  assert.ok(html.includes('class="active">Latest</a>'), 'Latest tab not marked active on homepage');
+  assert.ok(html.includes('href="/trending/"'));
+  assert.ok(html.includes('href="/trackers/"'));
+});
+
 // --- RUNNER (do not edit below this line) ---
 
 let failed = 0;
