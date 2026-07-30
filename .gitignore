@@ -25,3 +25,6 @@ pnpm-debug.log*
 
 # brainstorm visual companion
 .superpowers/
+
+# local git worktrees
+.worktrees/
