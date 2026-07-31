@@ -1,19 +1,22 @@
 /* ==========================================================================
-   AI Snap — dark editorial theme
+   AI Snap — editorial theme
    Blackletter masthead + high-contrast display serif headlines over a
    full-bleed monochrome hero, with translucent cards on top.
+   Dark by default, light when the reader's system asks for it.
    ========================================================================== */
 
 :root {
   --bg: #121212;
-  --bg-frame: #171717;
   --surface: rgba(255, 255, 255, 0.06);
   --surface-strong: rgba(255, 255, 255, 0.1);
+  --surface-raised: #1f1f1f;
   --border: rgba(255, 255, 255, 0.11);
   --text: #ffffff;
   --text-muted: #a3a3a3;
   --accent: #f2e14c;
   --accent-ink: #17170a;
+  --mark: var(--accent);
+  --shadow-raised: 0 20px 50px rgba(0, 0, 0, 0.55);
 
   --font-body: 'Inter Variable', system-ui, -apple-system, sans-serif;
   --font-display: 'Playfair Display Variable', 'Playfair Display', Georgia, serif;
@@ -24,13 +27,43 @@
   --radius-pill: 999px;
 }
 
+/* Light mode follows the reader's system preference — no JS, no toggle flash.
+   The lead stage deliberately stays dark in both modes: it's photography with
+   a scrim behind white text, and inverting it would make the hero unreadable. */
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #faf9f7;
+    --surface: rgba(0, 0, 0, 0.04);
+    --surface-strong: rgba(0, 0, 0, 0.08);
+    --surface-raised: #ffffff;
+    --border: rgba(0, 0, 0, 0.14);
+    --text: #14130f;
+    --text-muted: #5f5c55;
+    --accent-ink: #17170a;
+    /* Yellow is unreadable as text on paper — gold reads on white, while the
+       accent itself stays for filled surfaces like the subscribe button. */
+    --mark: #7a6800;
+    --shadow-raised: 0 18px 40px rgba(0, 0, 0, 0.14);
+  }
+
+  /* Redefining the tokens on .stage cascades the dark palette to everything
+     inside it — lead text, rail cards, the next teaser — without needing a
+     light-mode override on each component. */
+  .stage {
+    --surface: rgba(255, 255, 255, 0.08);
+    --surface-strong: rgba(255, 255, 255, 0.16);
+    --border: rgba(255, 255, 255, 0.16);
+    --text: #ffffff;
+    --text-muted: #b8b5ad;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  padding: 20px;
   font-family: var(--font-body);
   background: var(--bg);
   color: var(--text);
@@ -58,16 +91,12 @@ img {
 }
 
 /* --------------------------------------------------------------------------
-   Frame
+   Page wrapper — full width, gutters only. No max-width and no raised card:
+   the layout sits directly on the page background.
    -------------------------------------------------------------------------- */
 
 .frame {
-  max-width: 1360px;
-  margin: 0 auto;
-  padding: 20px;
-  border-radius: var(--radius-frame);
-  background: var(--bg-frame);
-  overflow: hidden;
+  padding: 24px 32px 48px;
 }
 
 /* --------------------------------------------------------------------------
@@ -146,8 +175,8 @@ img {
   padding: 18px 20px;
   border-radius: var(--radius-card);
   border: 1px solid var(--border);
-  background: #1f1f1f;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-raised);
 }
 
 .menu-panel h2 {
@@ -251,8 +280,8 @@ img {
   overflow-y: auto;
   border-radius: var(--radius-card);
   border: 1px solid var(--border);
-  background: #1f1f1f;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-raised);
 }
 
 #search-results:empty {
@@ -289,7 +318,8 @@ img {
 
 .search-result mark {
   background: none;
-  color: var(--accent);
+  color: var(--mark);
+  font-weight: 600;
 }
 
 /* --------------------------------------------------------------------------
@@ -641,12 +671,8 @@ img {
 }
 
 @media (max-width: 780px) {
-  body {
-    padding: 10px;
-  }
-
   .frame {
-    padding: 14px;
+    padding: 16px 16px 32px;
   }
 
   .topbar {

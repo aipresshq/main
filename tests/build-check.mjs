@@ -51,6 +51,28 @@ check('global.css defines the theme tokens and required classes', () => {
   }
 });
 
+check('layout is full width — no max-width cap or raised frame card', () => {
+  const css = src('src/styles/global.css');
+  const frame = css.match(/\.frame\s*\{([\s\S]*?)\n\}/);
+  assert.ok(frame, 'missing .frame rule block');
+  assert.ok(!/max-width/.test(frame[1]), '.frame must not cap the layout width');
+  assert.ok(!/background/.test(frame[1]), '.frame must not paint a card background');
+  assert.ok(!/border-radius/.test(frame[1]), '.frame must not round into a card');
+});
+
+check('light mode flips the palette but keeps the photographic stage dark', () => {
+  const css = src('src/styles/global.css');
+  const light = css.match(/@media \(prefers-color-scheme: light\) \{([\s\S]*?)\n\}\n/);
+  assert.ok(light, 'missing @media (prefers-color-scheme: light) block');
+  assert.match(light[1], /--bg:\s*#faf9f7/i, 'light mode does not set a light background');
+  assert.match(light[1], /--text:\s*#14130f/i, 'light mode does not darken body text');
+  // The hero is photography behind white text in both modes, so the stage must
+  // re-declare the dark palette rather than inherit the light one.
+  assert.match(light[1], /\.stage\s*\{[\s\S]*?--text:\s*#ffffff/i, 'stage must keep white text in light mode');
+  // Yellow-on-paper is unreadable, so search highlights need a darker mark.
+  assert.match(light[1], /--mark:\s*#7a6800/i, 'light mode does not darken the search highlight');
+});
+
 check('headline and masthead use the display and blackletter faces', () => {
   const css = src('src/styles/global.css');
   const displayVar = css.match(/--font-display:\s*([^;]+);/);
