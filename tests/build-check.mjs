@@ -206,8 +206,11 @@ check('the band bleeds past the page gutter and paints its own contrast', () => 
   assert.ok(band, 'missing .band rule block');
   // Negating the gutter is what makes the band run edge to edge.
   assert.match(band[1], /margin:[^;]*calc\(-1 \* var\(--gutter\)\)/, 'band does not bleed past the gutter');
-  assert.match(band[1], /background:\s*var\(--accent\)/, 'band should carry the accent field');
-  assert.match(band[1], /color:\s*var\(--accent-ink\)/, 'band needs its own ink colour');
+  assert.match(band[1], /background:\s*var\(--band-bg\)/, 'band should carry its own saturated field');
+  assert.match(band[1], /color:\s*var\(--band-ink\)/, 'band needs its own ink colour');
+  // The accent becomes the rule under the section head, as red pairs with gold
+  // in the reference.
+  assert.match(band[1], /--rule:\s*var\(--accent\)/, 'band rule should take the accent');
   assert.match(css, /\.frame\s*\{[\s\S]*?padding:[^;]*var\(--gutter\)/, 'frame padding must use the gutter token');
 });
 
