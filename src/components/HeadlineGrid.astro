@@ -1,0 +1,28 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import SectionHeader from './SectionHeader.astro';
+
+export interface Props {
+  title: string;
+  href?: string;
+  posts: CollectionEntry<'posts'>[];
+}
+
+const { title, href, posts } = Astro.props;
+---
+
+<section class="section reveal">
+	<SectionHeader title={title} href={href} />
+
+	<div class="headline-grid">
+		{
+			posts.map((post) => (
+				<a class="headline-item" href={`/posts/${post.id}/`}>
+					<img src={post.data.cover} alt={post.data.coverAlt} />
+					<span class="label headline-topic">{post.data.tags[0]}</span>
+					<h3>{post.data.title}</h3>
+				</a>
+			))
+		}
+	</div>
+</section>

@@ -184,27 +184,52 @@ check('/tag/openai/ shows only OpenAI posts, with that topic active in the nav',
   assert.match(nav, /href="\/tag\/openai\/"\s+class="active"/, 'OpenAI topic not marked active in the nav');
 });
 
-check('homepage renders the four sections, each with its own treatment', () => {
+check('homepage sections use three distinct editorial layouts', () => {
   const html = dist('index.html');
-  for (const title of ['Trackers', 'Explainers &amp; comparisons', 'The daily digest', 'Browse by topic']) {
+  for (const title of ['Trackers', 'Explainers &amp; comparisons', 'More from today']) {
     assert.ok(html.includes(title), `missing section: ${title}`);
   }
-  assert.ok(html.includes('class="tracker-card"'), 'trackers should use the tracker card');
-  assert.ok(html.includes('class="digest-row"'), 'digest should use the numbered row');
-  assert.ok(html.includes('class="topic-tile"'), 'topics should use tiles');
-  assert.match(html, /class="section-link"[^>]*href="\/trackers\/"/, 'Trackers section should link to its own page');
+  // Asymmetric band: one dominant story beside a cluster of secondaries.
+  assert.ok(html.includes('band-lead'), 'band should have a dominant lead');
+  assert.ok(html.includes('band-secondaries'), 'band should have a secondary cluster');
+  // Split: illustrated lead beside a numbered stack.
+  assert.ok(html.includes('split-lead'), 'split section should have an illustrated lead');
+  assert.ok(html.includes('split-rows'), 'split section should have a headline stack');
+  // Dense grid.
+  assert.ok(html.includes('headline-item'), 'grid section should use headline items');
+  assert.match(html, /class="section-link"[^>]*href="\/trackers\/"/, 'Trackers should link to its own page');
 });
 
-check('the digest omits stories the stage already showed', () => {
+check('the band bleeds past the page gutter and paints its own contrast', () => {
+  const css = src('src/styles/global.css');
+  const band = css.match(/\n\.band\s*\{([\s\S]*?)\n\}/);
+  assert.ok(band, 'missing .band rule block');
+  // Negating the gutter is what makes the band run edge to edge.
+  assert.match(band[1], /margin:[^;]*calc\(-1 \* var\(--gutter\)\)/, 'band does not bleed past the gutter');
+  assert.match(band[1], /background:\s*var\(--accent\)/, 'band should carry the accent field');
+  assert.match(band[1], /color:\s*var\(--accent-ink\)/, 'band needs its own ink colour');
+  assert.match(css, /\.frame\s*\{[\s\S]*?padding:[^;]*var\(--gutter\)/, 'frame padding must use the gutter token');
+});
+
+check('sections carry no filler copy and lead with headlines', () => {
   const html = dist('index.html');
-  const digest = html.slice(html.indexOf('digest-list'), html.indexOf('Browse by topic'));
-  // openai-ships-new-model is the lead, so repeating it a screen later in a
-  // list titled "everything else" would be redundant.
+  // Section subtitles were padding; headlines and images do the work now.
+  assert.ok(!html.includes('section-blurb'), 'sections should not reintroduce blurb copy');
+  // Band items are headline-only — no deks, dates or read times inside them.
+  const band = html.slice(html.indexOf('class="band'), html.indexOf('</section>', html.indexOf('class="band')));
+  assert.ok(!/\d+ min read/.test(band), 'band items should not carry read times');
+});
+
+check('the closing grid omits stories the stage already showed', () => {
+  const html = dist('index.html');
+  const grid = html.slice(html.indexOf('More from today'));
+  // openai-ships-new-model is the lead, so repeating it a screen later would
+  // be redundant.
   assert.ok(
-    !digest.includes('/posts/openai-ships-new-model/'),
-    'the lead story should not reappear in the digest'
+    !grid.includes('/posts/openai-ships-new-model/'),
+    'the lead story should not reappear in the closing grid'
   );
-  assert.ok(digest.includes('/posts/mistral-raises-series-c/'), 'other digest stories should still list');
+  assert.ok(grid.includes('/posts/mistral-raises-series-c/'), 'other stories should still list');
 });
 
 check('scroll reveal survives minification and never traps content invisible', () => {

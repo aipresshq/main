@@ -27,6 +27,8 @@
   --radius-frame: 24px;
   --radius-card: 16px;
   --radius-pill: 999px;
+  /* Page gutter. Sections negate it to bleed a band edge to edge. */
+  --gutter: 32px;
 }
 
 /* Light mode follows the reader's system preference — no JS, no toggle flash.
@@ -102,7 +104,8 @@ img {
    -------------------------------------------------------------------------- */
 
 .frame {
-  padding: 24px 32px 48px;
+  padding: 24px var(--gutter) 48px;
+  overflow-x: clip;
 }
 
 /* --------------------------------------------------------------------------
@@ -660,10 +663,7 @@ img {
   min-width: 0;
 }
 
-/* --------------------------------------------------------------------------
-   Overflow feed: everything past the lead + rail stories
-   -------------------------------------------------------------------------- */
-
+/* Wrapper for the empty state and the article page's Related module */
 .more-stories {
   margin-top: 40px;
 }
@@ -673,38 +673,14 @@ img {
   margin-bottom: 18px;
 }
 
-.story-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 20px;
-}
-
-.story {
-  display: block;
-  padding-top: 18px;
-  border-top: 1px solid var(--border);
-}
-
-.story img {
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  object-fit: cover;
-  border-radius: 12px;
-  margin-bottom: 14px;
-}
-
-.story .card-title {
-  font-size: 1.15rem;
-  margin-bottom: 10px;
-}
-
 .empty-note {
   margin: 0;
   color: var(--text-muted);
 }
 
 /* --------------------------------------------------------------------------
-   Homepage sections
+   Homepage sections — editorial density: asymmetric grids, headlines doing
+   the work, sharp imagery. Deliberately not four variations of one card grid.
    -------------------------------------------------------------------------- */
 
 .section {
@@ -713,36 +689,28 @@ img {
 
 .section-head {
   display: flex;
-  align-items: flex-end;
+  align-items: baseline;
   justify-content: space-between;
   gap: 24px;
-  padding-bottom: 18px;
+  padding-bottom: 14px;
   margin-bottom: 28px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 2px solid var(--rule, var(--border));
 }
 
 .section-title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(1.6rem, 2.4vw, 2.2rem);
-  font-weight: 500;
-  line-height: 1.15;
+  font-size: clamp(1.7rem, 2.6vw, 2.4rem);
+  font-weight: 600;
+  line-height: 1.1;
   letter-spacing: -0.01em;
-}
-
-.section-blurb {
-  margin: 8px 0 0;
-  font-size: 0.92rem;
-  color: var(--text-muted);
 }
 
 .section-link {
   flex-shrink: 0;
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--mark);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  color: inherit;
 }
 
 .section-link:hover {
@@ -750,153 +718,185 @@ img {
   text-underline-offset: 4px;
 }
 
-/* Trackers — no imagery, so the accent rule and live dot carry the section */
-.tracker-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 16px;
+/* Section images are sharp, not rounded — the rounded hero reads as a poster,
+   these read as newsprint. */
+.band img,
+.split img,
+.headline-grid img {
+  width: 100%;
+  object-fit: cover;
+  display: block;
 }
 
-.tracker-card {
-  display: flex;
-  flex-direction: column;
-  padding: 22px;
-  border-radius: var(--radius-card);
-  border: 1px solid var(--border);
-  border-top: 3px solid var(--accent);
-  background: var(--surface);
-  transition: transform 0.2s ease, background 0.2s ease;
-}
+/* --- Full-bleed band: one dominant story beside a 2x2 of secondaries ------ */
 
-.tracker-card:hover {
-  transform: translateY(-3px);
-  background: var(--surface-strong);
-}
-
-.tracker-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  margin-bottom: 16px;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-.tracker-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 999px;
+.band {
+  margin: 72px calc(-1 * var(--gutter)) 0;
+  padding: 44px var(--gutter) 52px;
   background: var(--accent);
-  animation: pulse 2.4s ease-in-out infinite;
+  color: var(--accent-ink);
+  /* The band paints its own contrast, so its rule and links ignore the theme */
+  --rule: rgba(23, 23, 10, 0.35);
 }
 
-.tracker-title {
-  margin: 0 0 10px;
-  font-family: var(--font-display);
-  font-size: 1.25rem;
-  font-weight: 500;
-  line-height: 1.25;
+.band .section-title,
+.band .section-link {
+  color: var(--accent-ink);
 }
 
-.tracker-desc {
-  margin: 0 0 20px;
-  font-size: 0.9rem;
-  line-height: 1.6;
-  color: var(--text-muted);
-}
-
-.tracker-updated {
-  margin-top: auto;
-}
-
-/* Digest — a numbered editorial list, deliberately image-free for contrast */
-.digest-list {
-  display: flex;
-  flex-direction: column;
-}
-
-.digest-row {
+.band-grid {
   display: grid;
-  grid-template-columns: 56px 1fr auto;
-  align-items: baseline;
-  gap: 20px;
-  padding: 22px 0;
-  border-top: 1px solid var(--border);
-  transition: padding-left 0.2s ease;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: 28px;
 }
 
-.digest-row:last-child {
-  border-bottom: 1px solid var(--border);
+.band-lead img {
+  aspect-ratio: 3 / 2;
+  margin-bottom: 16px;
 }
 
-.digest-row:hover {
-  padding-left: 8px;
-}
-
-.digest-index {
+.band-lead h3 {
+  margin: 0;
   font-family: var(--font-display);
-  font-size: 1.5rem;
-  color: var(--text-muted);
+  font-size: clamp(1.5rem, 2.4vw, 2.1rem);
+  font-weight: 600;
+  line-height: 1.16;
 }
 
-.digest-topic {
+.band-secondaries {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  align-content: start;
+}
+
+.band-secondaries-stacked {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.band-item img {
+  aspect-ratio: 16 / 10;
+  margin-bottom: 12px;
+}
+
+.band-item h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.28;
+}
+
+.band-lead:hover h3,
+.band-item:hover h3 {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* --- Split: one illustrated lead beside a numbered stack of headlines ----- */
+
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 40px;
+}
+
+.split-lead img {
+  aspect-ratio: 16 / 9;
+  margin-bottom: 16px;
+}
+
+.split-topic {
   display: block;
   margin-bottom: 8px;
   color: var(--mark);
 }
 
-.digest-title {
-  margin: 0 0 8px;
+.split-lead h3 {
+  margin: 0 0 12px;
   font-family: var(--font-display);
-  font-size: 1.35rem;
-  font-weight: 500;
-  line-height: 1.25;
+  font-size: clamp(1.4rem, 2.2vw, 1.95rem);
+  font-weight: 600;
+  line-height: 1.18;
 }
 
-.digest-row:hover .digest-title {
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
-
-.digest-desc {
+.split-lead p {
   margin: 0;
-  font-size: 0.92rem;
-  line-height: 1.6;
+  font-size: 0.95rem;
+  line-height: 1.65;
   color: var(--text-muted);
 }
 
-.digest-meta {
-  white-space: nowrap;
+.split-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: split;
 }
 
-/* Topics */
-.topic-tiles {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 12px;
+.split-rows li {
+  counter-increment: split;
+  padding: 18px 0;
+  border-top: 1px solid var(--border);
 }
 
-.topic-tile {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 18px 20px;
-  border-radius: var(--radius-card);
-  border: 1px solid var(--border);
-  transition: border-color 0.2s ease, transform 0.2s ease;
+.split-rows li:first-child {
+  padding-top: 0;
+  border-top: none;
 }
 
-.topic-tile:hover {
-  border-color: var(--accent);
-  transform: translateY(-2px);
-}
-
-.topic-tile-name {
+.split-rows h3 {
+  margin: 0;
   font-family: var(--font-display);
-  font-size: 1.15rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+/* The index sits in the margin rather than in a grid column */
+.split-rows h3::before {
+  content: counter(split, decimal-leading-zero) ' ';
+  margin-right: 8px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.split-lead:hover h3,
+.split-rows a:hover h3 {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* --- Headline grid: dense, four across, thumbnail over headline ----------- */
+
+.headline-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 28px;
+}
+
+.headline-item img {
+  aspect-ratio: 4 / 3;
+  margin-bottom: 12px;
+}
+
+.headline-topic {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--mark);
+}
+
+.headline-item h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1.28;
+}
+
+.headline-item:hover h3 {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 /* --------------------------------------------------------------------------
@@ -916,15 +916,6 @@ img {
   }
 }
 
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.35;
-  }
-}
 
 /* Lead stage enters on load, staggered down the column */
 .stage-lead > * {
@@ -961,27 +952,19 @@ img {
     animation-timing-function: ease-out;
     animation-fill-mode: both;
     animation-timeline: view();
-    animation-range: entry 5% cover 22%;
+    /* Completes partway through the element entering the viewport. A range
+       measured in `cover` can leave a section near the page bottom stuck
+       mid-animation — permanently semi-transparent — because the page cannot
+       scroll far enough to finish it. */
+    animation-range: entry 0% entry 45%;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .stage-lead > *,
   .stage-rail > *,
-  .reveal,
-  .tracker-dot {
+  .reveal {
     animation: none;
-  }
-
-  .tracker-card,
-  .topic-tile,
-  .digest-row {
-    transition: none;
-  }
-
-  .tracker-card:hover,
-  .topic-tile:hover {
-    transform: none;
   }
 }
 
@@ -1319,6 +1302,14 @@ img {
 }
 
 @media (max-width: 900px) {
+  /* Asymmetric section grids stack; the band's 2x2 stays two across so it
+     keeps reading as a cluster rather than a long single file. */
+  .band-grid,
+  .split {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+
   .footer-cta {
     grid-template-columns: 1fr;
     gap: 28px;
@@ -1348,7 +1339,8 @@ img {
 
 @media (max-width: 780px) {
   .frame {
-    padding: 16px 16px 32px;
+    --gutter: 16px;
+    padding: 16px var(--gutter) 32px;
   }
 
   .menu-panel {
@@ -1393,15 +1385,6 @@ img {
     gap: 28px;
   }
 
-  /* Drop the index gutter and trailing meta column on narrow screens */
-  .digest-row {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-
-  .digest-index {
-    font-size: 1.1rem;
-  }
 }
 
 @media (max-width: 520px) {

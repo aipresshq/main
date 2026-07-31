@@ -2,11 +2,9 @@
 import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Stage from '../components/Stage.astro';
-import SectionHeader from '../components/SectionHeader.astro';
-import TrackerCard from '../components/TrackerCard.astro';
-import StoryCard from '../components/StoryCard.astro';
-import DigestRow from '../components/DigestRow.astro';
-import TopicTiles from '../components/TopicTiles.astro';
+import FeatureBand from '../components/FeatureBand.astro';
+import SplitFeature from '../components/SplitFeature.astro';
+import HeadlineGrid from '../components/HeadlineGrid.astro';
 import { formatEditionDate } from '../lib/date';
 
 const posts = (await getCollection('posts')).sort(
@@ -20,18 +18,11 @@ const inStage = new Set(stagePosts.map((p) => p.id));
 
 // Trackers and Explainers are section fronts — complete listings by type, so a
 // story showing in both the hero and its own section is expected, as in print.
-const trackers = posts.filter((p) => p.data.postType === 'tracker').slice(0, 3);
-const evergreen = posts.filter((p) => p.data.postType === 'evergreen').slice(0, 3);
+const trackers = posts.filter((p) => p.data.postType === 'tracker').slice(0, 5);
+const evergreen = posts.filter((p) => p.data.postType === 'evergreen').slice(0, 5);
 
-// The digest is literally "everything else", so it skips what the stage
-// already displayed rather than repeating the lead a screen later.
-const digest = posts
-  .filter((p) => p.data.postType === 'digest' && !inStage.has(p.id))
-  .slice(0, 5);
-
-const topicCounts = allTags
-  .map((tag) => ({ tag, count: posts.filter((p) => p.data.tags.includes(tag)).length }))
-  .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
+// The digest is what the front hasn't already shown.
+const digest = posts.filter((p) => !inStage.has(p.id)).slice(0, 8);
 ---
 
 <BaseLayout
@@ -43,52 +34,9 @@ const topicCounts = allTags
 >
 	<Stage posts={stagePosts} emptyNote="No stories published yet." />
 
-	{
-		trackers.length > 0 && (
-			<section class="section reveal">
-				<SectionHeader
-					title="Trackers"
-					blurb="Pages we keep current as limits and pricing move."
-					href="/trackers/"
-				/>
-				<div class="tracker-grid">
-					{trackers.map((post) => <TrackerCard post={post} />)}
-				</div>
-			</section>
-		)
-	}
+	{trackers.length > 0 && <FeatureBand title="Trackers" href="/trackers/" posts={trackers} />}
 
-	{
-		evergreen.length > 0 && (
-			<section class="section reveal">
-				<SectionHeader
-					title="Explainers & comparisons"
-					blurb="The reference pieces, revised rather than replaced."
-				/>
-				<div class="story-list">
-					{evergreen.map((post) => <StoryCard post={post} />)}
-				</div>
-			</section>
-		)
-	}
+	{evergreen.length > 0 && <SplitFeature title="Explainers & comparisons" posts={evergreen} />}
 
-	{
-		digest.length > 0 && (
-			<section class="section reveal">
-				<SectionHeader title="The daily digest" blurb="Everything else that moved today." />
-				<div class="digest-list">
-					{digest.map((post, i) => <DigestRow post={post} index={i + 1} />)}
-				</div>
-			</section>
-		)
-	}
-
-	{
-		topicCounts.length > 0 && (
-			<section class="section reveal">
-				<SectionHeader title="Browse by topic" />
-				<TopicTiles counts={topicCounts} />
-			</section>
-		)
-	}
+	{digest.length > 0 && <HeadlineGrid title="More from today" posts={digest} />}
 </BaseLayout>

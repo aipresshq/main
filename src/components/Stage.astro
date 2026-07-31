@@ -2,7 +2,7 @@
 import type { CollectionEntry } from 'astro:content';
 import CardFeature from './CardFeature.astro';
 import CardCompact from './CardCompact.astro';
-import StoryCard from './StoryCard.astro';
+import HeadlineGrid from './HeadlineGrid.astro';
 import { readMinutes } from '../lib/read-time';
 
 export interface Props {
@@ -76,16 +76,7 @@ const pagerPosts = posts.slice(0, 4);
         </aside>
       </section>
 
-      {
-        overflow.length > 0 && (
-          <section class="more-stories">
-            <span class="label">More stories</span>
-            <div class="story-list">
-              {overflow.map((post) => <StoryCard post={post} />)}
-            </div>
-          </section>
-        )
-      }
+      {overflow.length > 0 && <HeadlineGrid title="More stories" posts={overflow} />}
     </Fragment>
   ) : (
     <section class="more-stories">
