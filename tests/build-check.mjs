@@ -97,10 +97,24 @@ check('homepage renders the shell: masthead, dateline, nav, subscribe', () => {
   assert.match(html, /class="subscribe-button"[^>]*href="https:\/\/aisnap\.substack\.com"/, 'subscribe button should link to the newsletter');
 });
 
-check('the section menu is a native details disclosure (no JS)', () => {
+check('the menu is a native details disclosure opening a full-screen overlay', () => {
   const html = dist('index.html');
   assert.ok(html.includes('<details class="menu">'), 'menu should be a native <details> element');
   assert.ok(html.includes('class="menu-panel"'), 'menu panel not rendered');
+  // Both glyphs ship; CSS swaps them on [open], so no JS is needed to show a
+  // close control.
+  assert.ok(html.includes('class="icon-open"'), 'hamburger glyph missing');
+  assert.ok(html.includes('class="icon-close"'), 'close glyph missing');
+  assert.ok(html.includes('class="menu-topics"'), 'topics group missing from the menu');
+  assert.ok(html.includes('class="menu-more"'), '"more from" group missing from the menu');
+
+  const css = src('src/styles/global.css');
+  const panel = css.match(/\.menu-panel\s*\{([\s\S]*?)\n\}/);
+  assert.ok(panel, 'missing .menu-panel rule block');
+  assert.match(panel[1], /position:\s*fixed/, 'menu panel should cover the viewport');
+  assert.match(panel[1], /inset:\s*0/, 'menu panel should be inset 0 to fill the screen');
+  assert.match(css, /\.menu\[open\]\s+\.icon-close\s*\{[\s\S]*?display:\s*block/, 'close glyph is never revealed on open');
+  assert.match(css, /\.menu\[open\]\s+\.icon-open\s*\{[\s\S]*?display:\s*none/, 'hamburger is never hidden on open');
 });
 
 check('section nav links every section and topic, with Latest active on /', () => {
