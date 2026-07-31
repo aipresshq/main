@@ -201,10 +201,21 @@ a {
   margin-bottom: 20px;
 }
 
-.logo {
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   flex-shrink: 0;
-  font-size: 1.35rem;
-  font-weight: 700;
+}
+
+.brand-mark {
+  display: block;
+  border-radius: 11px;
+}
+
+.brand-name {
+  font-size: 1.4rem;
+  font-weight: 800;
   letter-spacing: -0.01em;
   color: var(--color-text);
 }
