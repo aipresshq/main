@@ -32,7 +32,7 @@ const [heroPosts, restPosts] = [posts.slice(0, 2), posts.slice(2)];
 	tags={allTags}
 >
 	<h1 class="page-title">{tag}</h1>
-	<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+	<div class="hero-grid">
 		{heroPosts.map((post, i) => <HeroCard post={post} rank={i + 1} />)}
 	</div>
 	<div>

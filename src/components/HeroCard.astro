@@ -1,5 +1,7 @@
 ---
 import type { CollectionEntry } from 'astro:content';
+import Byline from './Byline.astro';
+import Icon from './Icon.astro';
 
 export interface Props {
   post: CollectionEntry<'posts'>;
@@ -7,15 +9,19 @@ export interface Props {
 }
 
 const { post, rank } = Astro.props;
-const { title, author, cover, coverAlt, tags } = post.data;
+const { title, description, author, cover, coverAlt, tags } = post.data;
 ---
 
-<a class="photo-card" href={`/posts/${post.id}/`} style="height:260px;">
+<a class="photo-card hero-card" href={`/posts/${post.id}/`}>
 	<img src={cover} alt={coverAlt} />
 	<div class="overlay"></div>
-	<span class="badge">Trending #{rank}</span>
+	<span class="badge">
+		<span class="badge-icon"><Icon name="bolt" size={12} /></span>
+		Trending #{rank}
+	</span>
 	<div class="content">
+		<Byline author={author} category={tags[0]} onDark />
 		<h3>{title}</h3>
-		<p style="margin:0;font-size:0.85rem;opacity:0.9;">{author} · {tags[0]}</p>
+		<p class="hero-dek">{description}</p>
 	</div>
 </a>

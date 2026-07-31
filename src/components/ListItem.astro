@@ -1,22 +1,36 @@
 ---
 import type { CollectionEntry } from 'astro:content';
+import Byline from './Byline.astro';
+import Icon from './Icon.astro';
+import { formatPostDate } from '../lib/date';
 
 export interface Props {
   post: CollectionEntry<'posts'>;
 }
 
 const { post } = Astro.props;
-const { title, description, author, pubDate, cover, coverAlt } = post.data;
+const { title, description, author, pubDate, cover, coverAlt, tags } = post.data;
 const readMinutes = Math.max(1, Math.round(post.body.split(/\s+/).length / 200));
 ---
 
-<a href={`/posts/${post.id}/`} style="display:flex;gap:12px;align-items:center;margin-bottom:12px;text-decoration:none;color:inherit;">
-	<img src={cover} alt={coverAlt} style="width:96px;height:64px;object-fit:cover;border-radius:8px;flex-shrink:0;" />
-	<div>
-		<h3 style="margin:0 0 4px;font-size:1rem;">{title}</h3>
-		<p style="margin:0 0 4px;color:var(--color-text-muted);font-size:0.9rem;">{description}</p>
-		<p style="margin:0;color:var(--color-text-muted);font-size:0.8rem;">
-			{author} · {pubDate.toDateString()} · {readMinutes} min read
-		</p>
+<a class="list-card" href={`/posts/${post.id}/`}>
+	<img class="list-card-thumb" src={cover} alt={coverAlt} />
+	<div class="list-card-body">
+		<Byline author={author} category={tags[0]} />
+		<h3 class="list-card-title">{title}</h3>
+		<p class="list-card-dek">{description}</p>
+		<div class="meta-row">
+			<span class="meta-item">
+				<Icon name="calendar" size={13} />
+				{formatPostDate(pubDate)}
+			</span>
+			<span class="meta-item">
+				<Icon name="eye" size={13} />
+				{readMinutes} min read
+			</span>
+			<span class="meta-bookmark" aria-hidden="true">
+				<Icon name="bookmark" size={15} />
+			</span>
+		</div>
 	</div>
 </a>
