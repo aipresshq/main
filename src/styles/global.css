@@ -27,12 +27,12 @@ a {
 .pill {
   display: inline-flex;
   align-items: center;
-  padding: 9px 18px;
+  padding: 8px 16px;
   border-radius: 999px;
   border: 1px solid var(--color-border);
   background: #fff;
   color: var(--color-text);
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   font-weight: 500;
   white-space: nowrap;
   transition: border-color 0.15s ease, color 0.15s ease;
@@ -124,7 +124,7 @@ a {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 @media (max-width: 640px) {
@@ -158,15 +158,13 @@ a {
   overflow: hidden;
 }
 
-/* Feed card: thumbnail beside byline / headline / dek / meta footer */
+/* Feed row: thumbnail beside byline / headline / dek / meta footer. Flat and
+   divider-separated — no card background or shadow. */
 .list-card {
   display: flex;
   gap: 20px;
-  padding: 14px;
-  margin-bottom: 16px;
-  border-radius: 16px;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07), 0 1px 2px rgba(0, 0, 0, 0.04);
+  padding: 20px 0;
+  border-top: 1px solid var(--color-border);
   color: inherit;
 }
 
@@ -174,8 +172,8 @@ a {
    <img> resolves its own height from its intrinsic ratio, so stretch gives
    unpredictable card heights. */
 .list-card-thumb {
-  width: 184px;
-  height: 184px;
+  width: 200px;
+  height: 200px;
   border-radius: 12px;
   object-fit: cover;
   flex-shrink: 0;
@@ -186,7 +184,6 @@ a {
   flex-direction: column;
   flex: 1;
   min-width: 0;
-  padding: 6px 6px 6px 0;
 }
 
 .list-card-title {
@@ -440,8 +437,12 @@ a {
   display: none;
 }
 
+/* Bleeds past the column's right padding so its rule meets the rail's
+   vertical divider instead of stopping short of it. */
 .tab-row {
   gap: 24px;
+  margin-right: -32px;
+  padding-right: 32px;
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -470,17 +471,18 @@ a {
 }
 
 /* Two-column page layout: main feed + right rail, full-width */
+/* No padding here: each column pads its own content instead, so the rail's
+   divider runs edge to edge (full page height) rather than being inset. */
 .page-layout {
   display: grid;
   grid-template-columns: 1fr 340px;
-  gap: 40px;
-  padding: 24px 32px;
-  align-items: start;
+  min-height: 100vh;
 }
 
 /* Header + feed stacked in the left column, beside the full-height rail */
 .feed-column {
   min-width: 0;
+  padding: 24px 32px;
 }
 
 /* Right rail: separated from the feed by a vertical rule, as in the reference */
@@ -488,7 +490,7 @@ a {
   display: flex;
   flex-direction: column;
   gap: 40px;
-  padding-left: 40px;
+  padding: 24px 32px;
   border-left: 1px solid var(--color-border);
 }
 
@@ -498,10 +500,8 @@ a {
   }
 
   /* Stacked below the feed on narrow screens, so the vertical rule becomes
-     a horizontal one and the left inset is no longer meaningful. */
+     a horizontal one. */
   .right-rail {
-    padding-left: 0;
-    padding-top: 32px;
     border-left: none;
     border-top: 1px solid var(--color-border);
   }
@@ -510,8 +510,8 @@ a {
 /* Shared right-rail section heading (Curated Picks, Categories, Newsletter).
    Semibold rather than bold — the reference relies on size, not weight. */
 .rail-heading {
-  margin: 0 0 20px;
-  font-size: 1.35rem;
+  margin: 0 0 18px;
+  font-size: 1.25rem;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
@@ -556,7 +556,7 @@ a {
 
 .curated-title {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 500;
   line-height: 1.4;
   color: var(--color-text);
