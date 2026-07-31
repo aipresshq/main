@@ -213,6 +213,56 @@ check('homepage sections use three distinct editorial layouts', () => {
   assert.match(html, /class="section-link"[^>]*href="\/trackers\/"/, 'Trackers should link to its own page');
 });
 
+check('Editor’s Picks is a fourth, distinct layout: equal photo cards plus a text column', () => {
+  const html = dist('index.html');
+  const heading = html.includes("Editor&#39;s Picks") ? "Editor&#39;s Picks" : "Editor's Picks";
+  assert.ok(html.includes(heading), 'missing the Editor’s Picks section');
+
+  const start = html.lastIndexOf('<section', html.indexOf(heading));
+  const section = html.slice(start, html.indexOf('</section>', start) + '</section>'.length);
+
+  assert.ok(section.includes('class="panel'), 'Editor’s Picks should use the toned panel, not the saturated band');
+  assert.ok(section.includes('ranked-grid'), 'missing the ranked grid');
+  const cardCount = (section.match(/class="ranked-card"/g) || []).length;
+  assert.equal(cardCount, 3, `expected exactly 3 equal-weight photo cards, found ${cardCount}`);
+  assert.ok(section.includes('ranked-list'), 'missing the text-only column');
+  assert.ok(section.includes('ranked-byline'), 'cards should show a byline, unlike the headline-only band');
+});
+
+check('Editor’s Picks draws from the featured flag, spanning post types', () => {
+  const posts = readdirSync(new URL('../src/content/posts/', import.meta.url));
+  const featuredSlugs = posts
+    .map((f) => f.replace(/\.md$/, ''))
+    .filter((slug) => src(`src/content/posts/${slug}.md`).includes('featured: true'));
+  assert.ok(featuredSlugs.length >= 4, 'need enough featured fixtures to populate both the cards and the list');
+
+  const html = dist('index.html');
+  const heading = html.includes("Editor&#39;s Picks") ? "Editor&#39;s Picks" : "Editor's Picks";
+  const start = html.lastIndexOf('<section', html.indexOf(heading));
+  const section = html.slice(start, html.indexOf('</section>', start) + '</section>'.length);
+
+  for (const slug of featuredSlugs.slice(0, 6)) {
+    assert.ok(section.includes(`/posts/${slug}/`), `featured post /posts/${slug}/ missing from Editor's Picks`);
+  }
+});
+
+check('.panel is a toned band, distinct from the saturated .band', () => {
+  const css = src('src/styles/global.css');
+  const panel = css.match(/\n\.panel\s*\{([\s\S]*?)\n\}/);
+  assert.ok(panel, 'missing .panel rule block');
+  assert.match(panel[1], /margin:[^;]*calc\(-1 \* var\(--gutter\)\)/, 'panel does not bleed past the gutter');
+  assert.match(panel[1], /background:\s*var\(--panel-bg\)/, 'panel should use its own toned background token');
+  assert.ok(!/color:/.test(panel[1]), 'panel should not force an ink colour — it stays within the theme, unlike .band');
+
+  // Distinct light/dark values — this section should visibly re-tone with
+  // the theme, unlike .band which stays fixed dark in both.
+  const darkValue = css.match(/--panel-bg:\s*([^;]+);/)[1];
+  const light = css.match(/@media \(prefers-color-scheme: light\) \{([\s\S]*?)\n  \}\n\n  \.stage/);
+  assert.ok(light, 'could not locate the light-mode token block');
+  assert.match(light[1], /--panel-bg:/, 'light mode should redefine --panel-bg');
+  assert.ok(!light[1].includes(`--panel-bg: ${darkValue}`), 'light mode should not just repeat the dark panel colour');
+});
+
 check('the band bleeds past the page gutter and paints its own contrast', () => {
   const css = src('src/styles/global.css');
   const band = css.match(/\n\.band\s*\{([\s\S]*?)\n\}/);

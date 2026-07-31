@@ -27,6 +27,11 @@
   --band-ink: #ffffff;
   --band-ink-muted: rgba(255, 255, 255, 0.72);
 
+  /* Panel: a toned section background for rhythm — subtler than the band, and
+     unlike --band-bg it does flip with the theme, since it's meant to read as
+     "the page background, one shade over" rather than a fixed distinct zone. */
+  --panel-bg: #181818;
+
   --font-body: 'Inter Variable', system-ui, -apple-system, sans-serif;
   /* Newsreader was built by Production Type for Google specifically for news
      reading interfaces — a transitional serif with real editorial pedigree,
@@ -63,6 +68,9 @@
     --shadow-raised: 0 18px 40px rgba(0, 0, 0, 0.14);
     --card-bg: #ffffff;
     --card-bg-hover: #f1efe9;
+    /* The reference's actual cream, not a dark tone lightened by a formula —
+       paper stock is warm, not grey. */
+    --panel-bg: #efe9dc;
   }
 
   /* Redefining the tokens on .stage cascades the dark palette to everything
@@ -931,6 +939,96 @@ img {
   text-underline-offset: 3px;
 }
 
+/* --- Panel: a toned (not saturated) full-bleed band, for rhythm rather than
+   emphasis. Alternates against the plain page background the way a print
+   section front alternates paper stock, without repeating the saturated
+   .band treatment already used for Trackers — no accent rule here. --- */
+
+.panel {
+  margin: 64px calc(-1 * var(--gutter)) 0;
+  padding: 40px var(--gutter) 52px;
+  background: var(--panel-bg);
+}
+
+/* Three equal-weight photo cards beside a text-only column — distinct from
+   FeatureBand's one-dominant-plus-cluster and SplitFeature's single lead. */
+.ranked-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(240px, 0.9fr);
+  gap: 32px;
+  align-items: start;
+}
+
+.ranked-card img {
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  object-fit: cover;
+  margin-bottom: 14px;
+}
+
+.ranked-topic {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--mark);
+}
+
+.ranked-card h3,
+.ranked-list h3 {
+  margin: 0 0 10px;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.ranked-byline {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ranked-byline span:first-child {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.ranked-card:hover h3,
+.ranked-list a:hover h3 {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.ranked-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.ranked-list li {
+  padding: 20px 0;
+  border-top: 1px solid var(--border);
+}
+
+.ranked-list li:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+
+/* Text-only rows keep their headline to two lines — three would crowd a
+   column already narrower than the photo cards beside it. */
+.ranked-list h3 {
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
 /* --------------------------------------------------------------------------
    Motion — CSS only. Scroll reveals use animation-timeline behind @supports,
    so browsers without it simply render the content in place rather than
@@ -1340,6 +1438,17 @@ img {
   .split {
     grid-template-columns: 1fr;
     gap: 32px;
+  }
+
+  /* Two photo cards per row, the text-only list spanning beneath both —
+     keeps some of the density rather than dropping straight to one column. */
+  .ranked-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 28px;
+  }
+
+  .ranked-list {
+    grid-column: 1 / -1;
   }
 
   .footer-cta {

@@ -11,7 +11,7 @@ sourceName: "AI Snap"
 sourceUrl: "https://aisnap.in"
 tags: ["Mistral", "Funding"]
 postType: "digest"
-featured: false
+featured: true
 ---
 
 ## What happened

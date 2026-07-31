@@ -5,6 +5,7 @@ import Stage from '../components/Stage.astro';
 import FeatureBand from '../components/FeatureBand.astro';
 import SplitFeature from '../components/SplitFeature.astro';
 import HeadlineGrid from '../components/HeadlineGrid.astro';
+import RankedFeature from '../components/RankedFeature.astro';
 import { formatEditionDate } from '../lib/date';
 
 const posts = (await getCollection('posts')).sort(
@@ -23,6 +24,11 @@ const evergreen = posts.filter((p) => p.data.postType === 'evergreen').slice(0, 
 
 // The digest is what the front hasn't already shown.
 const digest = posts.filter((p) => !inStage.has(p.id)).slice(0, 8);
+
+// Editor's Picks closes the front — a real curated signal (the `featured`
+// flag, set by whoever reviews the day's drafts per context.md §4), not a
+// fabricated "Most Read" ranking with no analytics behind it this early on.
+const picks = posts.filter((p) => p.data.featured);
 ---
 
 <BaseLayout
@@ -39,4 +45,6 @@ const digest = posts.filter((p) => !inStage.has(p.id)).slice(0, 8);
 	{evergreen.length > 0 && <SplitFeature title="Explainers & comparisons" posts={evergreen} />}
 
 	{digest.length > 0 && <HeadlineGrid title="More from today" posts={digest} />}
+
+	{picks.length > 0 && <RankedFeature title="Editor's Picks" posts={picks} />}
 </BaseLayout>

@@ -17,7 +17,7 @@ sourceName: "AI Snap"
 sourceUrl: "https://aisnap.in"
 tags: ["Anthropic", "OpenAI", "Comparisons"]
 postType: "evergreen"
-featured: false
+featured: true
 ---
 
 ## What happened

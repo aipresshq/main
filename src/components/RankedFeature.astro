@@ -1,0 +1,56 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import SectionHeader from './SectionHeader.astro';
+import { formatPostDate } from '../lib/date';
+import { readMinutes } from '../lib/read-time';
+
+export interface Props {
+  title: string;
+  href?: string;
+  /** First three render as photo cards; the rest as the text-only column. */
+  posts: CollectionEntry<'posts'>[];
+}
+
+const { title, href, posts } = Astro.props;
+const cards = posts.slice(0, 3);
+const listed = posts.slice(3, 6);
+---
+
+<section class="panel reveal">
+	<SectionHeader title={title} href={href} />
+
+	<div class="ranked-grid">
+		{
+			cards.map((post) => (
+				<a class="ranked-card" href={`/posts/${post.id}/`}>
+					<img src={post.data.cover} alt={post.data.coverAlt} />
+					<span class="label ranked-topic">{post.data.tags[0]}</span>
+					<h3>{post.data.title}</h3>
+					<span class="ranked-byline">
+						<span>{post.data.author}</span>
+						<span class="label">{readMinutes(post)} min read</span>
+					</span>
+				</a>
+			))
+		}
+
+		{
+			listed.length > 0 && (
+				<ul class="ranked-list">
+					{listed.map((post) => (
+						<li>
+							<a href={`/posts/${post.id}/`}>
+								<span class="label ranked-topic">{post.data.tags[0]}</span>
+								<h3>{post.data.title}</h3>
+								<span class="ranked-byline">
+									<span>{post.data.author}</span>
+									<span class="label">{formatPostDate(post.data.pubDate)}</span>
+								</span>
+							</a>
+						</li>
+					))}
+				</ul>
+			)
+		}
+	</div>
+</section>

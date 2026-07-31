@@ -11,7 +11,7 @@ sourceName: "AI Snap"
 sourceUrl: "https://aisnap.in"
 tags: ["Meta", "Research"]
 postType: "digest"
-featured: false
+featured: true
 ---
 
 ## What happened

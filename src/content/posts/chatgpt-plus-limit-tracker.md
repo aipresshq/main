@@ -11,7 +11,7 @@ sourceName: "AI Snap"
 sourceUrl: "https://aisnap.in"
 tags: ["OpenAI", "Trackers"]
 postType: "tracker"
-featured: false
+featured: true
 ---
 
 ## What happened
