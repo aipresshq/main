@@ -1,0 +1,25 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { formatPostDate } from '../lib/date';
+import { readMinutes } from '../lib/read-time';
+
+export interface Props {
+  post: CollectionEntry<'posts'>;
+  /** Position in the digest, shown as an editorial index. */
+  index: number;
+}
+
+const { post, index } = Astro.props;
+---
+
+<a class="digest-row" href={`/posts/${post.id}/`}>
+	<span class="digest-index" aria-hidden="true">{String(index).padStart(2, '0')}</span>
+	<span class="digest-body">
+		<span class="label digest-topic">{post.data.tags[0]}</span>
+		<h3 class="digest-title">{post.data.title}</h3>
+		<p class="digest-desc">{post.data.description}</p>
+	</span>
+	<span class="label digest-meta">
+		{formatPostDate(post.data.pubDate)} · {readMinutes(post)} min read
+	</span>
+</a>

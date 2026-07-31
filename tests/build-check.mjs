@@ -1,6 +1,6 @@
 // Lightweight build-output verification harness — no test framework needed
 // for a static-only Astro site. Run `npm run build` first, then this script.
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import assert from 'node:assert';
 
 const dist = (path) => readFileSync(new URL(`../dist/${path}`, import.meta.url), 'utf-8');
@@ -182,6 +182,62 @@ check('/tag/openai/ shows only OpenAI posts, with that topic active in the nav',
   assert.ok(!linksTo(html, 'welcome-to-ai-snap'), 'wrong-tag post leaked into /tag/openai/');
   const nav = html.slice(html.indexOf('class="section-nav"'), html.indexOf('</nav>'));
   assert.match(nav, /href="\/tag\/openai\/"\s+class="active"/, 'OpenAI topic not marked active in the nav');
+});
+
+check('homepage renders the four sections, each with its own treatment', () => {
+  const html = dist('index.html');
+  for (const title of ['Trackers', 'Explainers &amp; comparisons', 'The daily digest', 'Browse by topic']) {
+    assert.ok(html.includes(title), `missing section: ${title}`);
+  }
+  assert.ok(html.includes('class="tracker-card"'), 'trackers should use the tracker card');
+  assert.ok(html.includes('class="digest-row"'), 'digest should use the numbered row');
+  assert.ok(html.includes('class="topic-tile"'), 'topics should use tiles');
+  assert.match(html, /class="section-link"[^>]*href="\/trackers\/"/, 'Trackers section should link to its own page');
+});
+
+check('the digest omits stories the stage already showed', () => {
+  const html = dist('index.html');
+  const digest = html.slice(html.indexOf('digest-list'), html.indexOf('Browse by topic'));
+  // openai-ships-new-model is the lead, so repeating it a screen later in a
+  // list titled "everything else" would be redundant.
+  assert.ok(
+    !digest.includes('/posts/openai-ships-new-model/'),
+    'the lead story should not reappear in the digest'
+  );
+  assert.ok(digest.includes('/posts/mistral-raises-series-c/'), 'other digest stories should still list');
+});
+
+check('scroll reveal survives minification and never traps content invisible', () => {
+  // The minifier folds a neighbouring animation-timeline into the `animation`
+  // shorthand, which browsers reject — silently killing the animation. Assert
+  // the built CSS keeps the longhands.
+  const assets = new URL('../dist/_astro/', import.meta.url);
+  const cssFile = readdirSync(assets).find((f) => f.endsWith('.css'));
+  assert.ok(cssFile, 'no built stylesheet found');
+  const css = readFileSync(new URL(cssFile, assets), 'utf-8');
+
+  const rule = css.match(/\.reveal\{([^}]*)\}/);
+  assert.ok(rule, 'no .reveal rule in the built CSS');
+  assert.match(rule[1], /animation-name:\s*rise/, '.reveal lost its animation-name longhand');
+  assert.match(rule[1], /animation-timeline:\s*view\(\)/, '.reveal lost its scroll timeline');
+  assert.ok(
+    !/animation:[^;}]*view\(\)/.test(css),
+    'animation-timeline was folded into the animation shorthand — browsers drop that declaration'
+  );
+
+  // The reveal only applies inside @supports, so unsupported browsers render
+  // the content in place instead of leaving it at opacity 0.
+  const source = src('src/styles/global.css');
+  assert.match(
+    source,
+    /@supports \(animation-timeline: view\(\)\) \{[\s\S]*?\.reveal/,
+    'reveal must be gated behind @supports'
+  );
+  assert.match(
+    source,
+    /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\.reveal[\s\S]*?animation: none/,
+    'reduced motion must switch the reveal off'
+  );
 });
 
 check('article page renders the fixed §4 template on the site shell', () => {

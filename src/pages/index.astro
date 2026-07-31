@@ -2,12 +2,36 @@
 import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Stage from '../components/Stage.astro';
+import SectionHeader from '../components/SectionHeader.astro';
+import TrackerCard from '../components/TrackerCard.astro';
+import StoryCard from '../components/StoryCard.astro';
+import DigestRow from '../components/DigestRow.astro';
+import TopicTiles from '../components/TopicTiles.astro';
 import { formatEditionDate } from '../lib/date';
 
 const posts = (await getCollection('posts')).sort(
   (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
 );
 const allTags = [...new Set(posts.flatMap((p) => p.data.tags))].sort();
+
+// The stage takes the top five: lead, "next" teaser, and three rail stories.
+const stagePosts = posts.slice(0, 5);
+const inStage = new Set(stagePosts.map((p) => p.id));
+
+// Trackers and Explainers are section fronts — complete listings by type, so a
+// story showing in both the hero and its own section is expected, as in print.
+const trackers = posts.filter((p) => p.data.postType === 'tracker').slice(0, 3);
+const evergreen = posts.filter((p) => p.data.postType === 'evergreen').slice(0, 3);
+
+// The digest is literally "everything else", so it skips what the stage
+// already displayed rather than repeating the lead a screen later.
+const digest = posts
+  .filter((p) => p.data.postType === 'digest' && !inStage.has(p.id))
+  .slice(0, 5);
+
+const topicCounts = allTags
+  .map((tag) => ({ tag, count: posts.filter((p) => p.data.tags.includes(tag)).length }))
+  .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
 ---
 
 <BaseLayout
@@ -17,5 +41,54 @@ const allTags = [...new Set(posts.flatMap((p) => p.data.tags))].sort();
 	tags={allTags}
 	editionDate={posts[0] && formatEditionDate(posts[0].data.pubDate)}
 >
-	<Stage posts={posts} emptyNote="No stories published yet." />
+	<Stage posts={stagePosts} emptyNote="No stories published yet." />
+
+	{
+		trackers.length > 0 && (
+			<section class="section reveal">
+				<SectionHeader
+					title="Trackers"
+					blurb="Pages we keep current as limits and pricing move."
+					href="/trackers/"
+				/>
+				<div class="tracker-grid">
+					{trackers.map((post) => <TrackerCard post={post} />)}
+				</div>
+			</section>
+		)
+	}
+
+	{
+		evergreen.length > 0 && (
+			<section class="section reveal">
+				<SectionHeader
+					title="Explainers & comparisons"
+					blurb="The reference pieces, revised rather than replaced."
+				/>
+				<div class="story-list">
+					{evergreen.map((post) => <StoryCard post={post} />)}
+				</div>
+			</section>
+		)
+	}
+
+	{
+		digest.length > 0 && (
+			<section class="section reveal">
+				<SectionHeader title="The daily digest" blurb="Everything else that moved today." />
+				<div class="digest-list">
+					{digest.map((post, i) => <DigestRow post={post} index={i + 1} />)}
+				</div>
+			</section>
+		)
+	}
+
+	{
+		topicCounts.length > 0 && (
+			<section class="section reveal">
+				<SectionHeader title="Browse by topic" />
+				<TopicTiles counts={topicCounts} />
+			</section>
+		)
+	}
 </BaseLayout>

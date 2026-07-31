@@ -1,0 +1,19 @@
+---
+export interface Props {
+  title: string;
+  blurb?: string;
+  /** Optional "see all" destination for the section. */
+  href?: string;
+  linkLabel?: string;
+}
+
+const { title, blurb, href, linkLabel = 'See all' } = Astro.props;
+---
+
+<div class="section-head">
+	<div>
+		<h2 class="section-title">{title}</h2>
+		{blurb && <p class="section-blurb">{blurb}</p>}
+	</div>
+	{href && <a class="section-link" href={href}>{linkLabel}</a>}
+</div>

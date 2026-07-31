@@ -1,0 +1,21 @@
+---
+import { slugify } from '../lib/slug';
+
+export interface Props {
+  /** Tag name → number of stories carrying it. */
+  counts: { tag: string; count: number }[];
+}
+
+const { counts } = Astro.props;
+---
+
+<div class="topic-tiles">
+	{
+		counts.map(({ tag, count }) => (
+			<a class="topic-tile" href={`/tag/${slugify(tag)}/`}>
+				<span class="topic-tile-name">{tag}</span>
+				<span class="label topic-tile-count">{count} {count === 1 ? 'story' : 'stories'}</span>
+			</a>
+		))
+	}
+</div>
