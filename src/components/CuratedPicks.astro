@@ -21,7 +21,9 @@ function readMinutes(post: CollectionEntry<'posts'>): number {
 					<div class="curated-byline">
 						<span class="avatar-circle" aria-hidden="true">{post.data.author.charAt(0)}</span>
 						<span class="curated-byline-text">
-							{post.data.author} <span class="curated-dot">·</span> {post.data.tags[0]}
+							<span class="curated-author">{post.data.author}</span>
+							<span class="curated-dot">•</span>
+							<span class="curated-category">{post.data.tags[0]}</span>
 						</span>
 					</div>
 					<div class="curated-body">
