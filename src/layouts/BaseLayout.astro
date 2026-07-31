@@ -24,38 +24,40 @@ const { title, description, activeTab = null, activeTag = null, tags } = Astro.p
 		<title>{title}</title>
 	</head>
 	<body>
-		<header class="site-header">
-			<div class="header-row">
-				<a href="/" class="brand">
-					<img src="/logo-placeholder.svg" alt="" width="40" height="40" class="brand-mark" />
-					<span class="brand-name">AI Snap</span>
-				</a>
-				<div class="search-box">
-					<svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-						<circle cx="11" cy="11" r="8"></circle>
-						<line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-					</svg>
-					<input type="search" id="search-input" placeholder="Search News" aria-label="Search News" />
-					<div id="search-results"></div>
-				</div>
-			</div>
-			<div class="pill-row">
-				{
-					tags.map((tag) => (
-						<TopicPill tag={tag} active={activeTag?.toLowerCase() === tag.toLowerCase()} />
-					))
-				}
-			</div>
-			<nav class="tab-row">
-				<a href="/" class={activeTab === 'latest' ? 'active' : ''}>Latest</a>
-				<a href="/trending/" class={activeTab === 'trending' ? 'active' : ''}>Trending</a>
-				<a href="/trackers/" class={activeTab === 'trackers' ? 'active' : ''}>Trackers</a>
-			</nav>
-		</header>
 		<div class="page-layout">
-			<main>
-				<slot />
-			</main>
+			<div class="feed-column">
+				<header class="site-header">
+					<div class="header-row">
+						<a href="/" class="brand">
+							<img src="/logo-placeholder.svg" alt="" width="40" height="40" class="brand-mark" />
+							<span class="brand-name">AI Snap</span>
+						</a>
+						<div class="search-box">
+							<svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+								<circle cx="11" cy="11" r="8"></circle>
+								<line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+							</svg>
+							<input type="search" id="search-input" placeholder="Search News" aria-label="Search News" />
+							<div id="search-results"></div>
+						</div>
+					</div>
+					<div class="pill-row">
+						{
+							tags.map((tag) => (
+								<TopicPill tag={tag} active={activeTag?.toLowerCase() === tag.toLowerCase()} />
+							))
+						}
+					</div>
+					<nav class="tab-row">
+						<a href="/" class={activeTab === 'latest' ? 'active' : ''}>Latest</a>
+						<a href="/trending/" class={activeTab === 'trending' ? 'active' : ''}>Trending</a>
+						<a href="/trackers/" class={activeTab === 'trackers' ? 'active' : ''}>Trackers</a>
+					</nav>
+				</header>
+				<main>
+					<slot />
+				</main>
+			</div>
 			<aside class="right-rail">
 				<slot name="right-rail" />
 			</aside>
