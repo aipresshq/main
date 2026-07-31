@@ -1,0 +1,95 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import CardFeature from './CardFeature.astro';
+import CardCompact from './CardCompact.astro';
+import StoryCard from './StoryCard.astro';
+import { readMinutes } from '../lib/read-time';
+
+export interface Props {
+  /** Reverse-chronological posts for this view. */
+  posts: CollectionEntry<'posts'>[];
+  /** Shown when the view has no posts at all. */
+  emptyNote: string;
+}
+
+const { posts, emptyNote } = Astro.props;
+
+// lead → the hero; next → the "up next" teaser; rail → sidebar stories;
+// overflow → everything else, as a grid below the stage.
+const [lead, next, ...remaining] = posts;
+const rail = remaining.slice(0, 3);
+const overflow = remaining.slice(3);
+
+// The pager reflects which of the top stories is currently the lead.
+const pagerPosts = posts.slice(0, 4);
+---
+
+{
+  lead ? (
+    <Fragment>
+      <section class="stage">
+        <div class="stage-backdrop">
+          <img src={lead.data.cover} alt="" />
+        </div>
+
+        <div class="stage-lead">
+          <span class="label lead-kicker">{lead.data.tags[0]}</span>
+          <h1 class="lead-headline">
+            <a href={`/posts/${lead.id}/`}>{lead.data.title}</a>
+          </h1>
+
+          <div class="lead-meta">
+            <span class="label">{readMinutes(lead)} min read</span>
+            <span class="byline">
+              <span class="byline-avatar" aria-hidden="true">{lead.data.author.charAt(0)}</span>
+              <span class="byline-name">By {lead.data.author}</span>
+            </span>
+          </div>
+
+          {
+            pagerPosts.length > 1 && (
+              <div class="lead-pager" aria-label="Featured stories">
+                {pagerPosts.map((post, i) =>
+                  i === 0 ? (
+                    <span class="current" aria-current="true">{i + 1}</span>
+                  ) : (
+                    <a href={`/posts/${post.id}/`} aria-label={post.data.title}>{i + 1}</a>
+                  )
+                )}
+              </div>
+            )
+          }
+
+          {
+            next && (
+              <div class="lead-next">
+                <span class="label">Next</span>
+                <CardCompact post={next} />
+              </div>
+            )
+          }
+        </div>
+
+        <aside class="stage-rail">
+          {rail[0] && <CardFeature post={rail[0]} />}
+          {rail.slice(1).map((post) => <CardCompact post={post} />)}
+        </aside>
+      </section>
+
+      {
+        overflow.length > 0 && (
+          <section class="more-stories">
+            <span class="label">More stories</span>
+            <div class="story-list">
+              {overflow.map((post) => <StoryCard post={post} />)}
+            </div>
+          </section>
+        )
+      }
+    </Fragment>
+  ) : (
+    <section class="more-stories">
+      <p class="empty-note">{emptyNote}</p>
+    </section>
+  )
+}

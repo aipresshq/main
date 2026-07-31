@@ -1,0 +1,18 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { readMinutes } from '../lib/read-time';
+import { formatPostDate } from '../lib/date';
+
+export interface Props {
+  post: CollectionEntry<'posts'>;
+}
+
+const { post } = Astro.props;
+---
+
+<a class="story" href={`/posts/${post.id}/`}>
+	<img src={post.data.cover} alt={post.data.coverAlt} />
+	<span class="label">{post.data.tags[0]}</span>
+	<h3 class="card-title">{post.data.title}</h3>
+	<span class="label">{formatPostDate(post.data.pubDate)} · {readMinutes(post)} min read</span>
+</a>

@@ -1,11 +1,8 @@
 ---
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import HeroCard from '../../components/HeroCard.astro';
-import ListItem from '../../components/ListItem.astro';
-import CuratedPicks from '../../components/CuratedPicks.astro';
-import CategoriesRail from '../../components/CategoriesRail.astro';
-import NewsletterSignup from '../../components/NewsletterSignup.astro';
+import Stage from '../../components/Stage.astro';
+import { formatEditionDate } from '../../lib/date';
 import { slugify } from '../../lib/slug';
 
 export async function getStaticPaths() {
@@ -22,7 +19,6 @@ const allTags = [...new Set(allPosts.flatMap((p) => p.data.tags))].sort();
 const posts = allPosts
   .filter((p) => p.data.tags.includes(tag))
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
-const [heroPosts, restPosts] = [posts.slice(0, 2), posts.slice(2)];
 ---
 
 <BaseLayout
@@ -30,17 +26,7 @@ const [heroPosts, restPosts] = [posts.slice(0, 2), posts.slice(2)];
 	description={`Latest AI Snap coverage tagged ${tag}.`}
 	activeTag={tag}
 	tags={allTags}
+	editionDate={posts[0] && formatEditionDate(posts[0].data.pubDate)}
 >
-	<h1 class="page-title">{tag}</h1>
-	<div class="hero-grid">
-		{heroPosts.map((post, i) => <HeroCard post={post} rank={i + 1} />)}
-	</div>
-	<div>
-		{restPosts.map((post) => <ListItem post={post} />)}
-	</div>
-	<Fragment slot="right-rail">
-		<CuratedPicks posts={allPosts} />
-		<CategoriesRail tags={allTags} />
-		<NewsletterSignup />
-	</Fragment>
+	<Stage posts={posts} emptyNote={`No stories tagged ${tag} yet.`} />
 </BaseLayout>

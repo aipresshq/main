@@ -1,7 +1,9 @@
 ---
 import '@fontsource-variable/inter';
+import '@fontsource-variable/playfair-display';
+import '@fontsource/unifrakturmaguntia';
 import '../styles/global.css';
-import TopicPill from '../components/TopicPill.astro';
+import { slugify } from '../lib/slug';
 
 export interface Props {
   title: string;
@@ -9,9 +11,33 @@ export interface Props {
   activeTab?: 'latest' | 'trending' | 'trackers' | null;
   activeTag?: string | null;
   tags: string[];
+  /** Dateline shown in the masthead — the latest story's date. */
+  editionDate?: string;
 }
 
-const { title, description, activeTab = null, activeTag = null, tags } = Astro.props;
+const {
+  title,
+  description,
+  activeTab = null,
+  activeTag = null,
+  tags,
+  editionDate,
+} = Astro.props;
+
+const substackUrl = import.meta.env.PUBLIC_SUBSTACK_URL || 'https://aisnap.substack.com';
+
+const sections = [
+  { label: 'Latest', href: '/', active: activeTab === 'latest' },
+  { label: 'Trending', href: '/trending/', active: activeTab === 'trending' },
+  { label: 'Trackers', href: '/trackers/', active: activeTab === 'trackers' },
+];
+
+// A tag can share a section's name (e.g. the "Trackers" tag alongside the
+// /trackers/ section). Showing both renders two identical-looking nav items
+// pointing at different routes, so the tag is dropped from the nav — its
+// /tag/<slug>/ page still exists and stays reachable and indexable.
+const sectionLabels = new Set(sections.map((s) => s.label.toLowerCase()));
+const navTags = tags.filter((tag) => !sectionLabels.has(tag.toLowerCase()));
 ---
 
 <html lang="en">
@@ -24,56 +50,72 @@ const { title, description, activeTab = null, activeTag = null, tags } = Astro.p
 		<title>{title}</title>
 	</head>
 	<body>
-		<div class="page-layout">
-			<div class="feed-column">
-				<header class="site-header">
-					<div class="header-row">
-						<a href="/" class="brand">
-							<img src="/logo-placeholder.svg" alt="" width="40" height="40" class="brand-mark" />
-							<span class="brand-name">AI Snap</span>
-						</a>
-						<div class="search-box">
-							<svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-								<circle cx="11" cy="11" r="8"></circle>
-								<line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+		<div class="frame">
+			<header class="topbar" data-pagefind-ignore>
+				<div class="topbar-left">
+					<!-- Native disclosure: a full section/topic menu with no JavaScript -->
+					<details class="menu">
+						<summary class="icon-button" aria-label="Browse sections and topics">
+							<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+								<line x1="3" y1="7" x2="21" y2="7" />
+								<line x1="3" y1="12" x2="21" y2="12" />
+								<line x1="3" y1="17" x2="21" y2="17" />
 							</svg>
-							<input type="search" id="search-input" placeholder="Search News" aria-label="Search News" />
-							<div id="search-results"></div>
+						</summary>
+						<div class="menu-panel">
+							<h2>Sections</h2>
+							<ul>
+								{sections.map((s) => <li><a href={s.href}>{s.label}</a></li>)}
+							</ul>
+							<h2>Topics</h2>
+							<ul>
+								{tags.map((tag) => <li><a href={`/tag/${slugify(tag)}/`}>{tag}</a></li>)}
+							</ul>
 						</div>
+					</details>
+					{editionDate && <span class="edition-date">{editionDate}</span>}
+				</div>
+
+				<a href="/" class="masthead">AI Snap</a>
+
+				<div class="topbar-right">
+					<div class="search-box">
+						<svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+							<circle cx="11" cy="11" r="8"></circle>
+							<line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+						</svg>
+						<input type="search" id="search-input" placeholder="Search" aria-label="Search stories" />
+						<div id="search-results"></div>
 					</div>
-					<div class="pill-row">
-						{
-							tags.map((tag) => (
-								<TopicPill tag={tag} active={activeTag?.toLowerCase() === tag.toLowerCase()} />
-							))
-						}
-					</div>
-					<nav class="tab-row">
-						<a href="/" class={activeTab === 'latest' ? 'active' : ''}>Latest</a>
-						<a href="/trending/" class={activeTab === 'trending' ? 'active' : ''}>Trending</a>
-						<a href="/trackers/" class={activeTab === 'trackers' ? 'active' : ''}>Trackers</a>
-					</nav>
-				</header>
-				<main>
-					<slot />
-				</main>
-			</div>
-			<aside class="right-rail">
-				<slot name="right-rail" />
-			</aside>
+					<a class="subscribe-button" href={substackUrl}>Subscribe now</a>
+				</div>
+			</header>
+
+			<nav class="section-nav" aria-label="Sections and topics" data-pagefind-ignore>
+				{sections.map((s) => <a href={s.href} class={s.active ? 'active' : ''}>{s.label}</a>)}
+				{
+					navTags.map((tag) => (
+						<a
+							href={`/tag/${slugify(tag)}/`}
+							class={activeTag?.toLowerCase() === tag.toLowerCase() ? 'active' : ''}
+						>
+							{tag}
+						</a>
+					))
+				}
+			</nav>
+
+			<slot />
 		</div>
+
 		<script is:inline>
-			// Minimal, zero-JS-by-default search: nothing is fetched until the user
-			// actually types into the search box. Pagefind's raw JS API is dynamically
-			// imported (and initialized) exactly once, on first interaction, instead of
-			// loading the much larger pre-built search UI component bundle eagerly on
-			// every page.
+			// Zero-JS-by-default search: nothing is fetched until the visitor types.
+			// Pagefind's raw API is dynamically imported (and initialized) once, on
+			// first interaction, rather than shipping its prebuilt UI bundle eagerly.
 			//
-			// is:inline is required here: a plain <script> is processed by Vite, which
-			// rewrites this dynamic import() into its internal preload-helper form and
-			// injects an unresolved `__VITE_PRELOAD__` marker, throwing a ReferenceError
-			// the moment loadPagefind() runs. is:inline ships this script completely
-			// untransformed (no bundling, no rewriting), which avoids that bug entirely.
+			// is:inline is required: a processed script gets its dynamic import
+			// rewritten by Vite into a preload helper referencing an unresolved
+			// __VITE_PRELOAD__ marker, which throws on the first keystroke.
 			const input = document.getElementById('search-input');
 			const resultsEl = document.getElementById('search-results');
 

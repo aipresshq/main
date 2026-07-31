@@ -1,17 +1,13 @@
 ---
 import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import HeroCard from '../components/HeroCard.astro';
-import ListItem from '../components/ListItem.astro';
-import CategoriesRail from '../components/CategoriesRail.astro';
-import CuratedPicks from '../components/CuratedPicks.astro';
-import NewsletterSignup from '../components/NewsletterSignup.astro';
+import Stage from '../components/Stage.astro';
+import { formatEditionDate } from '../lib/date';
 
 const posts = (await getCollection('posts')).sort(
   (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
 );
 const allTags = [...new Set(posts.flatMap((p) => p.data.tags))].sort();
-const [heroPosts, restPosts] = [posts.slice(0, 2), posts.slice(2)];
 ---
 
 <BaseLayout
@@ -19,17 +15,7 @@ const [heroPosts, restPosts] = [posts.slice(0, 2), posts.slice(2)];
 	description="Daily AI news, evergreen comparisons, and usage-limit trackers across every major AI lab."
 	activeTab="latest"
 	tags={allTags}
+	editionDate={posts[0] && formatEditionDate(posts[0].data.pubDate)}
 >
-	<h1 class="page-title">Daily AI News</h1>
-	<div class="hero-grid">
-		{heroPosts.map((post, i) => <HeroCard post={post} rank={i + 1} />)}
-	</div>
-	<div id="feed-list">
-		{restPosts.map((post) => <ListItem post={post} />)}
-	</div>
-	<Fragment slot="right-rail">
-		<CuratedPicks posts={posts} />
-		<CategoriesRail tags={allTags} />
-		<NewsletterSignup />
-	</Fragment>
+	<Stage posts={posts} emptyNote="No stories published yet." />
 </BaseLayout>

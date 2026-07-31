@@ -1,0 +1,17 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { readMinutes } from '../lib/read-time';
+
+export interface Props {
+  post: CollectionEntry<'posts'>;
+}
+
+const { post } = Astro.props;
+---
+
+<a class="card card-feature" href={`/posts/${post.id}/`}>
+	<img src={post.data.cover} alt={post.data.coverAlt} />
+	<h3 class="card-title">{post.data.title}</h3>
+	<p class="card-excerpt">{post.data.description}</p>
+	<span class="label">{readMinutes(post)} min read</span>
+</a>

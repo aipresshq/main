@@ -25,7 +25,11 @@ const { title, description, author, pubDate, cover, coverAlt, coverCredit, whyIt
 		<title>{title} — AI Snap</title>
 	</head>
 	<body>
-		<article>
+		<!-- data-pagefind-body confines the search index to article bodies. With
+		     it present on any page, Pagefind indexes only pages that have it, so
+		     listing pages (/, /trending/, /tag/*) stop appearing as results and
+		     excerpts no longer pick up nav and masthead text. -->
+		<article data-pagefind-body>
 			<figure>
 				<img src={cover} alt={coverAlt} loading="lazy" />
 				{coverCredit && <figcaption>{coverCredit}</figcaption>}

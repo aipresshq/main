@@ -10,3 +10,17 @@ export function formatPostDate(date: Date): string {
     year: 'numeric',
   });
 }
+
+/**
+ * Masthead dateline, e.g. "Thursday, 30 July 2026" — the date of the most
+ * recent story, so it reads as the current edition without ever going stale
+ * against a build timestamp.
+ */
+export function formatEditionDate(date: Date): string {
+  return date.toLocaleDateString('en-GB', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+}
