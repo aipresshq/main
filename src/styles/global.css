@@ -12,7 +12,7 @@
 
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Inter Variable', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   color: var(--color-text);
   background: var(--color-bg);
   line-height: 1.5;
@@ -344,7 +344,7 @@ a {
 }
 
 .curated-author {
-  font-weight: 600;
+  font-weight: 500;
   color: var(--color-text);
 }
 
