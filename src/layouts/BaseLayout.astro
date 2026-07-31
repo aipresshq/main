@@ -3,6 +3,7 @@ import '@fontsource-variable/inter';
 import '@fontsource-variable/playfair-display';
 import '@fontsource/unifrakturmaguntia';
 import '../styles/global.css';
+import Footer from '../components/Footer.astro';
 import { slugify } from '../lib/slug';
 
 export interface Props {
@@ -118,6 +119,8 @@ const navTags = tags.filter((tag) => !sectionLabels.has(tag.toLowerCase()));
 			</nav>
 
 			<slot />
+
+			<Footer tags={tags} substackUrl={substackUrl} />
 		</div>
 
 		<script is:inline>

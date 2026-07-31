@@ -17,6 +17,8 @@
   --accent-ink: #17170a;
   --mark: var(--accent);
   --shadow-raised: 0 20px 50px rgba(0, 0, 0, 0.55);
+  --card-bg: rgba(20, 20, 20, 0.72);
+  --card-bg-hover: rgba(32, 32, 32, 0.82);
 
   --font-body: 'Inter Variable', system-ui, -apple-system, sans-serif;
   --font-display: 'Playfair Display Variable', 'Playfair Display', Georgia, serif;
@@ -44,6 +46,8 @@
        accent itself stays for filled surfaces like the subscribe button. */
     --mark: #7a6800;
     --shadow-raised: 0 18px 40px rgba(0, 0, 0, 0.14);
+    --card-bg: #ffffff;
+    --card-bg-hover: #f1efe9;
   }
 
   /* Redefining the tokens on .stage cascades the dark palette to everything
@@ -55,6 +59,8 @@
     --border: rgba(255, 255, 255, 0.16);
     --text: #ffffff;
     --text-muted: #b8b5ad;
+    --card-bg: rgba(20, 20, 20, 0.72);
+    --card-bg-hover: rgba(32, 32, 32, 0.82);
   }
 }
 
@@ -569,17 +575,20 @@ img {
    Cards (rail + next teaser)
    -------------------------------------------------------------------------- */
 
+/* Tokenised because cards appear in two contexts: translucent dark over the
+   hero photo, and on the page background in the article page's Related list —
+   where light mode needs a light surface. */
 .card {
   display: block;
   padding: 14px;
   border-radius: var(--radius-card);
   border: 1px solid var(--border);
-  background: rgba(20, 20, 20, 0.72);
+  background: var(--card-bg);
   backdrop-filter: blur(14px);
 }
 
 .card:hover {
-  background: rgba(32, 32, 32, 0.82);
+  background: var(--card-bg-hover);
 }
 
 .card-title {
@@ -695,6 +704,315 @@ img {
 }
 
 /* --------------------------------------------------------------------------
+   Article page
+   -------------------------------------------------------------------------- */
+
+/* Constrained measure — the chrome is full width, but body copy needs a
+   readable line length. */
+.article {
+  max-width: 760px;
+  margin: 0 auto;
+  padding-top: 16px;
+}
+
+.article-kicker {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: var(--mark);
+}
+
+.article-title {
+  margin: 0 0 20px;
+  font-family: var(--font-display);
+  font-size: clamp(2.1rem, 4vw, 3.3rem);
+  font-weight: 500;
+  line-height: 1.08;
+  letter-spacing: -0.01em;
+}
+
+.article-standfirst {
+  margin: 0 0 28px;
+  font-size: 1.15rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.article-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 20px;
+  padding-bottom: 28px;
+  border-bottom: 1px solid var(--border);
+}
+
+.article-figure {
+  margin: 32px 0;
+}
+
+.article-figure img {
+  width: 100%;
+  border-radius: var(--radius-card);
+}
+
+.article-figure figcaption {
+  margin-top: 10px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* Prose: styles for the markdown body plus the fixed template blocks */
+.prose {
+  font-size: 1.06rem;
+  line-height: 1.75;
+}
+
+.prose h2 {
+  margin: 44px 0 14px;
+  font-family: var(--font-display);
+  font-size: 1.65rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.prose h3 {
+  margin: 32px 0 12px;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 500;
+}
+
+.prose p {
+  margin: 0 0 20px;
+}
+
+.prose ul,
+.prose ol {
+  margin: 0 0 20px;
+  padding-left: 22px;
+}
+
+.prose li {
+  margin-bottom: 8px;
+}
+
+.prose a {
+  color: var(--mark);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.prose blockquote {
+  margin: 32px 0;
+  padding: 4px 0 4px 24px;
+  border-left: 3px solid var(--accent);
+}
+
+.prose blockquote p {
+  margin: 0 0 10px;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  line-height: 1.45;
+}
+
+.prose blockquote cite {
+  font-size: 0.8rem;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* Wide tables scroll inside their own container rather than the page */
+.table-scroll {
+  margin: 28px 0;
+  overflow-x: auto;
+}
+
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.prose th,
+.prose td {
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.prose th {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.article-footer {
+  margin-top: 40px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.article-source {
+  margin: 0 0 20px;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.article-source a {
+  color: var(--mark);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.article-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Tag chip, used on article footers */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 15px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.pill:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+/* Article-adjacent, so it shares the article's measure rather than running
+   the full page width like the footer does. */
+.article-related {
+  max-width: 760px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* auto-fit, not auto-fill: with one related story the empty tracks collapse
+   instead of squeezing it into a third of the measure. */
+.related-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+/* --------------------------------------------------------------------------
+   Footer: newsletter call to action, wordmark, link columns, base line
+   -------------------------------------------------------------------------- */
+
+.site-footer {
+  margin-top: 72px;
+  padding-top: 48px;
+  border-top: 1px solid var(--border);
+}
+
+.footer-cta {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 48px;
+  align-items: start;
+}
+
+.footer-headline {
+  margin: 0;
+  max-width: 18ch;
+  font-family: var(--font-display);
+  font-size: clamp(1.9rem, 3vw, 2.9rem);
+  font-weight: 500;
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+}
+
+.footer-cta-aside p {
+  margin: 0 0 20px;
+  font-size: 0.92rem;
+  line-height: 1.65;
+  color: var(--text-muted);
+}
+
+.footer-cta-aside .subscribe-button {
+  display: inline-block;
+}
+
+.footer-wordmark {
+  display: block;
+  margin: 40px 0 48px;
+  font-family: var(--font-masthead);
+  font-size: 2.4rem;
+  line-height: 1;
+}
+
+/* Headings sit above a rule, with the list right-aligned beneath it */
+.footer-columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 32px;
+}
+
+.footer-column h3 {
+  margin: 0 0 14px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-align: right;
+  color: var(--text-muted);
+}
+
+.footer-column ul {
+  margin: 0;
+  padding-top: 18px;
+  list-style: none;
+  border-top: 1px solid var(--border);
+  text-align: right;
+}
+
+.footer-column li {
+  margin-bottom: 12px;
+}
+
+.footer-column li:first-child a {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.footer-column a {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+.footer-column a:hover {
+  color: var(--text);
+}
+
+.footer-base {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 40px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* --------------------------------------------------------------------------
    Responsive
    -------------------------------------------------------------------------- */
 
@@ -719,6 +1037,15 @@ img {
 }
 
 @media (max-width: 900px) {
+  .footer-cta {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .footer-headline {
+    max-width: none;
+  }
+
   /* Stack the menu's two groups and drop to a single topic column */
   .menu-grid {
     grid-template-columns: 1fr;
@@ -774,6 +1101,14 @@ img {
 
   .stage {
     padding: 18px;
+  }
+}
+
+@media (max-width: 620px) {
+  /* Three narrow right-aligned columns become one readable stack */
+  .footer-columns {
+    grid-template-columns: 1fr;
+    gap: 28px;
   }
 }
 

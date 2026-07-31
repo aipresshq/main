@@ -18,6 +18,3 @@ featured: true
 
 This is placeholder body content proving the `posts` collection schema in `src/content.config.ts` parses correctly end to end — title, author, cover (remote R2-style URL), why-it-matters, source attribution, and tags.
 
-## Why it matters
-
-See the `whyItMatters` frontmatter field — this is where the human-added take goes per the §4 template.

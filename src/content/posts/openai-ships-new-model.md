@@ -18,6 +18,3 @@ featured: false
 
 Placeholder digest post used to verify homepage ordering (most recent `pubDate` first) and the `/tag/openai/` route.
 
-## Why it matters
-
-See `whyItMatters` frontmatter field.

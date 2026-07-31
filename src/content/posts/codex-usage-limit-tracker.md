@@ -18,6 +18,3 @@ featured: false
 
 Placeholder tracker post used to verify the `/trackers/` route filters correctly on `postType === 'tracker'`.
 
-## Why it matters
-
-See `whyItMatters` frontmatter field.

@@ -1,45 +1,103 @@
 ---
 import { getCollection, render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import CardCompact from '../../components/CardCompact.astro';
+import { formatPostDate, formatEditionDate } from '../../lib/date';
+import { readMinutes } from '../../lib/read-time';
+import { slugify } from '../../lib/slug';
 
 export async function getStaticPaths() {
-  const posts = await getCollection('posts');
-  return posts.map((post) => ({
+  const allPosts = await getCollection('posts');
+  return allPosts.map((post) => ({
     params: { id: post.id },
-    props: { post },
+    props: { post, allPosts },
   }));
 }
 
-const { post } = Astro.props;
+const { post, allPosts } = Astro.props;
 const { Content } = await render(post);
-const { title, description, author, pubDate, cover, coverAlt, coverCredit, whyItMatters, factsTable, quote, sourceName, sourceUrl, tags } =
-  post.data;
+const {
+  title,
+  description,
+  author,
+  pubDate,
+  updatedDate,
+  cover,
+  coverAlt,
+  coverCredit,
+  whyItMatters,
+  factsTable,
+  quote,
+  sourceName,
+  sourceUrl,
+  tags,
+} = post.data;
+
+const allTags = [...new Set(allPosts.flatMap((p) => p.data.tags))].sort();
+
+// §4's "Related" module: up to 3 other posts sharing a tag, newest first.
+const related = allPosts
+  .filter((p) => p.id !== post.id && p.data.tags.some((t) => tags.includes(t)))
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
+  .slice(0, 3);
+
+// NewsArticle schema with the image field populated, per the project plan's
+// technical-SEO requirements.
+const schema = {
+  '@context': 'https://schema.org',
+  '@type': 'NewsArticle',
+  headline: title,
+  description,
+  image: [cover],
+  datePublished: pubDate.toISOString(),
+  ...(updatedDate && { dateModified: updatedDate.toISOString() }),
+  author: [{ '@type': 'Person', name: author }],
+  publisher: { '@type': 'Organization', name: 'AI Snap' },
+  mainEntityOfPage: {
+    '@type': 'WebPage',
+    '@id': new URL(`/posts/${post.id}/`, Astro.site ?? 'https://aisnap.in').href,
+  },
+};
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="description" content={description} />
-		<title>{title} — AI Snap</title>
-	</head>
-	<body>
-		<!-- data-pagefind-body confines the search index to article bodies. With
-		     it present on any page, Pagefind indexes only pages that have it, so
-		     listing pages (/, /trending/, /tag/*) stop appearing as results and
-		     excerpts no longer pick up nav and masthead text. -->
-		<article data-pagefind-body>
-			<figure>
-				<img src={cover} alt={coverAlt} loading="lazy" />
-				{coverCredit && <figcaption>{coverCredit}</figcaption>}
-			</figure>
+<BaseLayout
+	title={`${title} — AI Snap`}
+	description={description}
+	activeTag={tags[0]}
+	tags={allTags}
+	editionDate={formatEditionDate(pubDate)}
+>
+	<script type="application/ld+json" set:html={JSON.stringify(schema)} />
 
-			<h1>{title}</h1>
-			<p>
-				By {author} · <time datetime={pubDate.toISOString()}>{pubDate.toDateString()}</time>
-			</p>
+	<!-- data-pagefind-body confines the search index to article bodies. With it
+	     present on any page, Pagefind indexes only pages that have it, so listing
+	     pages (/, /trending/, /tag/*) stop appearing as results and excerpts no
+	     longer pick up nav and masthead text. -->
+	<article class="article" data-pagefind-body>
+		<header class="article-header">
+			<a class="label article-kicker" href={`/tag/${slugify(tags[0])}/`}>{tags[0]}</a>
+			<h1 class="article-title">{title}</h1>
+			<p class="article-standfirst">{description}</p>
 
+			<div class="article-meta">
+				<span class="byline">
+					<span class="byline-avatar" aria-hidden="true">{author.charAt(0)}</span>
+					<span class="byline-name">By {author}</span>
+				</span>
+				<span class="label">
+					<time datetime={pubDate.toISOString()}>{formatPostDate(pubDate)}</time>
+					{updatedDate && <> · Updated {formatPostDate(updatedDate)}</>}
+					· {readMinutes(post)} min read
+				</span>
+			</div>
+		</header>
+
+		<figure class="article-figure">
+			<img src={cover} alt={coverAlt} />
+			{coverCredit && <figcaption>Photo: {coverCredit}</figcaption>}
+		</figure>
+
+		<div class="prose">
 			<Content />
 
 			<h2>Why it matters</h2>
@@ -47,24 +105,18 @@ const { title, description, author, pubDate, cover, coverAlt, coverCredit, whyIt
 
 			{
 				factsTable && (
-					<table>
-						<thead>
-							<tr>
-								{factsTable.columns.map((col) => (
-									<th>{col}</th>
+					<div class="table-scroll">
+						<table>
+							<thead>
+								<tr>{factsTable.columns.map((col) => <th scope="col">{col}</th>)}</tr>
+							</thead>
+							<tbody>
+								{factsTable.rows.map((row) => (
+									<tr>{row.map((cell) => <td>{cell}</td>)}</tr>
 								))}
-							</tr>
-						</thead>
-						<tbody>
-							{factsTable.rows.map((row) => (
-								<tr>
-									{row.map((cell) => (
-										<td>{cell}</td>
-									))}
-								</tr>
-							))}
-						</tbody>
-					</table>
+							</tbody>
+						</table>
+					</div>
 				)
 			}
 
@@ -76,16 +128,26 @@ const { title, description, author, pubDate, cover, coverAlt, coverCredit, whyIt
 					</blockquote>
 				)
 			}
+		</div>
 
-			<p>
-				Source: <a href={sourceUrl} rel="noopener">{sourceName}</a>
+		<footer class="article-footer">
+			<p class="article-source">
+				Source: <a href={sourceUrl} rel="noopener nofollow">{sourceName}</a>
 			</p>
-
-			<ul>
-				{tags.map((tag) => (
-					<li>{tag}</li>
-				))}
+			<ul class="article-tags">
+				{tags.map((tag) => <li><a class="pill" href={`/tag/${slugify(tag)}/`}>{tag}</a></li>)}
 			</ul>
-		</article>
-	</body>
-</html>
+		</footer>
+	</article>
+
+	{
+		related.length > 0 && (
+			<section class="more-stories article-related">
+				<span class="label">Related</span>
+				<div class="related-list">
+					{related.map((r) => <CardCompact post={r} />)}
+				</div>
+			</section>
+		)
+	}
+</BaseLayout>

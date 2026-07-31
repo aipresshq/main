@@ -1,0 +1,64 @@
+---
+import { slugify } from '../lib/slug';
+
+export interface Props {
+  tags: string[];
+  substackUrl: string;
+}
+
+const { tags, substackUrl } = Astro.props;
+
+const sections = [
+  { label: 'Latest', href: '/' },
+  { label: 'Trending', href: '/trending/' },
+  { label: 'Trackers', href: '/trackers/' },
+];
+
+// The dateline elsewhere comes from content; the copyright year is about the
+// site itself, so it's stamped at build time.
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer" data-pagefind-ignore>
+	<div class="footer-cta">
+		<h2 class="footer-headline">Subscribe to keep up with the latest updates!</h2>
+		<div class="footer-cta-aside">
+			<p>
+				One daily edition covering every major AI lab — releases, funding, and the
+				usage-limit trackers we keep current. Free, no noise.
+			</p>
+			<a class="subscribe-button" href={substackUrl}>Subscribe free</a>
+		</div>
+	</div>
+
+	<a href="/" class="footer-wordmark">AI Snap</a>
+
+	<div class="footer-columns">
+		<section class="footer-column">
+			<h3>Sections</h3>
+			<ul>
+				{sections.map((s) => <li><a href={s.href}>{s.label}</a></li>)}
+			</ul>
+		</section>
+
+		<section class="footer-column">
+			<h3>Topics</h3>
+			<ul>
+				{tags.slice(0, 6).map((tag) => <li><a href={`/tag/${slugify(tag)}/`}>{tag}</a></li>)}
+			</ul>
+		</section>
+
+		<section class="footer-column">
+			<h3>Follow</h3>
+			<ul>
+				<li><a href={substackUrl}>Newsletter</a></li>
+				<li><a href="/sitemap-index.xml">Sitemap</a></li>
+			</ul>
+		</section>
+	</div>
+
+	<div class="footer-base">
+		<span>© {year} AI Snap. All rights reserved.</span>
+		<span>AI-assisted drafting, human-reviewed before publishing.</span>
+	</div>
+</footer>

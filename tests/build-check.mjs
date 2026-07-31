@@ -184,6 +184,65 @@ check('/tag/openai/ shows only OpenAI posts, with that topic active in the nav',
   assert.match(nav, /href="\/tag\/openai\/"\s+class="active"/, 'OpenAI topic not marked active in the nav');
 });
 
+check('article page renders the fixed §4 template on the site shell', () => {
+  const html = dist('posts/openai-ships-new-model/index.html');
+  // Shell
+  assert.ok(html.includes('class="masthead"'), 'article page should use the site shell');
+  assert.ok(html.includes('class="section-nav"'), 'article page missing the section nav');
+  assert.ok(html.includes('class="site-footer"'), 'article page missing the footer');
+  // Template blocks
+  assert.ok(html.includes('article-kicker'), 'missing topic kicker');
+  assert.ok(html.includes('class="article-title"'), 'missing headline');
+  assert.ok(html.includes('class="article-standfirst"'), 'missing standfirst');
+  assert.ok(html.includes('class="byline-name"'), 'missing byline');
+  assert.ok(html.includes('Photo: Unsplash'), 'missing cover credit');
+  assert.match(html, /Source:[\s\S]*?aisnap\.in/, 'missing attributed source link');
+  assert.ok(html.includes('class="article-tags"'), 'missing tag list');
+  assert.match(html, /\d+ min read/, 'missing read time');
+});
+
+check('"Why it matters" comes only from frontmatter, not duplicated in the body', () => {
+  // The section is rendered from the whyItMatters field, so a post body that
+  // also carries the heading renders it twice.
+  for (const slug of ['openai-ships-new-model', 'codex-usage-limit-tracker', 'welcome-to-ai-snap']) {
+    const html = dist(`posts/${slug}/index.html`);
+    const count = html.split('Why it matters').length - 1;
+    assert.equal(count, 1, `"Why it matters" appears ${count}x on /posts/${slug}/ — expected exactly 1`);
+  }
+});
+
+check('article page emits NewsArticle schema with an image', () => {
+  const html = dist('posts/openai-ships-new-model/index.html');
+  const match = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
+  assert.ok(match, 'no JSON-LD block found');
+  const schema = JSON.parse(match[1]);
+  assert.equal(schema['@type'], 'NewsArticle');
+  assert.ok(Array.isArray(schema.image) && schema.image.length > 0, 'schema image field must be populated');
+  assert.ok(schema.headline, 'schema missing headline');
+  assert.ok(schema.datePublished, 'schema missing datePublished');
+});
+
+check('related module shows tag-matched stories and never the article itself', () => {
+  const html = dist('posts/openai-ships-new-model/index.html');
+  const related = html.slice(html.indexOf('article-related'));
+  // codex shares the OpenAI tag; welcome-to-ai-snap shares none.
+  assert.ok(related.includes('/posts/codex-usage-limit-tracker/'), 'tag-matched story missing from Related');
+  assert.ok(!related.includes('/posts/openai-ships-new-model/'), 'article should not relate to itself');
+  assert.ok(!related.includes('/posts/welcome-to-ai-snap/'), 'unrelated story leaked into Related');
+});
+
+check('footer renders the newsletter CTA, wordmark, columns and base line', () => {
+  const html = dist('index.html');
+  const footer = html.slice(html.indexOf('class="site-footer"'));
+  assert.ok(footer.includes('class="footer-headline"'), 'missing newsletter headline');
+  assert.match(footer, /class="subscribe-button"[^>]*href="https:\/\/aisnap\.substack\.com"/, 'CTA should link to the newsletter');
+  assert.ok(footer.includes('class="footer-wordmark"'), 'missing wordmark');
+  assert.ok(footer.includes('class="footer-columns"'), 'missing link columns');
+  assert.match(footer, /All rights reserved/, 'missing copyright line');
+  // Only link pages that exist — About/Privacy/Terms aren't built yet.
+  assert.ok(!/href="\/(about|privacy|terms|contact)\/?"/.test(footer), 'footer links a page that is not built');
+});
+
 check('Pagefind index is generated and the custom search box is rendered', () => {
   assert.ok(distExists('pagefind/pagefind.js'), 'Pagefind index not generated — check astro-pagefind integration in astro.config.mjs');
   const html = dist('index.html');
