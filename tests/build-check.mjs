@@ -9,6 +9,31 @@ import { getNextOlderPost, sortPostsNewestFirst } from '../src/lib/post-order.ts
 const dist = (path) => readFileSync(new URL(`../dist/${path}`, import.meta.url), 'utf-8');
 const distExists = (path) => existsSync(new URL(`../dist/${path}`, import.meta.url));
 const src = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf-8');
+const internalScaffoldingPatterns = [
+  /\bplaceholder(?:[\s-]+\w+){0,3}[\s-]+(?:fixture|post|article|copy|content|body|comparison|story|entry|record)\b/i,
+  /\bfixture[\s-]+(?:post|article|copy|content|body|story|entry|record|data)\b/i,
+  /\btest[- ]fixture\b/i,
+  /\bcontent collections?\s+schema\b/i,
+  /\bpostType\s*===/i,
+  /\b(?:used|exists|included|added|written|created)\s+(?:only\s+)?to\s+(?:verify|validate|populate|exercise)\b[\s\S]{0,120}\b(?:\/[a-z0-9/-]+\/\s+route|route|filters?|schema|homepage|listing|archive|component|layout|build|collection|post type)\b/i,
+  /\b(?:verify|validate|populate|exercise)(?:s|d|ing)?\b[\s\S]{0,120}\b(?:\/[a-z0-9/-]+\/\s+route|route\s+(?:filtering|filters?|rendering|build)|homepage\s+(?:ordering|section|layout)|tag\s+filtering|content\s+collections?|post\s+type)\b/i,
+  /\b(?:route|filters?|schema|homepage|listing|archive|component|layout)\s+(?:test|testing|fixture|validation|scaffolding|commentary)\b/i,
+  /\b(?:implementation|testing|SEO)\s+(?:detail|note|commentary|scaffolding|copy|language|keyword|metadata|tactic|fixture)\b/i,
+  /\b(?:regression|integration|rendering|build)\s+test(?:ing)?\s+(?:copy|content|post|article|fixture|data)\b/i,
+  /\b(?:post|article|copy|content|story)\s+(?:exists|is|was)\s+(?:only\s+)?for\s+(?:regression\s+|integration\s+|rendering\s+|build\s+)?testing\b/i,
+  /\/[a-z0-9/-]+\/\s+route\b[\s\S]{0,80}\b(?:filters?|filtering|ordering)\b/i,
+];
+const containsInternalScaffolding = (text) => (
+  internalScaffoldingPatterns.some((pattern) => pattern.test(text))
+);
+const filesUnder = (directory) => readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+  const url = new URL(entry.name + (entry.isDirectory() ? '/' : ''), directory);
+  return entry.isDirectory() ? filesUnder(url) : [url];
+});
+const renderedText = (html) => html
+  .replace(/<!--[\s\S]*?-->/g, ' ')
+  .replace(/<[^>]*>/g, ' ')
+  .replace(/&(?:nbsp|#160|#xA0);/gi, ' ');
 const controllerModules = (html) => [...html.matchAll(/<script type="module">([\s\S]*?)<\/script>/g)]
   .map((match) => match[1])
   .filter((script) => (
@@ -42,9 +67,53 @@ check('all three fixture posts built successfully', () => {
 });
 
 check('public posts contain no internal fixture language', () => {
-  const forbidden = /\b(?:placeholder|fixture)\b|used to (?:verify|validate|populate|exercise)|content collection schema|postType\s*===/i;
-  for (const file of readdirSync(new URL('../src/content/posts/', import.meta.url))) {
-    assert.doesNotMatch(src(`src/content/posts/${file}`), forbidden, `${file} contains internal fixture copy`);
+  const posts = new URL('../src/content/posts/', import.meta.url);
+  for (const file of filesUnder(posts)) {
+    assert.equal(
+      containsInternalScaffolding(readFileSync(file, 'utf-8')),
+      false,
+      `${file.pathname} contains internal scaffolding copy`,
+    );
+  }
+});
+
+check('publication guard catches concrete scaffolding variants without rejecting source verification', () => {
+  for (const copy of [
+    'This post checks the Content Collections schema.',
+    'This article is used only to verify the /trackers/ route.',
+    'Copy that validates route filtering and homepage ordering.',
+    'Internal test-fixture commentary for the listing.',
+    'This post exists for regression testing.',
+    'The /trackers/ route filters posts by type.',
+    'SEO scaffolding for a temporary article.',
+    "The filter checks postType === 'tracker'.",
+    'Placeholder evergreen comparison.',
+  ]) {
+    assert.equal(containsInternalScaffolding(copy), true, `guard missed: ${copy}`);
+  }
+  assert.equal(
+    containsInternalScaffolding('The archive was used to verify a source quotation.'),
+    false,
+    'ordinary source-verification prose must remain publishable',
+  );
+});
+
+check('all generated public HTML is free of internal scaffolding language', () => {
+  const htmlFiles = filesUnder(new URL('../dist/', import.meta.url))
+    .filter((file) => file.pathname.endsWith('.html'));
+  const paths = htmlFiles.map((file) => file.pathname);
+
+  assert.ok(paths.some((path) => path.endsWith('/dist/index.html')), 'homepage HTML was not scanned');
+  assert.ok(paths.some((path) => path.includes('/dist/authors/')), 'author HTML was not scanned');
+  assert.ok(paths.some((path) => path.includes('/dist/posts/') && path.endsWith('/index.html')), 'standalone post HTML was not scanned');
+  assert.ok(paths.some((path) => path.includes('/fragment/')), 'fragment HTML was not scanned');
+
+  for (const file of htmlFiles) {
+    assert.equal(
+      containsInternalScaffolding(renderedText(readFileSync(file, 'utf-8'))),
+      false,
+      `${file.pathname} renders internal scaffolding copy`,
+    );
   }
 });
 
