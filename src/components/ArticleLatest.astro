@@ -1,0 +1,26 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { formatPostDate } from '../lib/date';
+
+export interface Props {
+  posts: CollectionEntry<'posts'>[];
+}
+
+const { posts } = Astro.props;
+---
+
+<aside class="article-latest" aria-labelledby="latest-heading" data-pagefind-ignore>
+  <h2 id="latest-heading" class="latest-heading">Latest</h2>
+  <div class="latest-list">
+    {posts.map((entry) => (
+      <a class="latest-story" href={`/posts/${entry.id}/`}>
+        <img src={entry.data.cover} alt="" loading="lazy" />
+        <span class="latest-story-copy">
+          <span class="label latest-story-tag">{entry.data.tags[0]}</span>
+          <span class="latest-story-title">{entry.data.title}</span>
+          <span class="latest-story-meta">{entry.data.author} · {formatPostDate(entry.data.pubDate)}</span>
+        </span>
+      </a>
+    ))}
+  </div>
+</aside>

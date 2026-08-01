@@ -378,6 +378,22 @@ check('related module shows tag-matched stories and never the article itself', (
   assert.ok(!related.includes('/posts/welcome-to-ai-snap/'), 'unrelated story leaked into Related');
 });
 
+check('article pages render five newest other posts in the Latest rail', () => {
+  const route = src('src/pages/posts/[id].astro');
+  assert.match(route, /const latest = allPosts/);
+  assert.match(route, /p\.id !== post\.id/);
+  assert.match(route, /\.slice\(0, 5\)/);
+  assert.ok(route.includes('<ArticleLatest posts={latest} />'));
+
+  const html = dist('posts/openai-ships-new-model/index.html');
+  const start = html.indexOf('class="article-latest"');
+  const end = html.indexOf('</aside>', start);
+  const latest = html.slice(start, end);
+  assert.ok(start >= 0 && end > start, 'Latest sidebar missing');
+  assert.ok(!latest.includes('/posts/openai-ships-new-model/'), 'current post leaked into Latest');
+  assert.equal((latest.match(/class="latest-story"/g) || []).length, 5);
+});
+
 check('footer renders the newsletter CTA, wordmark, columns and base line', () => {
   const html = dist('index.html');
   const footer = html.slice(html.indexOf('class="site-footer"'));

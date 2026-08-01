@@ -1,6 +1,7 @@
 ---
 import { getCollection, render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import ArticleLatest from '../../components/ArticleLatest.astro';
 import CardCompact from '../../components/CardCompact.astro';
 import { formatPostDate, formatEditionDate } from '../../lib/date';
 import { readMinutes } from '../../lib/read-time';
@@ -41,6 +42,11 @@ const related = allPosts
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
   .slice(0, 3);
 
+const latest = allPosts
+  .filter((p) => p.id !== post.id)
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
+  .slice(0, 5);
+
 // NewsArticle schema with the image field populated, per the project plan's
 // technical-SEO requirements.
 const schema = {
@@ -73,6 +79,7 @@ const schema = {
 	     present on any page, Pagefind indexes only pages that have it, so listing
 	     pages (/, /trending/, /tag/*) stop appearing as results and excerpts no
 	     longer pick up nav and masthead text. -->
+	<div class="article-layout">
 	<article class="article" data-pagefind-body>
 		<header class="article-header">
 			<a class="label article-kicker" href={`/tag/${slugify(tags[0])}/`}>{tags[0]}</a>
@@ -139,6 +146,8 @@ const schema = {
 			</ul>
 		</footer>
 	</article>
+	<ArticleLatest posts={latest} />
+	</div>
 
 	{
 		related.length > 0 && (
