@@ -9,7 +9,13 @@ export interface Props {
 const { currentPost, nextPost } = Astro.props;
 ---
 
-<div class="continuous-stream" data-continuous-stream aria-busy="false" data-current-post={currentPost.id}>
+<div
+  class="continuous-stream"
+  data-continuous-stream
+  data-continuous-reader
+  aria-busy="false"
+  data-current-post={currentPost.id}
+>
   <slot />
 
   {
@@ -20,12 +26,19 @@ const { currentPost, nextPost } = Astro.props;
           <a class="continuous-next-link" href={`/posts/${nextPost.id}/`}>{nextPost.data.title}</a>
           <div class="continuous-sentinel" data-next-fragment={`/posts/${nextPost.id}/fragment/`} aria-hidden="true"></div>
         </section>
-        <script is:inline>
-          // Task 3 adds the continuous-reading controller.
-        </script>
       </>
     )
   }
 
   <p class="continuous-status" aria-live="polite" aria-atomic="true"></p>
 </div>
+
+<script>
+  import { initContinuousReader } from '../scripts/continuous-reader';
+
+  if ('IntersectionObserver' in window) {
+    document.querySelectorAll('[data-continuous-stream]').forEach((root) => {
+      if (root instanceof HTMLElement) initContinuousReader(root);
+    });
+  }
+</script>

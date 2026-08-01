@@ -1135,9 +1135,12 @@ a.byline:focus-visible {
   min-width: 0;
 }
 
-/* Separates an appended fragment from the preceding completed story. */
+/* Appended stories return to the full frame canvas, with a generous print-like
+   rule and pause between one completed article and the next. */
 .continuous-article {
-  margin-top: 96px;
+  margin: 120px calc(-1 * var(--gutter)) 0;
+  padding: 96px var(--gutter) 0;
+  border-top: 1px solid var(--border);
 }
 
 .article .byline-avatar {
@@ -1504,6 +1507,18 @@ a.byline:focus-visible {
   margin: 96px 0 72px;
   padding-top: 24px;
   border-top: 1px solid var(--border);
+  overflow-anchor: none;
+}
+
+.continuous-stream[aria-busy='true'] .continuous-transition::after {
+  content: 'Loading the next story…';
+  display: block;
+  margin-top: 22px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
 .continuous-next-link {

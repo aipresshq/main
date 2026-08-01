@@ -2,6 +2,7 @@
 // for a static-only Astro site. Run `npm run build` first, then this script.
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import assert from 'node:assert';
+import { parseArticleFragment } from '../src/scripts/continuous-reader.ts';
 import { getSuggestedPosts } from '../src/lib/recommendations.ts';
 import { getNextOlderPost, sortPostsNewestFirst } from '../src/lib/post-order.ts';
 
@@ -92,7 +93,29 @@ check('standalone articles expose an accessible next-story fallback', () => {
 
   const postFiles = readdirSync(new URL('../src/content/posts/', import.meta.url));
   const built = postFiles.map((file) => dist(`posts/${file.replace(/\.md$/, '')}/index.html`));
-  assert.equal(built.filter((html) => html.includes('continuous-next-link')).length, built.length - 1);
+  assert.equal(built.filter((html) => /class="continuous-next-link"/.test(html)).length, built.length - 1);
+});
+
+check('continuous reader loads one fragment at a time and preserves navigation fallback', () => {
+  const controller = src('src/scripts/continuous-reader.ts');
+  assert.match(controller, /rootMargin:\s*['"]800px 0px['"]/);
+  assert.match(controller, /new Set/);
+  assert.match(controller, /DOMParser/);
+  assert.match(controller, /data-continuous-article/);
+  assert.match(controller, /history\.replaceState/);
+  assert.ok(!controller.includes('history.pushState'));
+  assert.match(controller, /aria-busy/);
+  assert.match(controller, /AbortController/);
+  assert.match(controller, /pagehide/);
+  assert.match(controller, /failed/);
+
+  const html = dist('posts/openai-ships-new-model/index.html');
+  assert.match(html, /continuous-reader/);
+});
+
+check('fragment parsing accepts one marked article and rejects malformed responses', () => {
+  if (typeof DOMParser === 'undefined') return;
+  assert.equal(parseArticleFragment('<html><body></body></html>'), undefined);
 });
 
 check('posts resolve validated author profiles into linked bylines and schema', () => {
