@@ -7,7 +7,12 @@ import pagefind from 'astro-pagefind';
 export default defineConfig({
   // TODO: replace with the real domain once registered (see context.md line 3)
   site: 'https://aisnap.in',
-  integrations: [sitemap(), pagefind()],
+  integrations: [
+    sitemap({
+      filter: (page) => !/^\/posts\/[^/]+\/fragment\/$/.test(new URL(page).pathname),
+    }),
+    pagefind(),
+  ],
   image: {
     // Allows Astro's build-time image optimizer to fetch and process
     // covers stored in Cloudflare R2 instead of committing images to the repo.

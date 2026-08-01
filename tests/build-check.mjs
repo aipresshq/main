@@ -64,6 +64,24 @@ check('article fragments are canonical noindex documents with one append-safe st
   }
 });
 
+check('sitemap publishes standalone posts without article fragments', () => {
+  const sitemapFiles = readdirSync(new URL('../dist/', import.meta.url))
+    .filter((file) => /^sitemap-\d+\.xml$/.test(file));
+  assert.ok(sitemapFiles.length > 0, 'no generated sitemap files found');
+
+  const sitemap = sitemapFiles.map((file) => dist(file)).join('\n');
+  assert.ok(!sitemap.includes('/fragment/'), 'sitemap included a noncanonical article fragment');
+
+  const postFiles = readdirSync(new URL('../src/content/posts/', import.meta.url));
+  for (const file of postFiles) {
+    const id = file.replace(/\.md$/, '');
+    assert.ok(
+      sitemap.includes(`<loc>https://aisnap.in/posts/${id}/</loc>`),
+      `sitemap omitted standalone article /posts/${id}/`,
+    );
+  }
+});
+
 check('standalone articles expose an accessible next-story fallback', () => {
   const newest = dist('posts/openai-ships-new-model/index.html');
   assert.match(newest, /data-continuous-stream/);
@@ -645,7 +663,7 @@ check('no eager Pagefind/component-ui script or stylesheet in the homepage', () 
 check('astro.config.mjs preserves site, sitemap, and image.remotePatterns config', () => {
   const config = src('astro.config.mjs');
   assert.match(config, /site:\s*['"]https:\/\/aisnap\.in['"]/);
-  assert.match(config, /sitemap\(\)/);
+  assert.match(config, /sitemap\(/);
   assert.match(config, /remotePatterns/);
 });
 
