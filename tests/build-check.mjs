@@ -5,6 +5,7 @@ import assert from 'node:assert';
 import { canStartContinuousLoad, parseArticleFragment } from '../src/scripts/continuous-reader.ts';
 import { getSuggestedPosts } from '../src/lib/recommendations.ts';
 import { getNextOlderPost, sortPostsNewestFirst } from '../src/lib/post-order.ts';
+import { slugify } from '../src/lib/slug.ts';
 
 const dist = (path) => readFileSync(new URL(`../dist/${path}`, import.meta.url), 'utf-8');
 const distExists = (path) => existsSync(new URL(`../dist/${path}`, import.meta.url));
@@ -33,6 +34,38 @@ const filesUnder = (directory) => readdirSync(directory, { withFileTypes: true }
   const url = new URL(entry.name + (entry.isDirectory() ? '/' : ''), directory);
   return entry.isDirectory() ? filesUnder(url) : [url];
 });
+const sourcePosts = () => filesUnder(new URL('../src/content/posts/', import.meta.url))
+  .filter((file) => file.pathname.endsWith('.md'))
+  .map((file) => {
+    const content = readFileSync(file, 'utf-8');
+    const frontmatter = content.match(/^---\s*\n([\s\S]*?)\n---/);
+    const tags = frontmatter?.[1].match(/^tags:\s*(\[[^\n]+\])\s*$/m);
+    assert.ok(tags, `${file.pathname} must declare a JSON-compatible tags array in frontmatter`);
+    return {
+      id: decodeURIComponent(file.pathname.split('/').pop()).replace(/\.md$/, ''),
+      tags: JSON.parse(tags[1]),
+    };
+  });
+const sourceTopics = () => [...new Set(sourcePosts().flatMap((post) => post.tags))]
+  .sort((a, b) => a.localeCompare(b))
+  .map((label) => ({ label, href: `/tag/${slugify(label)}/` }));
+const topicMenuFrom = (html) => {
+  const navStart = html.indexOf('<nav class="section-nav"');
+  const navEnd = html.indexOf('</nav>', navStart);
+  assert.ok(navStart >= 0 && navEnd > navStart, 'page is missing the section navigation');
+  const nav = html.slice(navStart, navEnd);
+  const menuStart = nav.indexOf('<details class="topic-menu">');
+  assert.ok(menuStart >= 0, 'section navigation is missing the Topics disclosure');
+  return nav.slice(menuStart);
+};
+const topicSummaryLabel = (topicMenu) => {
+  const summary = topicMenu.match(/<summary[^>]*>[\s\S]*?<span>([^<]+)<\/span>/);
+  assert.ok(summary, 'Topics disclosure is missing its visible summary label');
+  return decodePublicCopy(summary[1]).trim();
+};
+const currentTopicHrefs = (topicMenu) => [...topicMenu.matchAll(
+  /<a\b(?=[^>]*\baria-current="page")(?=[^>]*\bhref="([^"]+)")[^>]*>/g,
+)].map((match) => match[1]);
 const decodePublicCopy = (text) => text
   .replace(/&#x([0-9a-f]+);/gi, (_, value) => String.fromCodePoint(Number.parseInt(value, 16)))
   .replace(/&#(\d+);/g, (_, value) => String.fromCodePoint(Number.parseInt(value, 10)))
@@ -503,33 +536,41 @@ check('section nav separates primary sections from a native topics disclosure', 
   assert.match(topicMenu, /<summary[^>]*>[\s\S]*?Topics[\s\S]*?<\/summary>/, 'homepage disclosure should be labelled Topics');
   assert.ok(topicPanel.includes('Browse by topic'), 'topic panel needs an editorial index heading');
 
-  for (const slug of [
-    'ai',
-    'anthropic',
-    'comparisons',
-    'funding',
-    'google-deepmind',
-    'meta',
-    'microsoft',
-    'mistral',
-    'openai',
-    'product-launch',
-    'research',
-    'trackers',
-  ]) {
-    assert.ok(topicPanel.includes(`/tag/${slug}/`), `topic panel is missing /tag/${slug}/`);
+  for (const { href } of sourceTopics()) {
+    assert.ok(topicPanel.includes(`href="${href}"`), `topic panel is missing ${href}`);
   }
   assert.ok(!sectionLinks.includes('/tag/'), 'topic links must not be flattened into the primary section list');
 });
 
-check('active topic labels and current-page semantics are rendered on tag pages', () => {
-  const html = dist('tag/openai/index.html');
-  const nav = html.slice(html.indexOf('class="section-nav"'), html.indexOf('</nav>'));
-  const topicMenu = nav.slice(nav.indexOf('<details class="topic-menu">'));
+check('article pages render generic Topics without a route-current topic', () => {
+  for (const { id } of sourcePosts()) {
+    const topicMenu = topicMenuFrom(dist(`posts/${id}/index.html`));
+    assert.equal(topicSummaryLabel(topicMenu), 'Topics', `/posts/${id}/ should use the generic Topics label`);
+    assert.deepEqual(currentTopicHrefs(topicMenu), [], `/posts/${id}/ must not mark a topic route as current`);
+  }
+});
 
-  assert.match(topicMenu, /<summary[^>]*>[\s\S]*?OpenAI[\s\S]*?<\/summary>/, 'active topic should replace the generic Topics label');
-  assert.match(topicMenu, /href="\/tag\/openai\/"[^>]*aria-current="page"/, 'active topic should expose aria-current="page"');
-  assert.ok(!/class="active"/.test(nav), 'current state should use semantics instead of an active-only class');
+check('general pages render generic Topics without a route-current topic', () => {
+  const authorIds = filesUnder(new URL('../src/content/authors/', import.meta.url))
+    .filter((file) => file.pathname.endsWith('.md'))
+    .map((file) => decodeURIComponent(file.pathname.split('/').pop()).replace(/\.md$/, ''));
+  const paths = ['index.html', 'trending/index.html', 'trackers/index.html']
+    .concat(authorIds.map((id) => `authors/${id}/index.html`));
+
+  for (const path of paths) {
+    const topicMenu = topicMenuFrom(dist(path));
+    assert.equal(topicSummaryLabel(topicMenu), 'Topics', `${path} should use the generic Topics label`);
+    assert.deepEqual(currentTopicHrefs(topicMenu), [], `${path} must not mark a topic route as current`);
+  }
+});
+
+check('every content-derived tag page labels and marks its own topic current', () => {
+  for (const { label, href } of sourceTopics()) {
+    const topicMenu = topicMenuFrom(dist(`${href.slice(1)}index.html`));
+
+    assert.equal(topicSummaryLabel(topicMenu), label, `${href} should use its active topic label`);
+    assert.deepEqual(currentTopicHrefs(topicMenu), [href], `${href} should mark only itself current`);
+  }
 });
 
 check('homepage lead story is the most recent post', () => {
