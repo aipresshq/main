@@ -1101,10 +1101,17 @@ img {
 
 /* Constrained measure — the chrome is full width, but body copy needs a
    readable line length. */
-.article {
-  max-width: 760px;
+.article-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 760px) 340px;
+  gap: 56px;
+  justify-content: center;
   margin: 0 auto;
   padding-top: 16px;
+}
+
+.article {
+  min-width: 0;
 }
 
 .article-kicker {
@@ -1289,6 +1296,85 @@ img {
   color: var(--text);
 }
 
+/* Latest is a reading companion on wide screens: it stays alongside the
+   article without competing with the prose measure. */
+.article-latest {
+  position: sticky;
+  top: 24px;
+  align-self: start;
+}
+
+.latest-heading {
+  margin: 0;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--mark);
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 500;
+  line-height: 1.1;
+}
+
+.latest-list {
+  display: grid;
+}
+
+.latest-story {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.latest-story img {
+  width: 84px;
+  height: 84px;
+  object-fit: cover;
+}
+
+.latest-story-copy {
+  min-width: 0;
+}
+
+.latest-story-tag {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--mark);
+}
+
+.latest-story-title {
+  display: -webkit-box;
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 500;
+  line-height: 1.2;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.latest-story-meta {
+  display: block;
+  margin-top: 7px;
+  overflow: hidden;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+
+.latest-story:hover .latest-story-title {
+  color: var(--mark);
+}
+
+.latest-story:focus-visible {
+  outline: 2px solid var(--mark);
+  outline-offset: 4px;
+}
+
 /* Article-adjacent, so it shares the article's measure rather than running
    the full page width like the footer does. */
 .article-related {
@@ -1413,6 +1499,23 @@ img {
     grid-template-columns: 1fr;
   }
 
+  .article-layout {
+    grid-template-columns: minmax(0, 760px);
+    justify-content: center;
+  }
+
+  .article-latest {
+    position: static;
+    margin-top: 48px;
+    padding-top: 32px;
+    border-top: 1px solid var(--border);
+  }
+
+  .latest-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 32px;
+  }
+
   .stage-lead {
     min-height: 420px;
   }
@@ -1521,6 +1624,10 @@ img {
   .footer-columns {
     grid-template-columns: 1fr;
     gap: 28px;
+  }
+
+  .latest-list {
+    grid-template-columns: 1fr;
   }
 
 }

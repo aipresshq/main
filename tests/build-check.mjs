@@ -394,6 +394,18 @@ check('article pages render five newest other posts in the Latest rail', () => {
   assert.equal((latest.match(/class="latest-story"/g) || []).length, 5);
 });
 
+check('article Latest rail uses the approved responsive layout', () => {
+  const css = src('src/styles/global.css');
+  const layout = css.match(/\.article-layout\s*\{([\s\S]*?)\n\}/);
+  const latest = css.match(/\.article-latest\s*\{([\s\S]*?)\n\}/);
+  assert.ok(layout && latest);
+  assert.match(layout[1], /grid-template-columns:\s*minmax\(0, 760px\) 340px/);
+  assert.match(layout[1], /gap:\s*56px/);
+  assert.match(latest[1], /position:\s*sticky/);
+  assert.match(css, /@media \(max-width: 1080px\)[\s\S]*?\.article-layout\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 760px\)/);
+  assert.match(css, /@media \(max-width: 620px\)[\s\S]*?\.latest-list\s*\{[\s\S]*?grid-template-columns:\s*1fr/);
+});
+
 check('footer renders the newsletter CTA, wordmark, columns and base line', () => {
   const html = dist('index.html');
   const footer = html.slice(html.indexOf('class="site-footer"'));
