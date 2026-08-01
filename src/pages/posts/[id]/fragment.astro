@@ -1,0 +1,50 @@
+---
+import { getCollection, getEntry } from 'astro:content';
+import ArticleContent from '../../../components/ArticleContent.astro';
+import SuggestedReads from '../../../components/SuggestedReads.astro';
+import { getNextOlderPost } from '../../../lib/post-order';
+import { getSuggestedPosts } from '../../../lib/recommendations';
+import '../../../styles/global.css';
+
+export async function getStaticPaths() {
+  const allPosts = await getCollection('posts');
+  return allPosts.map((post) => ({
+    params: { id: post.id },
+    props: { post, allPosts },
+  }));
+}
+
+const { post, allPosts } = Astro.props;
+const author = await getEntry(post.data.author);
+if (!author) {
+  throw new Error(`Missing author profile for post: ${post.id} (author: ${post.data.author.id})`);
+}
+
+const suggested = getSuggestedPosts(post, allPosts, 2);
+const nextPost = getNextOlderPost(post.id, allPosts);
+const canonicalUrl = new URL(`/posts/${post.id}/`, Astro.site ?? 'https://aisnap.in').href;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="robots" content="noindex, follow" />
+    <link rel="canonical" href={canonicalUrl} />
+  </head>
+  <body>
+    <section
+      class="continuous-article"
+      data-continuous-article
+      data-post-id={post.id}
+      data-post-url={`/posts/${post.id}/`}
+      data-document-title={`${post.data.title} — AI Snap`}
+      data-next-fragment={nextPost ? `/posts/${nextPost.id}/fragment/` : undefined}
+      data-next-url={nextPost ? `/posts/${nextPost.id}/` : undefined}
+    >
+      <ArticleContent post={post} author={author} mode="stream" />
+      <SuggestedReads posts={suggested} variant="stream" articleId={post.id} />
+    </section>
+  </body>
+</html>

@@ -45,6 +45,25 @@ check('continuous reading order is deterministic and stops at the oldest post', 
   assert.equal(getNextOlderPost('missing', fixtures), undefined);
 });
 
+check('article fragments are canonical noindex documents with one append-safe story', () => {
+  const postFiles = readdirSync(new URL('../src/content/posts/', import.meta.url));
+  for (const file of postFiles) {
+    const id = file.replace(/\.md$/, '');
+    const html = dist(`posts/${id}/fragment/index.html`);
+    assert.match(html, /<meta name="robots" content="noindex, follow">/);
+    assert.match(html, new RegExp(`<link rel="canonical" href="https://aisnap\\.in/posts/${id}/">`));
+    assert.equal((html.match(/data-continuous-article/g) || []).length, 1);
+    assert.match(html, new RegExp(`data-post-id="${id}"`));
+    assert.match(html, new RegExp(`data-post-url="/posts/${id}/"`));
+    assert.match(html, /data-document-title=/);
+    assert.ok(!html.includes('class="topbar"'), 'fragment duplicated the global header');
+    assert.ok(!html.includes('class="article-latest"'), 'fragment duplicated the Latest rail');
+    assert.ok(!html.includes('class="site-footer"'), 'fragment duplicated the footer');
+    assert.ok(!html.includes('application/ld+json'), 'fragment duplicated article schema');
+    assert.ok(!html.includes('data-continuous-stream'), 'fragment nested another controller');
+  }
+});
+
 check('standalone articles expose an accessible next-story fallback', () => {
   const newest = dist('posts/openai-ships-new-model/index.html');
   assert.match(newest, /data-continuous-stream/);
@@ -402,9 +421,9 @@ check('scroll reveal survives minification and never traps content invisible', (
   // shorthand, which browsers reject — silently killing the animation. Assert
   // the built CSS keeps the longhands.
   const assets = new URL('../dist/_astro/', import.meta.url);
-  const cssFile = readdirSync(assets).find((f) => f.endsWith('.css'));
-  assert.ok(cssFile, 'no built stylesheet found');
-  const css = readFileSync(new URL(cssFile, assets), 'utf-8');
+  const cssFiles = readdirSync(assets).filter((file) => file.endsWith('.css'));
+  assert.ok(cssFiles.length > 0, 'no built stylesheet found');
+  const css = cssFiles.map((file) => readFileSync(new URL(file, assets), 'utf-8')).join('\n');
 
   const rule = css.match(/\.reveal\{([^}]*)\}/);
   assert.ok(rule, 'no .reveal rule in the built CSS');

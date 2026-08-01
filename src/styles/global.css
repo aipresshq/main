@@ -1135,6 +1135,11 @@ a.byline:focus-visible {
   min-width: 0;
 }
 
+/* Separates an appended fragment from the preceding completed story. */
+.continuous-article {
+  margin-top: 96px;
+}
+
 .article .byline-avatar {
   width: 44px;
   height: 44px;
