@@ -3,6 +3,7 @@
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import assert from 'node:assert';
 import { getSuggestedPosts } from '../src/lib/recommendations.ts';
+import { getNextOlderPost, sortPostsNewestFirst } from '../src/lib/post-order.ts';
 
 const dist = (path) => readFileSync(new URL(`../dist/${path}`, import.meta.url), 'utf-8');
 const distExists = (path) => existsSync(new URL(`../dist/${path}`, import.meta.url));
@@ -29,6 +30,32 @@ check('all three fixture posts built successfully', () => {
   assert.ok(distExists('posts/welcome-to-ai-snap/index.html'));
   assert.ok(distExists('posts/codex-usage-limit-tracker/index.html'));
   assert.ok(distExists('posts/openai-ships-new-model/index.html'));
+});
+
+check('continuous reading order is deterministic and stops at the oldest post', () => {
+  const fixtures = [
+    { id: 'beta', data: { pubDate: new Date('2026-01-02') } },
+    { id: 'alpha', data: { pubDate: new Date('2026-01-02') } },
+    { id: 'oldest', data: { pubDate: new Date('2026-01-01') } },
+  ];
+  assert.deepEqual(sortPostsNewestFirst(fixtures).map((post) => post.id), ['alpha', 'beta', 'oldest']);
+  assert.equal(getNextOlderPost('alpha', fixtures)?.id, 'beta');
+  assert.equal(getNextOlderPost('beta', fixtures)?.id, 'oldest');
+  assert.equal(getNextOlderPost('oldest', fixtures), undefined);
+  assert.equal(getNextOlderPost('missing', fixtures), undefined);
+});
+
+check('standalone articles expose an accessible next-story fallback', () => {
+  const newest = dist('posts/openai-ships-new-model/index.html');
+  assert.match(newest, /data-continuous-stream/);
+  assert.match(newest, /class="continuous-transition"/);
+  assert.match(newest, /class="continuous-next-link"[^>]*href="\/posts\//);
+  assert.match(newest, /class="continuous-sentinel"/);
+  assert.match(newest, /aria-live="polite"/);
+
+  const postFiles = readdirSync(new URL('../src/content/posts/', import.meta.url));
+  const built = postFiles.map((file) => dist(`posts/${file.replace(/\.md$/, '')}/index.html`));
+  assert.equal(built.filter((html) => html.includes('continuous-next-link')).length, built.length - 1);
 });
 
 check('posts resolve validated author profiles into linked bylines and schema', () => {

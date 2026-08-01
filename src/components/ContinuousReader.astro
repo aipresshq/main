@@ -1,0 +1,31 @@
+---
+import type { CollectionEntry } from 'astro:content';
+
+export interface Props {
+  currentPost: CollectionEntry<'posts'>;
+  nextPost?: CollectionEntry<'posts'>;
+}
+
+const { currentPost, nextPost } = Astro.props;
+---
+
+<div class="continuous-stream" data-continuous-stream aria-busy="false" data-current-post={currentPost.id}>
+  <slot />
+
+  {
+    nextPost && (
+      <>
+        <section class="continuous-transition" aria-label="Next story">
+          <span class="label">Next Story</span>
+          <a class="continuous-next-link" href={`/posts/${nextPost.id}/`}>{nextPost.data.title}</a>
+          <div class="continuous-sentinel" data-next-fragment={`/posts/${nextPost.id}/fragment/`} aria-hidden="true"></div>
+        </section>
+        <script is:inline>
+          // Task 3 adds the continuous-reading controller.
+        </script>
+      </>
+    )
+  }
+
+  <p class="continuous-status" aria-live="polite" aria-atomic="true"></p>
+</div>

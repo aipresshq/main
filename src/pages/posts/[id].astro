@@ -3,8 +3,10 @@ import { getCollection, getEntry } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ArticleContent from '../../components/ArticleContent.astro';
 import ArticleLatest from '../../components/ArticleLatest.astro';
+import ContinuousReader from '../../components/ContinuousReader.astro';
 import SuggestedReads from '../../components/SuggestedReads.astro';
 import { formatEditionDate } from '../../lib/date';
+import { getNextOlderPost } from '../../lib/post-order';
 import { getSuggestedPosts } from '../../lib/recommendations';
 
 export async function getStaticPaths() {
@@ -25,6 +27,7 @@ const { title, description, pubDate, updatedDate, cover, tags } = post.data;
 const allTags = [...new Set(allPosts.flatMap((p) => p.data.tags))].sort();
 
 const suggested = getSuggestedPosts(post, allPosts, 4);
+const nextPost = getNextOlderPost(post.id, allPosts);
 
 const latest = allPosts
   .filter((p) => p.id !== post.id)
@@ -61,10 +64,12 @@ const schema = {
 >
   <script type="application/ld+json" set:html={JSON.stringify(schema)} />
 
-  <div class="article-layout">
-    <ArticleContent post={post} author={author} />
-    <ArticleLatest posts={latest} />
-  </div>
+  <ContinuousReader currentPost={post} nextPost={nextPost}>
+    <div class="article-layout">
+      <ArticleContent post={post} author={author} />
+      <ArticleLatest posts={latest} />
+    </div>
 
-  <SuggestedReads posts={suggested} articleId={post.id} />
+    <SuggestedReads posts={suggested} articleId={post.id} />
+  </ContinuousReader>
 </BaseLayout>
