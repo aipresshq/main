@@ -2,6 +2,7 @@
 // for a static-only Astro site. Run `npm run build` first, then this script.
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import assert from 'node:assert';
+import { getSuggestedPosts } from '../src/lib/recommendations.ts';
 
 const dist = (path) => readFileSync(new URL(`../dist/${path}`, import.meta.url), 'utf-8');
 const distExists = (path) => existsSync(new URL(`../dist/${path}`, import.meta.url));
@@ -73,6 +74,21 @@ check('post listings resolve author references into display names', () => {
   assert.ok(!latest.includes('[object Object]'), 'Latest rail leaked an unresolved author reference');
 });
 
+check('author resolution errors identify the post and missing author slug', () => {
+  for (const file of [
+    'src/pages/posts/[id].astro',
+    'src/components/Stage.astro',
+    'src/components/RankedFeature.astro',
+    'src/components/ArticleLatest.astro',
+  ]) {
+    assert.match(
+      src(file),
+      /Missing author profile for post: \$\{post\.id\} \(author: \$\{post\.data\.author\.id\}\)/,
+      `${file} must include the post ID and missing author slug in its resolution error`,
+    );
+  }
+});
+
 check('global.css defines the theme tokens and required classes', () => {
   const css = src('src/styles/global.css');
   assert.match(css, /--accent:\s*#f2e14c/i, 'accent colour token missing or changed');
@@ -114,6 +130,19 @@ check('light mode flips the palette but keeps the photographic stage dark', () =
   assert.match(light[1], /\.stage\s*\{[\s\S]*?--text:\s*#ffffff/i, 'stage must keep white text in light mode');
   // Yellow-on-paper is unreadable, so search highlights need a darker mark.
   assert.match(light[1], /--mark:\s*#7a6800/i, 'light mode does not darken the search highlight');
+});
+
+check('article focus rings use theme-aware marks while dark card tags use the accent', () => {
+  const css = src('src/styles/global.css');
+  const bylineFocus = css.match(/a\.byline:focus-visible\s*\{([\s\S]*?)\n\}/);
+  const suggestedStory = css.match(/\.suggested-story\s*\{([\s\S]*?)\n\}/);
+  const suggestedTag = css.match(/\.suggested-story-tag\s*\{([\s\S]*?)\n\}/);
+  const suggestedFocus = css.match(/\.suggested-story:focus-visible\s*\{([\s\S]*?)\n\}/);
+
+  assert.match(bylineFocus[1], /outline:\s*2px solid var\(--mark\)/, 'byline focus must use the theme-aware mark');
+  assert.ok(!/--mark\s*:/.test(suggestedStory[1]), 'dark cards must not override the theme-aware mark token');
+  assert.match(suggestedTag[1], /color:\s*var\(--accent\)/, 'dark-card tags should retain the yellow accent');
+  assert.match(suggestedFocus[1], /outline:\s*2px solid var\(--mark\)/, 'suggested-story focus must use the theme-aware mark');
 });
 
 check('headline and masthead use the display and blackletter faces', () => {
@@ -426,6 +455,43 @@ check('Suggested Reads replaces Related with deterministic tag-first stories', (
     '/posts/chatgpt-plus-limit-tracker/',
   ]);
   assert.ok(!section.includes('/posts/openai-ships-new-model/'));
+  assert.match(section, /aria-labelledby="suggested-reads-openai-ships-new-model"/);
+  assert.match(section, /<h2 id="suggested-reads-openai-ships-new-model">Suggested Reads<\/h2>/);
+});
+
+check('Suggested Reads requires an article identifier for stream instances without changing standalone props', () => {
+  const component = src('src/components/SuggestedReads.astro');
+  assert.match(component, /variant\?: 'standalone';\s*articleId\?: string/);
+  assert.match(component, /variant: 'stream';\s*articleId: string/);
+  assert.match(component, /const \{ posts, variant = 'standalone', articleId \} = Astro\.props/);
+  assert.match(component, /suggested-reads-\$\{articleId \?\? variant\}/);
+});
+
+check('suggestion ranking handles empty, short, unrelated, and tied candidate sets', () => {
+  const post = (id, tags, pubDate) => ({ id, data: { tags, pubDate: new Date(pubDate) } });
+  const current = post('current', ['AI', 'Models'], '2026-08-01');
+
+  assert.deepEqual(getSuggestedPosts(current, [current]).map(({ id }) => id), []);
+  assert.deepEqual(
+    getSuggestedPosts(current, [current, post('one', ['AI'], '2026-07-30')], 4).map(({ id }) => id),
+    ['one'],
+  );
+  assert.deepEqual(
+    getSuggestedPosts(current, [
+      current,
+      post('older', ['Policy'], '2026-07-20'),
+      post('newer', ['Tools'], '2026-07-30'),
+    ]).map(({ id }) => id),
+    ['newer', 'older'],
+  );
+  assert.deepEqual(
+    getSuggestedPosts(current, [
+      current,
+      post('zeta', ['AI'], '2026-07-30'),
+      post('alpha', ['Models'], '2026-07-30'),
+    ]).map(({ id }) => id),
+    ['alpha', 'zeta'],
+  );
 });
 
 check('article canvas is full width while prose keeps a readable measure', () => {

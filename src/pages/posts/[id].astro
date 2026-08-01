@@ -18,7 +18,7 @@ export async function getStaticPaths() {
 const { post, allPosts } = Astro.props;
 const author = await getEntry(post.data.author);
 if (!author) {
-  throw new Error(`Missing author profile for post: ${post.id}`);
+  throw new Error(`Missing author profile for post: ${post.id} (author: ${post.data.author.id})`);
 }
 
 const { title, description, pubDate, updatedDate, cover, tags } = post.data;
@@ -66,5 +66,5 @@ const schema = {
     <ArticleLatest posts={latest} />
   </div>
 
-  <SuggestedReads posts={suggested} />
+  <SuggestedReads posts={suggested} articleId={post.id} />
 </BaseLayout>

@@ -15,7 +15,7 @@ const { title, href, posts } = Astro.props;
 const postsWithAuthors = await Promise.all(posts.map(async (post) => {
   const author = await getEntry(post.data.author);
   if (!author) {
-    throw new Error(`Missing author profile for post: ${post.id}`);
+    throw new Error(`Missing author profile for post: ${post.id} (author: ${post.data.author.id})`);
   }
   return { post, author };
 }));

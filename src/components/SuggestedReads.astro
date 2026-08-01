@@ -1,20 +1,28 @@
 ---
 import type { CollectionEntry } from 'astro:content';
 
-export interface Props {
-  posts: CollectionEntry<'posts'>[];
-  variant?: 'standalone' | 'stream';
-}
+export type Props =
+  | {
+      posts: CollectionEntry<'posts'>[];
+      variant?: 'standalone';
+      articleId?: string;
+    }
+  | {
+      posts: CollectionEntry<'posts'>[];
+      variant: 'stream';
+      articleId: string;
+    };
 
-const { posts, variant = 'standalone' } = Astro.props;
+const { posts, variant = 'standalone', articleId } = Astro.props;
+const headingId = `suggested-reads-${articleId ?? variant}`;
 ---
 
 {
   posts.length > 0 && (
-    <section class:list={['suggested-reads', `suggested-reads--${variant}`]} aria-labelledby={`suggested-reads-${variant}`}>
+    <section class:list={['suggested-reads', `suggested-reads--${variant}`]} aria-labelledby={headingId}>
       <div class="suggested-reads-heading">
         <span class="label">Continue reading</span>
-        <h2 id={`suggested-reads-${variant}`}>Suggested Reads</h2>
+        <h2 id={headingId}>Suggested Reads</h2>
       </div>
 
       <div class="suggested-reads-grid">

@@ -537,7 +537,7 @@ a.byline:hover {
 }
 
 a.byline:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--mark);
   outline-offset: 4px;
 }
 
@@ -1449,7 +1449,6 @@ a.byline:focus-visible {
 }
 
 .suggested-story {
-  --mark: var(--accent);
   display: grid;
   grid-template-rows: auto 1fr;
   min-width: 0;
@@ -1474,7 +1473,7 @@ a.byline:focus-visible {
 }
 
 .suggested-story-tag {
-  color: var(--mark);
+  color: var(--accent);
 }
 
 .suggested-story-title {
