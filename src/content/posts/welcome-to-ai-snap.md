@@ -1,12 +1,12 @@
 ---
 title: "Welcome to AI Snap"
-description: "A placeholder post validating the content collection schema — replace with a real evergreen or tracker piece per the Phase 0 build order."
+description: "AI Snap explains fast-moving AI news with concise reporting, practical context, and clear guidance on what readers should verify."
 author: "ai-snap-editorial"
 pubDate: 2026-07-28
 cover: "https://images.unsplash.com/photo-1620712943543-bcc4688e7485"
 coverAlt: "Abstract render of interconnected AI network nodes"
 coverCredit: "Unsplash"
-whyItMatters: "This is a placeholder post used only to verify the Content Collections schema builds correctly. It should be replaced with a real Phase 0 post before launch."
+whyItMatters: "AI news moves quickly and often arrives wrapped in broad claims; readers need a concise way to separate confirmed developments from what still requires evidence."
 sourceName: "AI Snap"
 sourceUrl: "https://aisnap.in"
 tags: ["AI", "Meta"]
@@ -16,4 +16,14 @@ featured: true
 
 ## What happened
 
-This is placeholder body content proving the `posts` collection schema in `src/content.config.ts` parses correctly end to end — title, author, cover (remote R2-style URL), why-it-matters, source attribution, and tags.
+AI Snap is a newsroom for readers who want the important part of an AI story without losing the context that makes it useful. We cover model releases, research, products, companies, and the practical limits that shape how these systems work in everyday use.
+
+## How we approach a story
+
+We begin with what can be confirmed. Product interfaces, official documents, research papers, company statements, and attributable reporting form the starting point. We distinguish a provider's claim from independent evidence and avoid turning an announcement into a conclusion before the details support it.
+
+Fast-changing information needs special care. Usage limits, availability, plan terms, and model access can differ by account or change over time. Our guides explain where readers should check the current status and why a number quoted elsewhere may not apply to them.
+
+## What readers can expect
+
+Each article aims to answer three questions: what is known, why it matters, and what to watch next. Comparisons focus on real workflows rather than a universal winner. Analysis identifies uncertainty instead of filling gaps with speculation. The goal is simple: help readers make a better decision, then give them a clear path to the primary source.

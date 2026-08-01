@@ -41,6 +41,13 @@ check('all three fixture posts built successfully', () => {
   assert.ok(distExists('posts/openai-ships-new-model/index.html'));
 });
 
+check('public posts contain no internal fixture language', () => {
+  const forbidden = /\b(?:placeholder|fixture)\b|used to (?:verify|validate|populate|exercise)|content collection schema|postType\s*===/i;
+  for (const file of readdirSync(new URL('../src/content/posts/', import.meta.url))) {
+    assert.doesNotMatch(src(`src/content/posts/${file}`), forbidden, `${file} contains internal fixture copy`);
+  }
+});
+
 check('continuous reading order is deterministic and stops at the oldest post', () => {
   const fixtures = [
     { id: 'beta', data: { pubDate: new Date('2026-01-02') } },
