@@ -1,7 +1,7 @@
 ---
 title: "OpenAI Codex Usage Limit Tracker"
 description: "Live-updated tracker for OpenAI Codex's weekly usage limit resets — placeholder fixture used to validate the /trackers/ route."
-author: "AI Snap Editorial"
+author: "ai-snap-editorial"
 pubDate: 2026-07-29
 cover: "https://images.unsplash.com/photo-1518770660439-4636190af475"
 coverAlt: "Code on a laptop screen"
@@ -17,4 +17,3 @@ featured: false
 ## What happened
 
 Placeholder tracker post used to verify the `/trackers/` route filters correctly on `postType === 'tracker'`.
-

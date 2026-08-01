@@ -1,7 +1,7 @@
 ---
 title: "Gemini API Rate Limit Tracker"
 description: "Current requests-per-minute and daily token ceilings across Gemini tiers, updated as Google revises them."
-author: "AI Snap Editorial"
+author: "ai-snap-editorial"
 pubDate: 2026-07-26
 cover: "https://images.unsplash.com/photo-1451187580459-43490279c0fa"
 coverAlt: "Network of lights across a dark globe"

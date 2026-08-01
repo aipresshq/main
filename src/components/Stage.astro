@@ -1,5 +1,5 @@
 ---
-import type { CollectionEntry } from 'astro:content';
+import { getEntry, type CollectionEntry } from 'astro:content';
 import CardFeature from './CardFeature.astro';
 import CardCompact from './CardCompact.astro';
 import HeadlineGrid from './HeadlineGrid.astro';
@@ -13,6 +13,13 @@ export interface Props {
 }
 
 const { posts, emptyNote } = Astro.props;
+const postsWithAuthors = await Promise.all(posts.map(async (post) => {
+  const author = await getEntry(post.data.author);
+  if (!author) {
+    throw new Error(`Missing author profile for post: ${post.id}`);
+  }
+  return { post, author };
+}));
 
 // lead → the hero; next → the "up next" teaser; rail → sidebar stories;
 // overflow → everything else, as a grid below the stage.
@@ -22,10 +29,11 @@ const overflow = remaining.slice(3);
 
 // The pager reflects which of the top stories is currently the lead.
 const pagerPosts = posts.slice(0, 4);
+const leadAuthor = postsWithAuthors[0]?.author;
 ---
 
 {
-  lead ? (
+  lead && leadAuthor ? (
     <Fragment>
       <section class="stage">
         <div class="stage-backdrop">
@@ -41,8 +49,8 @@ const pagerPosts = posts.slice(0, 4);
           <div class="lead-meta">
             <span class="label">{readMinutes(lead)} min read</span>
             <span class="byline">
-              <span class="byline-avatar" aria-hidden="true">{lead.data.author.charAt(0)}</span>
-              <span class="byline-name">By {lead.data.author}</span>
+              <span class="byline-avatar" aria-hidden="true">{leadAuthor.data.name.charAt(0)}</span>
+              <span class="byline-name">By {leadAuthor.data.name}</span>
             </span>
           </div>
 

@@ -1,5 +1,18 @@
-import { defineCollection, z } from 'astro:content';
+import { defineCollection, reference, z } from 'astro:content';
 import { glob } from 'astro/loaders';
+
+const authors = defineCollection({
+  loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/authors' }),
+  schema: z.object({
+    name: z.string(),
+    role: z.string(),
+    bio: z.string(),
+    avatar: z.string(),
+    website: z.string().url().optional(),
+    x: z.string().url().optional(),
+    linkedin: z.string().url().optional(),
+  }),
+});
 
 // Matches the fixed post template in context.md §4. Every post follows this
 // same shape regardless of source, which is the core anti-scaled-content-abuse
@@ -10,8 +23,8 @@ const posts = defineCollection({
   schema: z.object({
     title: z.string(),
     description: z.string(),
-    // §4 item 2: named author byline + precise timestamp
-    author: z.string(),
+    // §4 item 2: an author profile is validated at content-build time.
+    author: reference('authors'),
     pubDate: z.coerce.date(),
     updatedDate: z.coerce.date().optional(),
 
@@ -59,4 +72,4 @@ const posts = defineCollection({
   }),
 });
 
-export const collections = { posts };
+export const collections = { authors, posts };

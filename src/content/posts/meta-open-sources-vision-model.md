@@ -1,7 +1,7 @@
 ---
 title: "Meta open-sources a new vision model"
 description: "Weights and a permissive licence, with benchmark claims that put it near the closed frontier on segmentation."
-author: "AI Snap Editorial"
+author: "ai-snap-editorial"
 pubDate: 2026-07-22
 cover: "https://images.unsplash.com/photo-1535378917042-10a22c95931a"
 coverAlt: "Abstract rendering of a machine-learning model"

@@ -1,7 +1,7 @@
 ---
 title: "Every AI coding agent, compared"
 description: "How the current crop of coding agents differ on autonomy, context handling, and what they cost to run daily."
-author: "AI Snap Editorial"
+author: "ai-snap-editorial"
 pubDate: 2026-07-24
 cover: "https://images.unsplash.com/photo-1461749280684-dccba630e2f6"
 coverAlt: "Code on a monitor in a dark room"

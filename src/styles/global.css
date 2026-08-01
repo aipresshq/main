@@ -525,9 +525,20 @@ img {
 }
 
 .byline {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 10px;
+  color: inherit;
+  text-decoration: none;
+}
+
+a.byline:hover {
+  color: var(--mark);
+}
+
+a.byline:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
 }
 
 .byline-avatar {
@@ -549,6 +560,18 @@ img {
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+.byline-copy {
+  display: grid;
+  gap: 3px;
+}
+
+.byline-role {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
 /* Featured-story selector: which of the lead stories is showing */
@@ -1114,6 +1137,12 @@ img {
   min-width: 0;
 }
 
+.article .byline-avatar {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+}
+
 .article-kicker {
   display: inline-block;
   margin-bottom: 16px;
@@ -1164,6 +1193,11 @@ img {
 .prose {
   font-size: 1.06rem;
   line-height: 1.75;
+}
+
+.article-measure {
+  width: min(100%, 760px);
+  margin-inline: auto;
 }
 
 .prose h2 {

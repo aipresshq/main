@@ -1,5 +1,5 @@
 ---
-import type { CollectionEntry } from 'astro:content';
+import { getEntry, type CollectionEntry } from 'astro:content';
 import { formatPostDate } from '../lib/date';
 
 export interface Props {
@@ -7,18 +7,25 @@ export interface Props {
 }
 
 const { posts } = Astro.props;
+const postsWithAuthors = await Promise.all(posts.map(async (post) => {
+  const author = await getEntry(post.data.author);
+  if (!author) {
+    throw new Error(`Missing author profile for post: ${post.id}`);
+  }
+  return { post, author };
+}));
 ---
 
 <aside class="article-latest" aria-labelledby="latest-heading" data-pagefind-ignore>
   <h2 id="latest-heading" class="latest-heading">Latest</h2>
   <div class="latest-list">
-    {posts.map((entry) => (
+    {postsWithAuthors.map(({ post: entry, author }) => (
       <a class="latest-story" href={`/posts/${entry.id}/`}>
         <img src={entry.data.cover} alt="" loading="lazy" />
         <span class="latest-story-copy">
           <span class="label latest-story-tag">{entry.data.tags[0]}</span>
           <span class="latest-story-title">{entry.data.title}</span>
-          <span class="latest-story-meta">{entry.data.author} · {formatPostDate(entry.data.pubDate)}</span>
+          <span class="latest-story-meta">{author.data.name} · {formatPostDate(entry.data.pubDate)}</span>
         </span>
       </a>
     ))}

@@ -1,0 +1,109 @@
+---
+import { render, type CollectionEntry } from 'astro:content';
+import { formatPostDate } from '../lib/date';
+import { readMinutes } from '../lib/read-time';
+import { slugify } from '../lib/slug';
+
+export interface Props {
+  post: CollectionEntry<'posts'>;
+  author: CollectionEntry<'authors'>;
+  mode?: 'standalone' | 'stream';
+}
+
+const { post, author, mode = 'standalone' } = Astro.props;
+const { Content } = await render(post);
+const {
+  title,
+  description,
+  pubDate,
+  updatedDate,
+  cover,
+  coverAlt,
+  coverCredit,
+  whyItMatters,
+  factsTable,
+  quote,
+  sourceName,
+  sourceUrl,
+  tags,
+} = post.data;
+---
+
+<article
+  id={`article-${post.id}`}
+  class:list={['article', { 'stream-article': mode === 'stream' }]}
+  data-post-id={post.id}
+  data-post-url={`/posts/${post.id}/`}
+  aria-labelledby={`article-title-${post.id}`}
+  data-pagefind-body={mode === 'standalone' ? true : undefined}
+>
+  <header class="article-header">
+    <a class="label article-kicker" href={`/tag/${slugify(tags[0])}/`}>{tags[0]}</a>
+    <h1 id={`article-title-${post.id}`} class="article-title">{title}</h1>
+    <p class="article-standfirst">{description}</p>
+
+    <div class="article-meta">
+      <a class="byline" href={`/authors/${author.id}/`}>
+        <img class="byline-avatar" src={author.data.avatar} alt="" />
+        <span class="byline-copy">
+          <span class="byline-name">{author.data.name}</span>
+          <span class="byline-role">{author.data.role}</span>
+        </span>
+      </a>
+      <span class="label">
+        <time datetime={pubDate.toISOString()}>{formatPostDate(pubDate)}</time>
+        {updatedDate && <> · Updated {formatPostDate(updatedDate)}</>}
+        · {readMinutes(post)} min read
+      </span>
+    </div>
+  </header>
+
+  <figure class="article-figure">
+    <img src={cover} alt={coverAlt} loading={mode === 'standalone' ? 'eager' : 'lazy'} />
+    {coverCredit && <figcaption>Photo: {coverCredit}</figcaption>}
+  </figure>
+
+  <div class="article-measure">
+    <div class="prose">
+      <Content />
+
+      <h2>Why it matters</h2>
+      <p>{whyItMatters}</p>
+
+      {
+        factsTable && (
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>{factsTable.columns.map((col) => <th scope="col">{col}</th>)}</tr>
+              </thead>
+              <tbody>
+                {factsTable.rows.map((row) => (
+                  <tr>{row.map((cell) => <td>{cell}</td>)}</tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      }
+
+      {
+        quote && (
+          <blockquote>
+            <p>{quote.text}</p>
+            <cite>{quote.attribution}</cite>
+          </blockquote>
+        )
+      }
+    </div>
+
+    <footer class="article-footer">
+      <p class="article-source">
+        Source: <a href={sourceUrl} rel="noopener nofollow">{sourceName}</a>
+      </p>
+      <ul class="article-tags">
+        {tags.map((tag) => <li><a class="pill" href={`/tag/${slugify(tag)}/`}>{tag}</a></li>)}
+      </ul>
+    </footer>
+  </div>
+</article>

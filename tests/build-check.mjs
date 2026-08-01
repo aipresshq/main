@@ -30,6 +30,49 @@ check('all three fixture posts built successfully', () => {
   assert.ok(distExists('posts/openai-ships-new-model/index.html'));
 });
 
+check('posts resolve validated author profiles into linked bylines and schema', () => {
+  const config = src('src/content.config.ts');
+  assert.match(config, /const authors = defineCollection/);
+  assert.match(config, /author:\s*reference\(['"]authors['"]\)/);
+
+  const postFiles = readdirSync(new URL('../src/content/posts/', import.meta.url));
+  for (const file of postFiles) {
+    assert.match(src(`src/content/posts/${file}`), /author:\s*["']ai-snap-editorial["']/);
+  }
+
+  const html = dist('posts/openai-ships-new-model/index.html');
+  assert.match(html, /class="byline"[^>]*href="\/authors\/ai-snap-editorial\//);
+  assert.ok(html.includes('AI Snap Editorial'));
+  assert.ok(html.includes('Editorial Desk'));
+
+  const match = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
+  const schema = JSON.parse(match[1]);
+  assert.equal(schema.author[0].name, 'AI Snap Editorial');
+  assert.equal(schema.author[0].url, 'https://aisnap.in/authors/ai-snap-editorial/');
+});
+
+check('post listings resolve author references into display names', () => {
+  for (const component of [
+    'src/components/Stage.astro',
+    'src/components/RankedFeature.astro',
+    'src/components/ArticleLatest.astro',
+  ]) {
+    assert.match(src(component), /getEntry/, `${component} must resolve author references`);
+  }
+
+  const home = dist('index.html');
+  const stage = home.slice(home.indexOf('class="stage"'), home.indexOf('</section>', home.indexOf('class="stage"')));
+  assert.ok(stage.includes('By AI Snap Editorial'), 'stage byline should use the author profile name');
+  const ranked = home.slice(home.indexOf('class="panel'), home.indexOf('</section>', home.indexOf('class="panel')));
+  assert.ok(ranked.includes('AI Snap Editorial'), 'ranked stories should use the author profile name');
+  assert.ok(!home.includes('[object Object]'), 'homepage leaked an unresolved author reference');
+
+  const article = dist('posts/openai-ships-new-model/index.html');
+  const latest = article.slice(article.indexOf('class="article-latest"'), article.indexOf('</aside>', article.indexOf('class="article-latest"')));
+  assert.ok(latest.includes('AI Snap Editorial'), 'Latest rail should use the author profile name');
+  assert.ok(!latest.includes('[object Object]'), 'Latest rail leaked an unresolved author reference');
+});
+
 check('global.css defines the theme tokens and required classes', () => {
   const css = src('src/styles/global.css');
   assert.match(css, /--accent:\s*#f2e14c/i, 'accent colour token missing or changed');

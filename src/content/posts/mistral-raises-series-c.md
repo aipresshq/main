@@ -1,7 +1,7 @@
 ---
 title: "Mistral raises Series C"
 description: "The Paris lab adds to its war chest, with the round aimed at inference capacity rather than headcount."
-author: "AI Snap Editorial"
+author: "ai-snap-editorial"
 pubDate: 2026-07-23
 cover: "https://images.unsplash.com/photo-1518186285589-2f7649de83e0"
 coverAlt: "Dark server room corridor"

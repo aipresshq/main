@@ -1,7 +1,7 @@
 ---
 title: "Claude Usage Limit Reset Tracker"
 description: "When Claude's weekly and five-hourly limits reset, what counts against them, and how the caps differ by plan."
-author: "AI Snap Editorial"
+author: "ai-snap-editorial"
 pubDate: 2026-07-27
 cover: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5"
 coverAlt: "Abstract green data streams on a dark background"

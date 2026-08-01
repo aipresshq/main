@@ -1,7 +1,7 @@
 ---
 title: "Claude vs ChatGPT vs Gemini: which model for which job"
 description: "A working comparison of context windows, pricing, and where each model actually holds up — updated as the tiers change."
-author: "AI Snap Editorial"
+author: "ai-snap-editorial"
 pubDate: 2026-07-25
 cover: "https://images.unsplash.com/photo-1550745165-9bc0b252726f"
 coverAlt: "Three retro devices arranged side by side"
