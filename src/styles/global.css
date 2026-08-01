@@ -33,14 +33,11 @@
   --panel-bg: #181818;
 
   --font-body: 'Inter Variable', system-ui, -apple-system, sans-serif;
-  /* Newsreader was built by Production Type for Google specifically for news
-     reading interfaces — a transitional serif with real editorial pedigree,
-     rather than the high-contrast display faces (Playfair, Fraunces) that
-     dominate AI-generated design regardless of subject. Its optical-size
-     axis tightens letterforms at headline sizes automatically — browsers
-     apply font-optical-sizing: auto by default, no extra CSS needed. */
-  --font-display: 'Newsreader Variable', 'Newsreader', Georgia, serif;
-  --font-masthead: 'UnifrakturMaguntia', 'Newsreader Variable', 'Newsreader', serif;
+  /* Source Serif 4 reads closer to modern newsroom typography: disciplined,
+     high-legibility serif forms with enough character for big display
+     headlines, but without the magazine-like flourish of Newsreader. */
+  --font-display: 'Source Serif 4', Georgia, serif;
+  --font-masthead: 'UnifrakturMaguntia', 'Source Serif 4', Georgia, serif;
 
   --radius-frame: 24px;
   --radius-card: 16px;

@@ -79,7 +79,7 @@ check('headline and masthead use the display and blackletter faces', () => {
   const mastheadVar = css.match(/--font-masthead:\s*([^;]+);/);
   assert.ok(displayVar, 'missing --font-display token');
   assert.ok(mastheadVar, 'missing --font-masthead token');
-  assert.match(displayVar[1], /Newsreader/, 'display font should be the serif face');
+  assert.match(displayVar[1], /Source Serif 4/, 'display font should be the serif face');
   assert.match(mastheadVar[1], /UnifrakturMaguntia/, 'masthead font should be the blackletter face');
 
   // The whole point of the swap: no page should still import or reference
@@ -87,13 +87,13 @@ check('headline and masthead use the display and blackletter faces', () => {
   assert.ok(!displayVar[1].includes('Playfair'), 'Playfair Display should be fully replaced, not just deprioritised in the stack');
   const layoutSrc = src('src/layouts/BaseLayout.astro');
   assert.ok(!layoutSrc.includes('playfair-display'), 'BaseLayout still imports the old font package');
-  assert.ok(layoutSrc.includes("'@fontsource-variable/newsreader'"), 'BaseLayout should import the new font package');
+  assert.ok(layoutSrc.includes("'@fontsource/source-serif-4'"), 'BaseLayout should import the new font package');
 
   // The masthead's fallback stack must name a font we actually bundle —
   // Playfair Display was left there once before as a stale fallback after
   // the primary token moved off it.
   assert.ok(!mastheadVar[1].includes('Playfair'), 'masthead fallback should not name an unbundled font');
-  assert.match(mastheadVar[1], /Newsreader/, 'masthead should fall back to the bundled display font, not a generic serif directly');
+  assert.match(mastheadVar[1], /Source Serif 4/, 'masthead should fall back to the bundled display font, not a generic serif directly');
 
   const leadBlock = css.match(/\.lead-headline\s*\{([\s\S]*?)\n\}/);
   assert.ok(leadBlock, 'missing .lead-headline rule block');
