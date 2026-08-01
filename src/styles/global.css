@@ -1122,14 +1122,12 @@ a.byline:focus-visible {
    Article page
    -------------------------------------------------------------------------- */
 
-/* Constrained measure — the chrome is full width, but body copy needs a
-   readable line length. */
+/* The canvas uses the full frame: visual story elements claim the fluid left
+   track while .article-measure below keeps the actual reading measure calm. */
 .article-layout {
   display: grid;
-  grid-template-columns: minmax(0, 760px) 340px;
+  grid-template-columns: minmax(0, 1fr) 340px;
   gap: 56px;
-  justify-content: center;
-  margin: 0 auto;
   padding-top: 16px;
 }
 
@@ -1409,20 +1407,91 @@ a.byline:focus-visible {
   outline-offset: 4px;
 }
 
-/* Article-adjacent, so it shares the article's measure rather than running
-   the full page width like the footer does. */
-.article-related {
-  max-width: 760px;
-  margin-left: auto;
-  margin-right: auto;
+/* The recommendation strip intentionally is the page's one bolder beat:
+   image-led cards hold dark ink bodies in either colour scheme. */
+.suggested-reads {
+  margin-top: 72px;
+  padding-top: 24px;
+  border-top: 3px solid var(--mark);
 }
 
-/* auto-fit, not auto-fill: with one related story the empty tracks collapse
-   instead of squeezing it into a third of the measure. */
-.related-list {
+.suggested-reads-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.suggested-reads-heading .label {
+  color: var(--mark);
+}
+
+.suggested-reads-heading h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 3vw, 3rem);
+  font-weight: 500;
+  line-height: 1;
+}
+
+.suggested-reads-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 16px;
+  gap: 20px;
+}
+
+.suggested-reads--standalone .suggested-reads-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.suggested-reads--stream .suggested-reads-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.suggested-story {
+  --mark: var(--accent);
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 0;
+  background: #1a1813;
+  color: #ffffff;
+}
+
+.suggested-story img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
+.suggested-story-body {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-height: 132px;
+  padding: 18px;
+}
+
+.suggested-story-tag {
+  color: var(--mark);
+}
+
+.suggested-story-title {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 500;
+  line-height: 1.17;
+}
+
+.suggested-story:hover .suggested-story-title {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.suggested-story:focus-visible {
+  outline: 2px solid var(--mark);
+  outline-offset: 4px;
 }
 
 /* --------------------------------------------------------------------------
@@ -1779,6 +1848,10 @@ a.byline:focus-visible {
     grid-column: 1 / -1;
   }
 
+  .suggested-reads--standalone .suggested-reads-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .footer-cta {
     grid-template-columns: 1fr;
     gap: 28px;
@@ -1873,6 +1946,17 @@ a.byline:focus-visible {
   }
 
   .latest-list {
+    grid-template-columns: 1fr;
+  }
+
+  .suggested-reads-heading {
+    align-items: flex-start;
+    flex-direction: column-reverse;
+    gap: 10px;
+  }
+
+  .suggested-reads--standalone .suggested-reads-grid,
+  .suggested-reads--stream .suggested-reads-grid {
     grid-template-columns: 1fr;
   }
 

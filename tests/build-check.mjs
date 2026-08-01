@@ -412,13 +412,30 @@ check('article page emits NewsArticle schema with an image', () => {
   assert.ok(schema.datePublished, 'schema missing datePublished');
 });
 
-check('related module shows tag-matched stories and never the article itself', () => {
+check('Suggested Reads replaces Related with deterministic tag-first stories', () => {
   const html = dist('posts/openai-ships-new-model/index.html');
-  const related = html.slice(html.indexOf('article-related'));
-  // codex shares the OpenAI tag; welcome-to-ai-snap shares none.
-  assert.ok(related.includes('/posts/codex-usage-limit-tracker/'), 'tag-matched story missing from Related');
-  assert.ok(!related.includes('/posts/openai-ships-new-model/'), 'article should not relate to itself');
-  assert.ok(!related.includes('/posts/welcome-to-ai-snap/'), 'unrelated story leaked into Related');
+  assert.ok(!html.includes('article-related'), 'legacy Related module still rendered');
+  const start = html.indexOf('class="suggested-reads');
+  const end = html.indexOf('</section>', start);
+  const section = html.slice(start, end);
+  const urls = [...section.matchAll(/class="suggested-story" href="([^"]+)"/g)].map((match) => match[1]);
+  assert.deepEqual(urls, [
+    '/posts/codex-usage-limit-tracker/',
+    '/posts/claude-vs-chatgpt-vs-gemini/',
+    '/posts/ai-coding-agents-compared/',
+    '/posts/chatgpt-plus-limit-tracker/',
+  ]);
+  assert.ok(!section.includes('/posts/openai-ships-new-model/'));
+});
+
+check('article canvas is full width while prose keeps a readable measure', () => {
+  const css = src('src/styles/global.css');
+  const layout = css.match(/\.article-layout\s*\{([\s\S]*?)\n\}/);
+  const measure = css.match(/\.article-measure\s*\{([\s\S]*?)\n\}/);
+  assert.match(layout[1], /grid-template-columns:\s*minmax\(0, 1fr\) 340px/);
+  assert.match(layout[1], /gap:\s*56px/);
+  assert.ok(!/max-width/.test(layout[1]), 'article canvas should not keep the old width cap');
+  assert.match(measure[1], /760px/);
 });
 
 check('article Latest rail renders the five newest other posts in order', () => {
@@ -442,7 +459,7 @@ check('article Latest rail uses the approved responsive layout', () => {
   const layout = css.match(/\.article-layout\s*\{([\s\S]*?)\n\}/);
   const latest = css.match(/\.article-latest\s*\{([\s\S]*?)\n\}/);
   assert.ok(layout && latest);
-  assert.match(layout[1], /grid-template-columns:\s*minmax\(0, 760px\) 340px/);
+  assert.match(layout[1], /grid-template-columns:\s*minmax\(0, 1fr\) 340px/);
   assert.match(layout[1], /gap:\s*56px/);
   assert.match(latest[1], /position:\s*sticky/);
   assert.match(css, /@media \(max-width: 1080px\)[\s\S]*?\.article-layout\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 760px\)/);

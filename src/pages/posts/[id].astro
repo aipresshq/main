@@ -3,8 +3,9 @@ import { getCollection, getEntry } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ArticleContent from '../../components/ArticleContent.astro';
 import ArticleLatest from '../../components/ArticleLatest.astro';
-import CardCompact from '../../components/CardCompact.astro';
+import SuggestedReads from '../../components/SuggestedReads.astro';
 import { formatEditionDate } from '../../lib/date';
+import { getSuggestedPosts } from '../../lib/recommendations';
 
 export async function getStaticPaths() {
   const allPosts = await getCollection('posts');
@@ -23,11 +24,7 @@ if (!author) {
 const { title, description, pubDate, updatedDate, cover, tags } = post.data;
 const allTags = [...new Set(allPosts.flatMap((p) => p.data.tags))].sort();
 
-// §4's "Related" module: up to 3 other posts sharing a tag, newest first.
-const related = allPosts
-  .filter((p) => p.id !== post.id && p.data.tags.some((t) => tags.includes(t)))
-  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
-  .slice(0, 3);
+const suggested = getSuggestedPosts(post, allPosts, 4);
 
 const latest = allPosts
   .filter((p) => p.id !== post.id)
@@ -69,14 +66,5 @@ const schema = {
     <ArticleLatest posts={latest} />
   </div>
 
-  {
-    related.length > 0 && (
-      <section class="more-stories article-related">
-        <span class="label">Related</span>
-        <div class="related-list">
-          {related.map((relatedPost) => <CardCompact post={relatedPost} />)}
-        </div>
-      </section>
-    )
-  }
+  <SuggestedReads posts={suggested} />
 </BaseLayout>
