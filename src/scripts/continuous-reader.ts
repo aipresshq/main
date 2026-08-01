@@ -16,6 +16,24 @@ export function parseArticleFragment(html: string): HTMLElement | undefined {
   return article;
 }
 
+interface ContinuousLoadState {
+  loading: boolean;
+  failed: boolean;
+  cleanedUp: boolean;
+  terminal: boolean;
+}
+
+export function canStartContinuousLoad(
+  nextFragment: string | undefined,
+  state: ContinuousLoadState,
+): boolean {
+  return Boolean(nextFragment?.trim())
+    && !state.loading
+    && !state.failed
+    && !state.cleanedUp
+    && !state.terminal;
+}
+
 export function initContinuousReader(root: HTMLElement): (() => void) | undefined {
   if (typeof IntersectionObserver === 'undefined') return undefined;
 
@@ -38,6 +56,7 @@ export function initContinuousReader(root: HTMLElement): (() => void) | undefine
   let failed = false;
   let abortController: AbortController | undefined;
   let cleanedUp = false;
+  let terminal = false;
 
   const syncActiveArticle = () => {
     const activationLine = window.innerHeight * 0.28;
@@ -91,7 +110,7 @@ export function initContinuousReader(root: HTMLElement): (() => void) | undefine
 
   const loadNextArticle = async () => {
     const nextFragment = sentinel.dataset.nextFragment?.trim();
-    if (loading || failed || !nextFragment) return;
+    if (!canStartContinuousLoad(nextFragment, { loading, failed, cleanedUp, terminal })) return;
 
     loading = true;
     root.setAttribute('aria-busy', 'true');
@@ -102,7 +121,10 @@ export function initContinuousReader(root: HTMLElement): (() => void) | undefine
       const response = await fetch(nextFragment, { signal: controller.signal });
       if (!response.ok) throw new Error(`Fragment request failed with ${response.status}`);
 
-      const articleSection = parseArticleFragment(await response.text());
+      const fragmentHtml = await response.text();
+      if (cleanedUp || terminal || controller.signal.aborted) return;
+
+      const articleSection = parseArticleFragment(fragmentHtml);
       if (!articleSection) throw new Error('Fragment parsing failed');
 
       const postId = articleSection.dataset.postId!.trim();
@@ -125,6 +147,8 @@ export function initContinuousReader(root: HTMLElement): (() => void) | undefine
         sentinel.dataset.nextFragment = followingFragment;
         status.textContent = `Loaded ${headline}.`;
       } else {
+        terminal = true;
+        disarmSentinel();
         status.textContent = "You've reached the end.";
         transition.remove();
       }
@@ -140,8 +164,15 @@ export function initContinuousReader(root: HTMLElement): (() => void) | undefine
   };
 
   const sentinelObserver = new IntersectionObserver((entries) => {
+    if (cleanedUp || terminal) return;
     if (entries.some((entry) => entry.isIntersecting)) void loadNextArticle();
   }, { rootMargin: '800px 0px' });
+
+  const disarmSentinel = () => {
+    delete sentinel.dataset.nextFragment;
+    sentinelObserver.takeRecords();
+    sentinelObserver.disconnect();
+  };
 
   sentinelObserver.observe(sentinel);
 
@@ -149,7 +180,7 @@ export function initContinuousReader(root: HTMLElement): (() => void) | undefine
     if (cleanedUp) return;
     cleanedUp = true;
     abortController?.abort();
-    sentinelObserver.disconnect();
+    disarmSentinel();
     articleObserver.disconnect();
     window.removeEventListener('pagehide', cleanup);
   };

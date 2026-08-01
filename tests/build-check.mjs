@@ -2,13 +2,21 @@
 // for a static-only Astro site. Run `npm run build` first, then this script.
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import assert from 'node:assert';
-import { parseArticleFragment } from '../src/scripts/continuous-reader.ts';
+import { canStartContinuousLoad, parseArticleFragment } from '../src/scripts/continuous-reader.ts';
 import { getSuggestedPosts } from '../src/lib/recommendations.ts';
 import { getNextOlderPost, sortPostsNewestFirst } from '../src/lib/post-order.ts';
 
 const dist = (path) => readFileSync(new URL(`../dist/${path}`, import.meta.url), 'utf-8');
 const distExists = (path) => existsSync(new URL(`../dist/${path}`, import.meta.url));
 const src = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf-8');
+const controllerModules = (html) => [...html.matchAll(/<script type="module">([\s\S]*?)<\/script>/g)]
+  .map((match) => match[1])
+  .filter((script) => (
+    script.includes('DOMParser')
+    && script.includes('AbortController')
+    && script.includes('800px 0px')
+    && script.includes('pagehide')
+  ));
 
 // Only Stage renders /posts/<slug>/ links, and it is always handed an
 // already-filtered list — the nav links to /tag/… and section routes only.
@@ -109,8 +117,50 @@ check('continuous reader loads one fragment at a time and preserves navigation f
   assert.match(controller, /pagehide/);
   assert.match(controller, /failed/);
 
-  const html = dist('posts/openai-ships-new-model/index.html');
-  assert.match(html, /continuous-reader/);
+  const postFiles = readdirSync(new URL('../src/content/posts/', import.meta.url));
+  for (const file of postFiles) {
+    const id = file.replace(/\.md$/, '');
+    const html = dist(`posts/${id}/index.html`);
+    const hasNextStory = /class="continuous-next-link"/.test(html);
+    assert.equal(
+      controllerModules(html).length,
+      hasNextStory ? 1 : 0,
+      `${id} must emit one controller module exactly when it has a next story`,
+    );
+  }
+
+  for (const file of postFiles) {
+    const id = file.replace(/\.md$/, '');
+    assert.equal(controllerModules(dist(`posts/${id}/fragment/index.html`)).length, 0);
+  }
+});
+
+check('continuous reader lifecycle and terminal states reject queued loading work', () => {
+  assert.equal(canStartContinuousLoad('/fragment/', {
+    loading: false,
+    failed: false,
+    cleanedUp: false,
+    terminal: false,
+  }), true);
+
+  for (const blockedState of [
+    { loading: true, failed: false, cleanedUp: false, terminal: false },
+    { loading: false, failed: true, cleanedUp: false, terminal: false },
+    { loading: false, failed: false, cleanedUp: true, terminal: false },
+    { loading: false, failed: false, cleanedUp: false, terminal: true },
+  ]) {
+    assert.equal(canStartContinuousLoad('/fragment/', blockedState), false);
+  }
+  assert.equal(canStartContinuousLoad('', {
+    loading: false,
+    failed: false,
+    cleanedUp: false,
+    terminal: false,
+  }), false);
+
+  const controller = src('src/scripts/continuous-reader.ts');
+  assert.match(controller, /sentinelObserver\.takeRecords\(\)/);
+  assert.match(controller, /delete sentinel\.dataset\.nextFragment/);
 });
 
 check('fragment parsing accepts one marked article and rejects malformed responses', () => {

@@ -33,12 +33,16 @@ const { currentPost, nextPost } = Astro.props;
   <p class="continuous-status" aria-live="polite" aria-atomic="true"></p>
 </div>
 
-<script>
-  import { initContinuousReader } from '../scripts/continuous-reader';
+{
+  nextPost && (
+    <script>
+      import { initContinuousReader } from '../scripts/continuous-reader';
 
-  if ('IntersectionObserver' in window) {
-    document.querySelectorAll('[data-continuous-stream]').forEach((root) => {
-      if (root instanceof HTMLElement) initContinuousReader(root);
-    });
-  }
-</script>
+      if ('IntersectionObserver' in window) {
+        document.querySelectorAll('[data-continuous-stream]').forEach((root) => {
+          if (root instanceof HTMLElement) initContinuousReader(root);
+        });
+      }
+    </script>
+  )
+}
