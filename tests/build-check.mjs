@@ -15,13 +15,16 @@ const internalScaffoldingPatterns = [
   /\btest[- ]fixture\b/i,
   /\bcontent collections?\s+schema\b/i,
   /\bpostType\s*===/i,
-  /\b(?:used|exists|included|added|written|created)\s+(?:only\s+)?to\s+(?:verify|validate|populate|exercise)\b[\s\S]{0,120}\b(?:\/[a-z0-9/-]+\/\s+route|route|filters?|schema|homepage|listing|archive|component|layout|build|collection|post type)\b/i,
-  /\b(?:verify|validate|populate|exercise)(?:s|d|ing)?\b[\s\S]{0,120}\b(?:\/[a-z0-9/-]+\/\s+route|route\s+(?:filtering|filters?|rendering|build)|homepage\s+(?:ordering|section|layout)|tag\s+filtering|content\s+collections?|post\s+type)\b/i,
+  /\bused\s+(?:only\s+)?to\s+(?:verify|validate|exercise)\s+(?:the\s+)?`?\/[a-z0-9/-]+\/`?\s+route\b/i,
+  /\bused\s+(?:only\s+)?to\s+populate\s+(?:the\s+)?homepage\b/i,
+  /\b(?:post|article|copy|content|story)\s+(?:is\s+|was\s+)?used\s+(?:only\s+)?to\s+populate\s+(?:the\s+)?(?:listing|archive|suggested reads?)\b/i,
+  /\bused\s+(?:only\s+)?to\s+(?:verify|validate|exercise)\s+(?:the\s+)?(?:content collections? schema|post type|route filtering|tag filtering|homepage ordering|facts[- ]table block)\b/i,
+  /\bvalidat(?:e|es|ed|ing)\s+(?:the\s+)?(?:route filtering|tag filtering|homepage ordering|content collections? schema|post type)\b/i,
   /\b(?:route|filters?|schema|homepage|listing|archive|component|layout)\s+(?:test|testing|fixture|validation|scaffolding|commentary)\b/i,
   /\b(?:implementation|testing|SEO)\s+(?:detail|note|commentary|scaffolding|copy|language|keyword|metadata|tactic|fixture)\b/i,
   /\b(?:regression|integration|rendering|build)\s+test(?:ing)?\s+(?:copy|content|post|article|fixture|data)\b/i,
   /\b(?:post|article|copy|content|story)\s+(?:exists|is|was)\s+(?:only\s+)?for\s+(?:regression\s+|integration\s+|rendering\s+|build\s+)?testing\b/i,
-  /\/[a-z0-9/-]+\/\s+route\b[\s\S]{0,80}\b(?:filters?|filtering|ordering)\b/i,
+  /\/[a-z0-9/-]+\/\s+route\s+(?:filters?|filtering|orders?)\b/i,
 ];
 const containsInternalScaffolding = (text) => (
   internalScaffoldingPatterns.some((pattern) => pattern.test(text))
@@ -30,10 +33,42 @@ const filesUnder = (directory) => readdirSync(directory, { withFileTypes: true }
   const url = new URL(entry.name + (entry.isDirectory() ? '/' : ''), directory);
   return entry.isDirectory() ? filesUnder(url) : [url];
 });
-const renderedText = (html) => html
-  .replace(/<!--[\s\S]*?-->/g, ' ')
-  .replace(/<[^>]*>/g, ' ')
-  .replace(/&(?:nbsp|#160|#xA0);/gi, ' ');
+const decodePublicCopy = (text) => text
+  .replace(/&#x([0-9a-f]+);/gi, (_, value) => String.fromCodePoint(Number.parseInt(value, 16)))
+  .replace(/&#(\d+);/g, (_, value) => String.fromCodePoint(Number.parseInt(value, 10)))
+  .replace(/&(nbsp|amp|quot|apos|lt|gt);/gi, (_, entity) => ({
+    nbsp: ' ',
+    amp: '&',
+    quot: '"',
+    apos: "'",
+    lt: '<',
+    gt: '>',
+  })[entity.toLowerCase()]);
+const extractPublicCopy = (html) => {
+  const withoutNonCopy = html
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, ' ');
+  const metadata = [];
+
+  for (const [tag] of withoutNonCopy.matchAll(/<[^>]+>/g)) {
+    const attributes = new Map(
+      [...tag.matchAll(/\b([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/gi)]
+        .map((match) => [match[1].toLowerCase(), match[2] ?? match[3] ?? match[4]]),
+    );
+    for (const attribute of ['alt', 'title', 'aria-label']) {
+      if (attributes.has(attribute)) metadata.push(attributes.get(attribute));
+    }
+    if (/^<meta\b/i.test(tag)) {
+      const descriptionType = (attributes.get('name') ?? attributes.get('property') ?? '').toLowerCase();
+      if (['description', 'og:description', 'twitter:description'].includes(descriptionType)) {
+        metadata.push(attributes.get('content') ?? '');
+      }
+    }
+  }
+
+  const visibleText = withoutNonCopy.replace(/<[^>]*>/g, ' ');
+  return decodePublicCopy([...metadata, visibleText].join(' '));
+};
 const controllerModules = (html) => [...html.matchAll(/<script type="module">([\s\S]*?)<\/script>/g)]
   .map((match) => match[1])
   .filter((script) => (
@@ -81,6 +116,8 @@ check('publication guard catches concrete scaffolding variants without rejecting
   for (const copy of [
     'This post checks the Content Collections schema.',
     'This article is used only to verify the /trackers/ route.',
+    'This post is used to populate the homepage Trackers band.',
+    'This comparison is used to exercise the facts-table block.',
     'Copy that validates route filtering and homepage ordering.',
     'Internal test-fixture commentary for the listing.',
     'This post exists for regression testing.',
@@ -92,9 +129,45 @@ check('publication guard catches concrete scaffolding variants without rejecting
     assert.equal(containsInternalScaffolding(copy), true, `guard missed: ${copy}`);
   }
   assert.equal(
-    containsInternalScaffolding('The archive was used to verify a source quotation.'),
+    containsInternalScaffolding('The archive was used to verify a source quotation and build a reliable timeline.'),
     false,
     'ordinary source-verification prose must remain publishable',
+  );
+});
+
+check('public copy extraction includes visible metadata and excludes non-copy markup', () => {
+  const copy = extractPublicCopy(`
+    <!-- Comment test fixture -->
+    <meta name="description" content="Reader-facing summary">
+    <script>const note = 'Script test fixture';</script>
+    <style>.testing-scaffolding { display: none; }</style>
+    <img class="fixture-post" data-copy="Implementation scaffolding" alt="Cover explanation" title="Expanded image title">
+    <button aria-label="Open topics">Visible label</button>
+  `);
+
+  for (const expected of [
+    'Reader-facing summary',
+    'Cover explanation',
+    'Expanded image title',
+    'Open topics',
+    'Visible label',
+  ]) {
+    assert.ok(copy.includes(expected), `public copy omitted: ${expected}`);
+  }
+  for (const excluded of [
+    'Comment test fixture',
+    'Script test fixture',
+    'testing-scaffolding',
+    'fixture-post',
+    'Implementation scaffolding',
+  ]) {
+    assert.ok(!copy.includes(excluded), `public copy included non-reader text: ${excluded}`);
+  }
+
+  assert.equal(
+    containsInternalScaffolding(extractPublicCopy('<meta name="description" content="Placeholder fixture post">')),
+    true,
+    'reader-visible metadata must pass through the publication guard',
   );
 });
 
@@ -110,7 +183,7 @@ check('all generated public HTML is free of internal scaffolding language', () =
 
   for (const file of htmlFiles) {
     assert.equal(
-      containsInternalScaffolding(renderedText(readFileSync(file, 'utf-8'))),
+      containsInternalScaffolding(extractPublicCopy(readFileSync(file, 'utf-8'))),
       false,
       `${file.pathname} renders internal scaffolding copy`,
     );
