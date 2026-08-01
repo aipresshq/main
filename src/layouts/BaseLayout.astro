@@ -33,12 +33,7 @@ const sections = [
   { label: 'Trackers', href: '/trackers/', active: activeTab === 'trackers' },
 ];
 
-// A tag can share a section's name (e.g. the "Trackers" tag alongside the
-// /trackers/ section). Showing both renders two identical-looking nav items
-// pointing at different routes, so the tag is dropped from the nav — its
-// /tag/<slug>/ page still exists and stays reachable and indexable.
-const sectionLabels = new Set(sections.map((s) => s.label.toLowerCase()));
-const navTags = tags.filter((tag) => !sectionLabels.has(tag.toLowerCase()));
+const navTags = tags;
 ---
 
 <html lang="en">
@@ -70,16 +65,25 @@ const navTags = tags.filter((tag) => !sectionLabels.has(tag.toLowerCase()));
 						</summary>
 						<div class="menu-panel">
 							<div class="menu-grid">
-								<section class="menu-topics">
-									<h2>Topics</h2>
-									<ul class="menu-columns">
-										{tags.map((tag) => <li><a href={`/tag/${slugify(tag)}/`}>{tag}</a></li>)}
-									</ul>
-								</section>
-								<section class="menu-more">
-									<h2>More from AI Snap</h2>
-									<ul>
-										{sections.map((s) => <li><a href={s.href}>{s.label}</a></li>)}
+							<section class="menu-topics">
+								<h2>Topics</h2>
+								<ul class="menu-columns">
+										{tags.map((tag) => (
+											<li>
+												<a
+													href={`/tag/${slugify(tag)}/`}
+													aria-current={activeTag?.toLowerCase() === tag.toLowerCase() ? 'page' : undefined}
+												>
+													{tag}
+												</a>
+											</li>
+										))}
+								</ul>
+							</section>
+							<section class="menu-more">
+								<h2>More from AI Snap</h2>
+								<ul>
+										{sections.map((s) => <li><a href={s.href} aria-current={s.active ? 'page' : undefined}>{s.label}</a></li>)}
 										<li><a href={substackUrl}>Newsletter</a></li>
 									</ul>
 								</section>
@@ -105,17 +109,34 @@ const navTags = tags.filter((tag) => !sectionLabels.has(tag.toLowerCase()));
 			</header>
 
 			<nav class="section-nav" aria-label="Sections and topics" data-pagefind-ignore>
-				{sections.map((s) => <a href={s.href} class={s.active ? 'active' : ''}>{s.label}</a>)}
-				{
-					navTags.map((tag) => (
-						<a
-							href={`/tag/${slugify(tag)}/`}
-							class={activeTag?.toLowerCase() === tag.toLowerCase() ? 'active' : ''}
-						>
-							{tag}
-						</a>
-					))
-				}
+				<div class="section-links">
+					{sections.map((s) => (
+						<a href={s.href} aria-current={s.active ? 'page' : undefined}>{s.label}</a>
+					))}
+				</div>
+				<details class="topic-menu">
+					<summary>
+						<span>{activeTag ?? 'Topics'}</span>
+						<svg class="topic-menu-glyph" width="12" height="8" viewBox="0 0 12 8" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+							<path d="m1 1.5 5 5 5-5" />
+						</svg>
+					</summary>
+					<div class="topic-menu-panel">
+						<h2>Browse by topic</h2>
+						<ul class="topic-menu-list">
+							{navTags.map((tag) => (
+								<li>
+									<a
+										href={`/tag/${slugify(tag)}/`}
+										aria-current={activeTag?.toLowerCase() === tag.toLowerCase() ? 'page' : undefined}
+									>
+										{tag}
+									</a>
+								</li>
+							))}
+						</ul>
+					</div>
+				</details>
 			</nav>
 
 			<slot />

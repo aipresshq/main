@@ -488,26 +488,48 @@ check('the menu is a native details disclosure opening a full-screen overlay', (
   assert.match(css, /\.menu\[open\]\s+\.icon-open\s*\{[\s\S]*?display:\s*none/, 'hamburger is never hidden on open');
 });
 
-check('section nav links every section and topic, with Latest active on /', () => {
+check('section nav separates primary sections from a native topics disclosure', () => {
   const html = dist('index.html');
   const nav = html.slice(html.indexOf('class="section-nav"'), html.indexOf('</nav>'));
-  assert.ok(nav.includes('href="/trending/"'));
-  assert.ok(nav.includes('href="/trackers/"'));
-  for (const slug of ['ai', 'meta', 'openai', 'product-launch']) {
-    assert.ok(nav.includes(`/tag/${slug}/`), `missing nav link for /tag/${slug}/`);
+  const sectionLinks = nav.slice(nav.indexOf('class="section-links"'), nav.indexOf('</div>'));
+  const topicMenu = nav.slice(nav.indexOf('<details class="topic-menu">'));
+  const topicPanel = topicMenu.slice(topicMenu.indexOf('class="topic-menu-panel"'));
+
+  assert.match(sectionLinks, /href="\/"[^>]*aria-current="page"/, 'Latest should expose the current page on the homepage');
+  assert.ok(sectionLinks.includes('href="/trending/"'));
+  assert.ok(sectionLinks.includes('href="/trackers/"'));
+  assert.equal((sectionLinks.match(/<a\b/g) || []).length, 3, 'only primary sections belong in .section-links');
+  assert.ok(topicMenu.startsWith('<details class="topic-menu">'), 'Topics should use a native <details> disclosure');
+  assert.match(topicMenu, /<summary[^>]*>[\s\S]*?Topics[\s\S]*?<\/summary>/, 'homepage disclosure should be labelled Topics');
+  assert.ok(topicPanel.includes('Browse by topic'), 'topic panel needs an editorial index heading');
+
+  for (const slug of [
+    'ai',
+    'anthropic',
+    'comparisons',
+    'funding',
+    'google-deepmind',
+    'meta',
+    'microsoft',
+    'mistral',
+    'openai',
+    'product-launch',
+    'research',
+    'trackers',
+  ]) {
+    assert.ok(topicPanel.includes(`/tag/${slug}/`), `topic panel is missing /tag/${slug}/`);
   }
-  assert.match(nav, /href="\/"\s+class="active"/, 'Latest should be the active section on the homepage');
+  assert.ok(!sectionLinks.includes('/tag/'), 'topic links must not be flattened into the primary section list');
 });
 
-check('a tag sharing a section name is deduped from the nav but still reachable', () => {
-  const html = dist('index.html');
+check('active topic labels and current-page semantics are rendered on tag pages', () => {
+  const html = dist('tag/openai/index.html');
   const nav = html.slice(html.indexOf('class="section-nav"'), html.indexOf('</nav>'));
-  // The "Trackers" tag collides with the /trackers/ section; only the section
-  // belongs in the nav, or the two render as identical-looking twins.
-  assert.ok(!nav.includes('/tag/trackers/'), 'colliding tag should be dropped from the nav');
-  // It must remain reachable somewhere — the menu panel lists every topic.
-  assert.ok(html.includes('/tag/trackers/'), '/tag/trackers/ became unreachable from the homepage');
-  assert.ok(distExists('tag/trackers/index.html'), '/tag/trackers/ page should still be built');
+  const topicMenu = nav.slice(nav.indexOf('<details class="topic-menu">'));
+
+  assert.match(topicMenu, /<summary[^>]*>[\s\S]*?OpenAI[\s\S]*?<\/summary>/, 'active topic should replace the generic Topics label');
+  assert.match(topicMenu, /href="\/tag\/openai\/"[^>]*aria-current="page"/, 'active topic should expose aria-current="page"');
+  assert.ok(!/class="active"/.test(nav), 'current state should use semantics instead of an active-only class');
 });
 
 check('homepage lead story is the most recent post', () => {
@@ -552,7 +574,7 @@ check('/tag/openai/ shows only OpenAI posts, with that topic active in the nav',
   assert.ok(linksTo(html, 'codex-usage-limit-tracker'));
   assert.ok(!linksTo(html, 'welcome-to-ai-snap'), 'wrong-tag post leaked into /tag/openai/');
   const nav = html.slice(html.indexOf('class="section-nav"'), html.indexOf('</nav>'));
-  assert.match(nav, /href="\/tag\/openai\/"\s+class="active"/, 'OpenAI topic not marked active in the nav');
+  assert.match(nav, /href="\/tag\/openai\/"[^>]*aria-current="page"/, 'OpenAI topic not marked current in the nav');
 });
 
 check('homepage sections use three distinct editorial layouts', () => {
@@ -889,7 +911,7 @@ check('astro.config.mjs preserves site, sitemap, and image.remotePatterns config
   assert.match(config, /remotePatterns/);
 });
 
-check('responsive CSS: stage collapses to one column and the nav scrolls', () => {
+check('responsive CSS: stage collapses and topics use a contained responsive grid', () => {
   const css = src('src/styles/global.css');
   const wide = css.match(/@media \(max-width: 1080px\) \{([\s\S]*?)\n\}\n/);
   assert.ok(wide, 'missing @media (max-width: 1080px) block');
@@ -897,7 +919,20 @@ check('responsive CSS: stage collapses to one column and the nav scrolls', () =>
 
   const navBlock = css.match(/\.section-nav\s*\{([\s\S]*?)\n\}/);
   assert.ok(navBlock, 'missing .section-nav rule block');
-  assert.match(navBlock[1], /overflow-x:\s*auto/, '.section-nav should scroll rather than wrap');
+  assert.ok(!/overflow-x:\s*auto/.test(navBlock[1]), '.section-nav must not require horizontal scrolling');
+
+  const topicGrid = css.match(/\.topic-menu-list\s*\{([\s\S]*?)\n\}/);
+  assert.ok(topicGrid, 'missing .topic-menu-list rule block');
+  assert.match(topicGrid[1], /display:\s*grid/, 'topic links should use a grid');
+  assert.match(topicGrid[1], /grid-template-columns:\s*repeat\([34],\s*minmax\(0,\s*1fr\)\)/, 'desktop topic grid should use multiple fluid columns');
+
+  const narrow = css.match(/@media \(max-width: (?:620|780)px\) \{([\s\S]*?)\n\}/);
+  assert.ok(narrow, 'missing narrow viewport rules');
+  assert.match(narrow[1], /\.topic-menu-list\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/, 'mobile topic grid should reduce to two columns');
+
+  const narrowest = css.match(/@media \(max-width: 360px\) \{([\s\S]*?)\n\}/);
+  assert.ok(narrowest, 'missing narrowest viewport rules for long active topic labels');
+  assert.match(narrowest[1], /\.section-links\s*\{[\s\S]*?grid-column:\s*1\s*\/\s*-1/, 'primary sections should keep a full row when active topic labels cannot fit beside them');
 });
 
 // --- RUNNER (do not edit below this line) ---
