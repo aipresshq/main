@@ -378,20 +378,20 @@ check('related module shows tag-matched stories and never the article itself', (
   assert.ok(!related.includes('/posts/welcome-to-ai-snap/'), 'unrelated story leaked into Related');
 });
 
-check('article pages render five newest other posts in the Latest rail', () => {
-  const route = src('src/pages/posts/[id].astro');
-  assert.match(route, /const latest = allPosts/);
-  assert.match(route, /p\.id !== post\.id/);
-  assert.match(route, /\.slice\(0, 5\)/);
-  assert.ok(route.includes('<ArticleLatest posts={latest} />'));
-
+check('article Latest rail renders the five newest other posts in order', () => {
   const html = dist('posts/openai-ships-new-model/index.html');
   const start = html.indexOf('class="article-latest"');
   const end = html.indexOf('</aside>', start);
   const latest = html.slice(start, end);
   assert.ok(start >= 0 && end > start, 'Latest sidebar missing');
-  assert.ok(!latest.includes('/posts/openai-ships-new-model/'), 'current post leaked into Latest');
-  assert.equal((latest.match(/class="latest-story"/g) || []).length, 5);
+  const latestUrls = [...latest.matchAll(/class="latest-story" href="([^"]+)"/g)].map((match) => match[1]);
+  assert.deepEqual(latestUrls, [
+    '/posts/codex-usage-limit-tracker/',
+    '/posts/welcome-to-ai-snap/',
+    '/posts/claude-usage-limit-tracker/',
+    '/posts/gemini-rate-limit-tracker/',
+    '/posts/claude-vs-chatgpt-vs-gemini/',
+  ]);
 });
 
 check('article Latest rail uses the approved responsive layout', () => {
@@ -403,6 +403,9 @@ check('article Latest rail uses the approved responsive layout', () => {
   assert.match(layout[1], /gap:\s*56px/);
   assert.match(latest[1], /position:\s*sticky/);
   assert.match(css, /@media \(max-width: 1080px\)[\s\S]*?\.article-layout\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 760px\)/);
+  assert.match(css, /@media \(max-width: 1080px\)[\s\S]*?\.article-layout\s*\{[\s\S]*?gap:\s*0/);
+  assert.match(css, /@media \(max-width: 1080px\)[\s\S]*?\.article-latest\s*\{[\s\S]*?position:\s*static/);
+  assert.match(css, /@media \(max-width: 1080px\)[\s\S]*?\.latest-list\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(css, /@media \(max-width: 620px\)[\s\S]*?\.latest-list\s*\{[\s\S]*?grid-template-columns:\s*1fr/);
 });
 

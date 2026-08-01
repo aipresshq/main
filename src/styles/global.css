@@ -1501,6 +1501,7 @@ img {
 
   .article-layout {
     grid-template-columns: minmax(0, 760px);
+    gap: 0;
     justify-content: center;
   }
 
