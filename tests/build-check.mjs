@@ -452,6 +452,24 @@ check('article Latest rail uses the approved responsive layout', () => {
   assert.match(css, /@media \(max-width: 620px\)[\s\S]*?\.latest-list\s*\{[\s\S]*?grid-template-columns:\s*1fr/);
 });
 
+check('author pages render profiles and every authored story newest first', () => {
+  assert.ok(distExists('authors/ai-snap-editorial/index.html'));
+  const html = dist('authors/ai-snap-editorial/index.html');
+  assert.ok(html.includes('class="author-profile"'));
+  assert.ok(html.includes('AI Snap Editorial'));
+  assert.ok(html.includes('Editorial Desk'));
+  assert.ok(html.includes('11 published stories'));
+
+  const urls = [...html.matchAll(/class="author-story" href="([^"]+)"/g)].map((match) => match[1]);
+  assert.equal(urls.length, 11);
+  assert.equal(urls[0], '/posts/openai-ships-new-model/');
+  assert.equal(urls[10], '/posts/copilot-pricing-tracker/');
+
+  const schemas = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
+    .map((match) => JSON.parse(match[1]));
+  assert.ok(schemas.some((schema) => schema['@type'] === 'Person'));
+});
+
 check('footer renders the newsletter CTA, wordmark, columns and base line', () => {
   const html = dist('index.html');
   const footer = html.slice(html.indexOf('class="site-footer"'));

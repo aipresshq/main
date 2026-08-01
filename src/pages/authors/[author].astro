@@ -1,0 +1,85 @@
+---
+import { getCollection, type CollectionEntry } from 'astro:content';
+import AuthorStoryCard from '../../components/AuthorStoryCard.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { formatEditionDate } from '../../lib/date';
+
+export async function getStaticPaths() {
+  const [authors, allPosts] = await Promise.all([
+    getCollection('authors'),
+    getCollection('posts'),
+  ]);
+
+  return authors.map((author) => ({
+    params: { author: author.id },
+    props: { author, allPosts },
+  }));
+}
+
+interface Props {
+  author: CollectionEntry<'authors'>;
+  allPosts: CollectionEntry<'posts'>[];
+}
+
+const { author, allPosts } = Astro.props as Props;
+const posts = allPosts
+  .filter((post) => post.data.author.id === author.id)
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf() || a.id.localeCompare(b.id));
+const tags = [...new Set(allPosts.flatMap((post) => post.data.tags))].sort();
+const site = Astro.site ?? 'https://aisnap.in';
+const authorUrl = new URL(`/authors/${author.id}/`, site).href;
+const socialLinks = [author.data.website, author.data.x, author.data.linkedin]
+  .filter((url): url is string => Boolean(url));
+const schema = {
+  '@context': 'https://schema.org',
+  '@type': 'Person',
+  name: author.data.name,
+  description: author.data.bio,
+  image: new URL(author.data.avatar, site).href,
+  url: authorUrl,
+  sameAs: socialLinks,
+};
+---
+
+<BaseLayout
+  title={`${author.data.name} — AI Snap`}
+  description={author.data.bio}
+  tags={tags}
+  editionDate={posts[0] && formatEditionDate(posts[0].data.pubDate)}
+>
+  <script type="application/ld+json" set:html={JSON.stringify(schema)} />
+
+  <main class="author-page">
+    <header class="author-profile">
+      <img class="author-profile-avatar" src={author.data.avatar} alt="" />
+      <div class="author-profile-copy">
+        <span class="label author-profile-kicker">Author</span>
+        <h1>{author.data.name}</h1>
+        <p class="author-profile-role">{author.data.role}</p>
+        <p class="author-profile-bio">{author.data.bio}</p>
+      </div>
+      <div class="author-profile-aside">
+        <p class="author-story-count">{posts.length} published {posts.length === 1 ? 'story' : 'stories'}</p>
+        {
+          socialLinks.length > 0 && (
+            <nav class="author-socials" aria-label={`${author.data.name} links`}>
+              {author.data.website && <a href={author.data.website}>Website</a>}
+              {author.data.x && <a href={author.data.x}>X</a>}
+              {author.data.linkedin && <a href={author.data.linkedin}>LinkedIn</a>}
+            </nav>
+          )
+        }
+      </div>
+    </header>
+
+    <section class="author-archive" aria-labelledby="author-stories-heading">
+      <div class="author-archive-heading">
+        <span class="label">Archive</span>
+        <h2 id="author-stories-heading">Published stories</h2>
+      </div>
+      {posts.length === 0
+        ? <p class="author-empty">No published stories yet.</p>
+        : <div class="author-story-grid">{posts.map((post) => <AuthorStoryCard post={post} />)}</div>}
+    </section>
+  </main>
+</BaseLayout>
