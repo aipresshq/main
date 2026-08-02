@@ -756,7 +756,7 @@ check('homepage renders the shell: masthead, dateline, nav, and no persistent su
   assert.ok(!headerWithoutMenuPanel.includes('subscribe-button'), 'header chrome outside the Menu dropdown should not render a subscribe button');
 });
 
-check('the menu is a native details disclosure opening a compact dropdown', () => {
+check('the menu is a native details disclosure opening a full-screen overlay', () => {
   const html = dist('index.html');
   assert.ok(html.includes('<details class="menu">'), 'menu should be a native <details> element');
   assert.ok(html.includes('class="menu-panel"'), 'menu panel not rendered');
@@ -775,8 +775,8 @@ check('the menu is a native details disclosure opening a compact dropdown', () =
   const css = src('src/styles/global.css');
   const panel = css.match(/\.menu-panel\s*\{([\s\S]*?)\n\}/);
   assert.ok(panel, 'missing .menu-panel rule block');
-  assert.match(panel[1], /position:\s*absolute/, 'menu panel should be an anchored dropdown, not a full-screen overlay');
-  assert.ok(!/inset:\s*0/.test(panel[1]), 'menu panel should not be inset 0 — that would cover the viewport');
+  assert.match(panel[1], /position:\s*fixed/, 'menu panel should cover the viewport');
+  assert.match(panel[1], /inset:\s*0/, 'menu panel should be inset 0 to fill the screen');
   assert.match(css, /\.menu\[open\]\s+\.icon-close\s*\{[\s\S]*?display:\s*block/, 'close glyph is never revealed on open');
   assert.match(css, /\.menu\[open\]\s+\.icon-open\s*\{[\s\S]*?display:\s*none/, 'hamburger is never hidden on open');
 });
