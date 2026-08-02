@@ -115,6 +115,7 @@ img {
 
 .site-header {
   margin-bottom: 22px;
+  border-top: 4px solid var(--accent);
 }
 
 .site-header-main {

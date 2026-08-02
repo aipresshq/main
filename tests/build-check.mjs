@@ -661,6 +661,8 @@ check('global.css defines the theme tokens and required classes', () => {
   ]) {
     assert.ok(css.includes(cls), `missing class ${cls}`);
   }
+  const header = css.match(/\.site-header\s*\{([\s\S]*?)\n\}/);
+  assert.match(header[1], /border-top:\s*4px solid var\(--accent\)/, 'header accent rule is missing');
 });
 
 check('layout is full width — no max-width cap or raised frame card', () => {
