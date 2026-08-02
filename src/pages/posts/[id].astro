@@ -68,7 +68,7 @@ const schema = {
   <ContinuousReader currentPost={post} nextPost={nextPost}>
     <div class="article-layout">
       <ArticleContent post={post} author={author} />
-      <ArticleLatest posts={latest} />
+      <ArticleLatest posts={latest} currentPost={post} allPosts={allPosts} />
     </div>
 
     <SuggestedReads posts={suggested} articleId={post.id} />

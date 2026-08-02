@@ -404,7 +404,7 @@ check('article fragments are canonical noindex documents with one append-safe st
     assert.match(html, new RegExp(`data-post-url="/posts/${id}/"`));
     assert.match(html, /data-document-title=/);
     assert.ok(!html.includes('class="topbar"'), 'fragment duplicated the global header');
-    assert.ok(!html.includes('class="article-latest"'), 'fragment duplicated the Latest rail');
+    assert.ok(!html.includes('class="article-sidebar"'), 'fragment duplicated the article sidebar');
     assert.ok(!html.includes('class="site-footer"'), 'fragment duplicated the footer');
     assert.ok(!html.includes('application/ld+json'), 'fragment duplicated article schema');
     assert.ok(!html.includes('data-continuous-stream'), 'fragment nested another controller');
@@ -596,7 +596,7 @@ check('post listings resolve author references into display names', () => {
   assert.ok(!home.includes('[object Object]'), 'homepage leaked an unresolved author reference');
 
   const article = dist('posts/openai-ships-new-model/index.html');
-  const latest = article.slice(article.indexOf('class="article-latest"'), article.indexOf('</aside>', article.indexOf('class="article-latest"')));
+  const latest = article.slice(article.indexOf('class="article-sidebar"'), article.indexOf('</aside>', article.indexOf('class="article-sidebar"')));
   assert.ok(latest.includes('AI Snap Editorial'), 'Latest rail should use the author profile name');
   assert.ok(!latest.includes('[object Object]'), 'Latest rail leaked an unresolved author reference');
 });
@@ -991,6 +991,8 @@ check('article page renders the fixed §4 template on the site shell', () => {
   assert.ok(html.includes('class="article-title"'), 'missing headline');
   assert.ok(html.includes('class="article-standfirst"'), 'missing standfirst');
   assert.ok(html.includes('class="byline-name"'), 'missing byline');
+  assert.ok(html.includes('class="article-figure"'), 'missing hero figure');
+  assert.ok(html.includes('class="article-sidebar"'), 'missing article sidebar');
   assert.ok(html.includes('Photo: Unsplash'), 'missing cover credit');
   assert.match(html, /Source:[\s\S]*?developers\.openai\.com/, 'missing attributed primary-source link');
   assert.ok(html.includes('class="article-tags"'), 'missing tag list');
@@ -1075,15 +1077,27 @@ check('article canvas is full width while prose keeps a readable measure', () =>
   const css = src('src/styles/global.css');
   const layout = css.match(/\.article-layout\s*\{([\s\S]*?)\n\}/);
   const measure = css.match(/\.article-measure\s*\{([\s\S]*?)\n\}/);
-  assert.match(layout[1], /grid-template-columns:\s*minmax\(0, 1fr\) 340px/);
-  assert.match(layout[1], /gap:\s*56px/);
+  assert.match(layout[1], /grid-template-columns:\s*minmax\(0, 1fr\) 380px/);
+  assert.match(layout[1], /gap:\s*52px/);
   assert.ok(!/max-width/.test(layout[1]), 'article canvas should not keep the old width cap');
   assert.match(measure[1], /760px/);
 });
 
+check('all standalone articles share the same hero and sidebar shell', () => {
+  const postFiles = readdirSync(new URL('../src/content/posts/', import.meta.url));
+  for (const file of postFiles) {
+    const id = file.replace(/\.md$/, '');
+    const html = dist(`posts/${id}/index.html`);
+    assert.ok(html.includes('class="article-layout"'), `${id} is missing the article layout`);
+    assert.ok(html.includes('class="article-figure"'), `${id} is missing the article hero`);
+    assert.ok(html.includes('class="article-sidebar"'), `${id} is missing the article sidebar`);
+    assert.ok(html.includes('sidebar-trending'), `${id} is missing the Trending sidebar module`);
+  }
+});
+
 check('article Latest rail renders the five newest other posts in order', () => {
   const html = dist('posts/openai-ships-new-model/index.html');
-  const start = html.indexOf('class="article-latest"');
+  const start = html.indexOf('class="article-sidebar"');
   const end = html.indexOf('</aside>', start);
   const latest = html.slice(start, end);
   assert.ok(start >= 0 && end > start, 'Latest sidebar missing');
@@ -1095,20 +1109,22 @@ check('article Latest rail renders the five newest other posts in order', () => 
     '/posts/gemini-rate-limit-tracker/',
     '/posts/claude-vs-chatgpt-vs-gemini/',
   ]);
+  assert.ok(latest.includes('sidebar-trending'), 'Trending sidebar module missing');
+  assert.ok(latest.includes('class="sidebar-subscribe"'), 'Subscribe sidebar module missing');
 });
 
-check('article Latest rail uses the approved responsive layout', () => {
+check('article sidebar uses the approved responsive layout', () => {
   const css = src('src/styles/global.css');
   const layout = css.match(/\.article-layout\s*\{([\s\S]*?)\n\}/);
-  const latest = css.match(/\.article-latest\s*\{([\s\S]*?)\n\}/);
-  assert.ok(layout && latest);
-  assert.match(layout[1], /grid-template-columns:\s*minmax\(0, 1fr\) 340px/);
-  assert.match(layout[1], /gap:\s*56px/);
-  assert.match(latest[1], /position:\s*sticky/);
-  assert.match(css, /@media \(max-width: 1080px\)[\s\S]*?\.article-layout\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 760px\)/);
-  assert.match(css, /@media \(max-width: 1080px\)[\s\S]*?\.article-layout\s*\{[\s\S]*?gap:\s*0/);
-  assert.match(css, /@media \(max-width: 1080px\)[\s\S]*?\.article-latest\s*\{[\s\S]*?position:\s*static/);
-  assert.match(css, /@media \(max-width: 1080px\)[\s\S]*?\.latest-list\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
+  const sidebar = css.match(/\.article-sidebar\s*\{([\s\S]*?)\n\}/);
+  assert.ok(layout && sidebar);
+  assert.match(layout[1], /grid-template-columns:\s*minmax\(0, 1fr\) 380px/);
+  assert.match(layout[1], /gap:\s*52px/);
+  assert.match(sidebar[1], /position:\s*sticky/);
+  assert.match(css, /@media \(max-width: 900px\)[\s\S]*?\.article-layout\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 760px\)/);
+  assert.match(css, /@media \(max-width: 900px\)[\s\S]*?\.article-layout\s*\{[\s\S]*?gap:\s*0/);
+  assert.match(css, /@media \(max-width: 900px\)[\s\S]*?\.article-sidebar\s*\{[\s\S]*?position:\s*static/);
+  assert.match(css, /@media \(max-width: 900px\)[\s\S]*?\.latest-list\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(css, /@media \(max-width: 620px\)[\s\S]*?\.latest-list\s*\{[\s\S]*?grid-template-columns:\s*1fr/);
 });
 

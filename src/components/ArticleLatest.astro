@@ -5,9 +5,15 @@ import { getAuthorId } from '../lib/author-reference';
 
 export interface Props {
   posts: CollectionEntry<'posts'>[];
+  currentPost: CollectionEntry<'posts'>;
+  allPosts: CollectionEntry<'posts'>[];
 }
 
-const { posts } = Astro.props;
+const { posts, currentPost, allPosts } = Astro.props;
+const substackUrl = import.meta.env.PUBLIC_SUBSTACK_URL || 'https://aisnap.substack.com';
+const sortNewestFirst = (a: CollectionEntry<'posts'>, b: CollectionEntry<'posts'>) => (
+  b.data.pubDate.valueOf() - a.data.pubDate.valueOf() || a.id.localeCompare(b.id)
+);
 const postsWithAuthors = await Promise.all(posts.map(async (post) => {
   const authorId = getAuthorId(post.data.author);
   const author = await getEntry('authors', authorId);
@@ -16,20 +22,85 @@ const postsWithAuthors = await Promise.all(posts.map(async (post) => {
   }
   return { post, author };
 }));
+const topic = currentPost.data.tags[0];
+const trendingPosts = allPosts
+  .filter((post) => post.id !== currentPost.id && post.data.featured)
+  .sort(sortNewestFirst)
+  .slice(0, 5);
+const topicPosts = allPosts
+  .filter((post) => post.id !== currentPost.id && post.data.tags.includes(topic))
+  .sort(sortNewestFirst)
+  .slice(0, 3);
 ---
 
-<aside class="article-latest" aria-labelledby="latest-heading" data-pagefind-ignore>
-  <h2 id="latest-heading" class="latest-heading">Latest</h2>
-  <div class="latest-list">
-    {postsWithAuthors.map(({ post: entry, author }) => (
-      <a class="latest-story" href={`/posts/${entry.id}/`}>
-        <img src={entry.data.cover} alt="" loading="lazy" />
-        <span class="latest-story-copy">
-          <span class="label latest-story-tag">{entry.data.tags[0]}</span>
-          <span class="latest-story-title">{entry.data.title}</span>
-          <span class="latest-story-meta">{author.data.name} · {formatPostDate(entry.data.pubDate)}</span>
-        </span>
-      </a>
-    ))}
-  </div>
+<aside class="article-sidebar" aria-label="Article sidebar" data-pagefind-ignore>
+  <section class="sidebar-section sidebar-latest" aria-labelledby="latest-heading">
+    <div class="sidebar-heading">
+      <span class="label sidebar-eyebrow">Fresh from the desk</span>
+      <h2 id="latest-heading">Latest</h2>
+    </div>
+    <div class="latest-list">
+      {postsWithAuthors.map(({ post: entry, author }) => (
+        <a class="latest-story" href={`/posts/${entry.id}/`}>
+          <img src={entry.data.cover} alt="" loading="lazy" />
+          <span class="latest-story-copy">
+            <span class="label latest-story-tag">{entry.data.tags[0]}</span>
+            <span class="latest-story-title">{entry.data.title}</span>
+            <span class="latest-story-meta">{author.data.name} · {formatPostDate(entry.data.pubDate)}</span>
+          </span>
+        </a>
+      ))}
+    </div>
+  </section>
+
+  {
+    trendingPosts.length > 0 && (
+      <section class="sidebar-section sidebar-trending" aria-labelledby="trending-heading">
+        <div class="sidebar-heading">
+          <span class="label sidebar-eyebrow">Editorial signal</span>
+          <h2 id="trending-heading">Trending now</h2>
+        </div>
+        <ol class="trending-list">
+          {trendingPosts.map((entry, index) => (
+            <li>
+              <span class="trending-rank">{String(index + 1).padStart(2, '0')}</span>
+              <a href={`/posts/${entry.id}/`}>
+                <span class="label trending-topic">{entry.data.tags[0]}</span>
+                <span class="trending-title">{entry.data.title}</span>
+              </a>
+            </li>
+          ))}
+        </ol>
+      </section>
+    )
+  }
+
+  {
+    topicPosts.length > 0 && (
+      <section class="sidebar-section sidebar-topic" aria-labelledby="topic-heading">
+        <div class="sidebar-heading">
+          <span class="label sidebar-eyebrow">Keep exploring</span>
+          <h2 id="topic-heading">Latest in {topic}</h2>
+        </div>
+        <div class="topic-story-list">
+          {topicPosts.map((entry) => (
+            <a class="topic-story" href={`/posts/${entry.id}/`}>
+              <img src={entry.data.cover} alt="" loading="lazy" />
+              <span class="topic-story-copy">
+                <span class="topic-story-title">{entry.data.title}</span>
+                <span class="topic-story-meta">{formatPostDate(entry.data.pubDate)}</span>
+              </span>
+            </a>
+          ))}
+        </div>
+      </section>
+    )
+  }
+
+  <a class="sidebar-subscribe" href={substackUrl}>
+    <span class="label sidebar-subscribe-label">The daily briefing</span>
+    <strong>AI, without the noise.</strong>
+    <span>Get the sharpest stories and useful context in your inbox.</span>
+    <span class="sidebar-subscribe-action">Subscribe now</span>
+  </a>
 </aside>

@@ -1237,8 +1237,8 @@ a.byline:focus-visible {
    track while .article-measure below keeps the actual reading measure calm. */
 .article-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
-  gap: 56px;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 52px;
   padding-top: 16px;
 }
 
@@ -1292,11 +1292,14 @@ a.byline:focus-visible {
 }
 
 .article-figure {
-  margin: 32px 0;
+  margin: 32px 0 44px;
+  overflow: hidden;
 }
 
 .article-figure img {
   width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
   border-radius: var(--radius-card);
 }
 
@@ -1447,22 +1450,43 @@ a.byline:focus-visible {
   color: var(--text);
 }
 
-/* Latest is a reading companion on wide screens: it stays alongside the
-   article without competing with the prose measure. */
-.article-latest {
+/* The sidebar stays alongside the full article canvas on desktop. Its modules
+   make the rail useful beyond a single chronological list. */
+.article-sidebar {
   position: sticky;
   top: 24px;
   align-self: start;
+  display: grid;
+  gap: 36px;
+  min-width: 0;
 }
 
-.latest-heading {
+.sidebar-section {
+  min-width: 0;
+}
+
+.sidebar-heading {
+  margin-bottom: 14px;
+}
+
+.sidebar-heading h2 {
   margin: 0;
-  padding-bottom: 12px;
-  border-bottom: 2px solid var(--mark);
   font-family: var(--font-display);
-  font-size: 1.6rem;
+  font-size: 1.7rem;
   font-weight: 500;
   line-height: 1.1;
+}
+
+.sidebar-eyebrow {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--mark);
+}
+
+.sidebar-latest,
+.sidebar-topic {
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
 }
 
 .latest-list {
@@ -1524,6 +1548,154 @@ a.byline:focus-visible {
 .latest-story:focus-visible {
   outline: 2px solid var(--mark);
   outline-offset: 4px;
+}
+
+.sidebar-trending {
+  padding: 24px;
+  background: var(--band-bg);
+  color: var(--band-ink);
+  border-radius: var(--radius-card);
+}
+
+.sidebar-trending .sidebar-eyebrow,
+.trending-topic {
+  color: var(--accent);
+}
+
+.sidebar-trending .sidebar-heading {
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.trending-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.trending-list li {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 12px;
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.trending-list li:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.trending-rank {
+  padding-top: 2px;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  color: var(--accent);
+}
+
+.trending-topic {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.trending-title {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  line-height: 1.2;
+}
+
+.trending-list a:hover .trending-title,
+.trending-list a:focus-visible .trending-title {
+  color: var(--accent);
+}
+
+.topic-story-list {
+  display: grid;
+  gap: 16px;
+}
+
+.topic-story {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.topic-story img {
+  width: 76px;
+  height: 76px;
+  object-fit: cover;
+}
+
+.topic-story-copy {
+  min-width: 0;
+}
+
+.topic-story-title {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.topic-story-meta {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.topic-story:hover .topic-story-title,
+.topic-story:focus-visible .topic-story-title {
+  color: var(--mark);
+}
+
+.sidebar-subscribe {
+  display: grid;
+  gap: 16px;
+  padding: 28px 24px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-raised);
+}
+
+.sidebar-subscribe-label {
+  color: var(--accent-ink);
+}
+
+.sidebar-subscribe strong {
+  max-width: 10ch;
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 0.98;
+}
+
+.sidebar-subscribe > span:not(.label):not(.sidebar-subscribe-action) {
+  max-width: 28ch;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.sidebar-subscribe-action {
+  justify-self: start;
+  padding: 9px 14px;
+  border: 1px solid var(--accent-ink);
+  border-radius: var(--radius-pill);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sidebar-subscribe:hover .sidebar-subscribe-action,
+.sidebar-subscribe:focus-visible .sidebar-subscribe-action {
+  background: var(--accent-ink);
+  color: var(--accent);
 }
 
 /* The recommendation strip intentionally is the page's one bolder beat:
@@ -1971,24 +2143,6 @@ a.byline:focus-visible {
     grid-template-columns: 1fr;
   }
 
-  .article-layout {
-    grid-template-columns: minmax(0, 760px);
-    gap: 0;
-    justify-content: center;
-  }
-
-  .article-latest {
-    position: static;
-    margin-top: 48px;
-    padding-top: 32px;
-    border-top: 1px solid var(--border);
-  }
-
-  .latest-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: 32px;
-  }
-
   .stage-lead {
     min-height: 420px;
   }
@@ -2035,6 +2189,24 @@ a.byline:focus-visible {
 
   .footer-headline {
     max-width: none;
+  }
+
+  .article-layout {
+    grid-template-columns: minmax(0, 760px);
+    gap: 0;
+    justify-content: center;
+  }
+
+  .article-sidebar {
+    position: static;
+    margin-top: 48px;
+    padding-top: 32px;
+    border-top: 1px solid var(--border);
+  }
+
+  .latest-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 32px;
   }
 
   .author-profile {
