@@ -14,14 +14,13 @@
   --border: rgba(0, 0, 0, 0.16);
   --text: #0a0a0a;
   --text-muted: #686868;
-  --accent: #f2e14c;
-  --accent-ink: #0a0a0a;
   --mark: var(--text);
   --shadow-raised: 0 20px 50px rgba(0, 0, 0, 0.16);
   --card-bg: #ffffff;
   --card-bg-hover: #f1f1f1;
 
-  /* Every field is black or white; yellow is reserved for active signals. */
+  /* Every field is black or white. Signal comes from inversion, weight and
+     rules, never from colour. */
   --band-bg: #0a0a0a;
   --band-ink: #ffffff;
   --band-ink-muted: rgba(255, 255, 255, 0.72);
@@ -49,7 +48,6 @@
   --border: rgba(255, 255, 255, 0.16);
   --text: #ffffff;
   --text-muted: #a6a6a6;
-  --mark: var(--accent);
   --shadow-raised: 0 20px 50px rgba(0, 0, 0, 0.55);
   --card-bg: #151515;
   --card-bg-hover: #222222;
@@ -115,15 +113,18 @@ img {
 
 .site-header {
   margin-bottom: 22px;
-  border-top: 4px solid var(--accent);
+  border-top: 4px solid var(--text);
 }
 
-.site-header-main {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+/* Tier 1: a slim utility row above the masthead. */
+.utility-strip {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 24px;
-  padding: 18px 0 16px;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
 }
 
 .header-edition {
@@ -144,9 +145,12 @@ img {
   min-width: 0;
 }
 
+/* Tier 2: the masthead stands alone, full width, generously spaced. */
 .masthead {
+  display: block;
+  padding: 32px 0 28px;
   font-family: var(--font-masthead);
-  font-size: clamp(2.7rem, 4vw, 3.7rem);
+  font-size: clamp(2.8rem, 5vw, 4.2rem);
   font-weight: 400;
   line-height: 1;
   letter-spacing: -0.04em;
@@ -181,9 +185,9 @@ img {
 }
 
 .menu-trigger:hover {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-ink);
+  background: var(--bg);
+  border-color: var(--text);
+  color: var(--text);
 }
 
 .menu-trigger-label {
@@ -216,9 +220,9 @@ img {
 
 .theme-toggle:hover,
 .theme-toggle:focus-visible {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--accent-ink);
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--bg);
 }
 
 .theme-toggle span {
@@ -238,19 +242,13 @@ html[data-theme='dark'] .theme-icon-moon {
 }
 
 /* --------------------------------------------------------------------------
-   Full-screen menu: a native <details> disclosure, so it opens, closes and
-   takes keyboard focus without a line of JavaScript. Its restrained surface
-   follows the active theme while the accent stays reserved for signals.
+   Compact menu dropdown: a native <details> disclosure anchored under its
+   trigger, not a full-screen takeover. Topics already have a dedicated
+   dropdown in the categories bar, so this one only holds site-wide links.
    -------------------------------------------------------------------------- */
 
 .menu {
-  position: static;
-}
-
-/* Above the overlay, so the close control stays reachable while it's open */
-.menu > summary {
   position: relative;
-  z-index: 70;
 }
 
 .icon-close {
@@ -265,88 +263,74 @@ html[data-theme='dark'] .theme-icon-moon {
   display: block;
 }
 
-/* Inverted while open so the close control stays legible on the accent field. */
+/* Forced to a fixed ink chip while open, regardless of theme, so the close
+   control reads as pressed in both light and dark mode. */
 .menu[open] > .menu-trigger {
-  background: var(--accent-ink);
+  background: #0a0a0a;
   border-color: transparent;
-  color: var(--accent);
+  color: #ffffff;
 }
 
 .menu-panel {
-  position: fixed;
-  inset: 0;
+  position: absolute;
   z-index: 60;
-  overflow-y: auto;
-  padding: 120px 32px 56px;
-  border-top: 3px solid var(--accent);
-  background: var(--bg);
-  color: var(--text);
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(280px, calc(100vw - (2 * var(--gutter))));
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--text);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-raised);
 }
 
-/* Stretched rather than start-aligned, so the rule between the two groups
-   runs the full height of the taller column. */
-.menu-grid {
-  display: grid;
-  grid-template-columns: 1fr 360px;
-  gap: 48px;
-}
-
-.menu-panel h2 {
-  margin: 0 0 28px;
-  font-family: var(--font-display);
-  font-size: 1.9rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--mark);
-}
-
-.menu-panel ul {
-  margin: 0;
+.menu-list {
+  margin: 0 0 18px;
   padding: 0;
   list-style: none;
 }
 
-/* Topics flow into columns, so the list stays balanced at any tag count */
-.menu-columns {
-  columns: 2;
-  column-gap: 48px;
+.menu-list li {
+  margin-bottom: 4px;
 }
 
-.menu-panel li {
-  margin-bottom: 22px;
-  break-inside: avoid;
-}
-
-.menu-panel a {
-  font-size: 1.15rem;
+.menu-list a {
+  display: block;
+  padding: 10px 0;
+  font-size: 1rem;
   font-weight: 500;
   color: var(--text);
-  opacity: 0.85;
+  border-bottom: 1px solid var(--border);
 }
 
-.menu-panel a:hover {
-  opacity: 1;
-  text-decoration: underline;
-  text-underline-offset: 4px;
+.menu-list a[aria-current='page'] {
+  font-weight: 700;
 }
 
-.menu-more {
-  padding-left: 48px;
-  border-left: 1px solid var(--border);
+.menu-list a:hover {
+  color: var(--mark);
+}
+
+.menu-subscribe {
+  display: block;
+  width: 100%;
+  text-align: center;
 }
 
 .subscribe-button {
   padding: 12px 22px;
   border-radius: var(--radius-pill);
-  background: var(--accent);
-  color: var(--accent-ink);
+  border: 1px solid var(--text);
+  background: var(--text);
+  color: var(--bg);
   font-size: 0.9rem;
   font-weight: 600;
   white-space: nowrap;
 }
 
 .subscribe-button:hover {
-  filter: brightness(1.08);
+  background: var(--bg);
+  color: var(--text);
 }
 
 /* --------------------------------------------------------------------------
@@ -449,34 +433,26 @@ html[data-theme='dark'] .theme-icon-moon {
 }
 
 /* --------------------------------------------------------------------------
-   Section nav: primary desks plus a native editorial topic index
+   Tier 3: categories bar. Full-bleed solid ink, directly under the masthead,
+   the way a section-front rule runs edge to edge in print. Section tabs and
+   the Topics dropdown share the bar; Topics is the one place tags are
+   browsed — the compact Menu dropdown does not repeat them.
    -------------------------------------------------------------------------- */
 
-.header-nav-row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: stretch;
-  gap: 18px;
-}
-
-.header-nav-caption {
+.categories-bar {
   display: flex;
-  align-items: center;
-  color: var(--mark);
-}
-
-.section-nav {
-  position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  flex-wrap: wrap;
   align-items: stretch;
-  min-width: 0;
+  gap: 8px;
+  margin: 0 calc(-1 * var(--gutter));
+  padding: 0 var(--gutter);
+  background: var(--band-bg);
+  color: var(--band-ink);
 }
 
 .section-links {
   display: flex;
   align-items: stretch;
-  min-width: 0;
 }
 
 .section-links a {
@@ -488,7 +464,7 @@ html[data-theme='dark'] .theme-icon-moon {
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--band-ink-muted);
   white-space: nowrap;
 }
 
@@ -498,7 +474,7 @@ html[data-theme='dark'] .theme-icon-moon {
 
 .section-links a:hover,
 .section-links a[aria-current='page'] {
-  color: var(--text);
+  color: var(--band-ink);
 }
 
 .section-links a[aria-current='page']::after {
@@ -507,7 +483,7 @@ html[data-theme='dark'] .theme-icon-moon {
   bottom: -1px;
   left: 18px;
   height: 2px;
-  background: var(--mark);
+  background: var(--band-ink);
   content: '';
 }
 
@@ -517,25 +493,20 @@ html[data-theme='dark'] .theme-icon-moon {
 
 .topic-menu {
   position: relative;
-  min-width: 0;
-  border-left: 0;
+  margin-left: auto;
 }
 
 .topic-menu > summary {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 10px;
+  gap: 8px;
   height: 100%;
-  min-height: 48px;
-  padding: 0 18px;
-  border: 1px solid var(--text);
+  padding: 15px 0;
   list-style: none;
-  background: var(--text);
-  color: var(--bg);
+  color: var(--band-ink);
   cursor: pointer;
   font-size: 0.78rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -545,16 +516,9 @@ html[data-theme='dark'] .theme-icon-moon {
   display: none;
 }
 
-.topic-menu > summary:hover {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--accent-ink);
-}
-
+.topic-menu > summary:hover,
 .topic-menu[open] > summary {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--accent-ink);
+  color: var(--band-ink-muted);
 }
 
 .topic-menu-glyph {
@@ -617,7 +581,7 @@ html[data-theme='dark'] .theme-icon-moon {
 .topic-menu > summary:focus-visible,
 .topic-menu-list a:focus-visible {
   outline: 2px solid var(--mark);
-  outline-offset: -3px;
+  outline-offset: 2px;
 }
 
 /* --------------------------------------------------------------------------
@@ -703,7 +667,7 @@ html[data-theme='dark'] .theme-icon-moon {
   font-weight: 500;
   line-height: 1.04;
   letter-spacing: -0.01em;
-  color: var(--accent);
+  color: var(--text);
   text-shadow: 0 2px 14px rgba(0, 0, 0, 0.55);
 }
 
@@ -965,9 +929,9 @@ a.byline:focus-visible {
   padding: 40px var(--gutter) 56px;
   background: var(--band-bg);
   color: var(--band-ink);
-  /* The band paints its own contrast, so its rule takes the accent rather
-     than the theme's border colour. */
-  --rule: var(--accent);
+  /* The band paints its own contrast, so its rule takes full-strength ink
+     rather than the theme's translucent border colour. */
+  --rule: var(--band-ink);
 }
 
 .band .section-title,
@@ -975,8 +939,8 @@ a.byline:focus-visible {
   color: var(--band-ink);
 }
 
-/* A thinner rule than the default section head: on a saturated field the
-   accent already carries enough weight. */
+/* A thinner rule than the default section head: on a full-ink field the
+   band's own contrast already carries enough weight. */
 .band .section-head {
   border-bottom-width: 1px;
   margin-bottom: 26px;
@@ -1148,10 +1112,199 @@ a.byline:focus-visible {
   text-underline-offset: 3px;
 }
 
-/* --- Panel: a toned (not saturated) full-bleed band, for rhythm rather than
+/* --- Latest: a three-column visual index with a useful community rail ----- */
+
+.latest-section {
+  margin-top: 72px;
+}
+
+.latest-section-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 28px;
+}
+
+.latest-section-kicker {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text-muted);
+}
+
+.latest-section-head h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2.3rem, 4.3vw, 4.6rem);
+  font-weight: 500;
+  line-height: 0.92;
+  letter-spacing: -0.03em;
+}
+
+.latest-section-link,
+.latest-rail-link {
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.latest-section-link {
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--text);
+}
+
+.latest-section-link:hover,
+.latest-rail-link:hover {
+  color: var(--mark);
+}
+
+.latest-section-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 0.36fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.latest-story-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 40px 24px;
+}
+
+.latest-story-card {
+  min-width: 0;
+}
+
+.latest-story-card img {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  display: block;
+  margin-bottom: 12px;
+}
+
+.latest-story-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 7px;
+}
+
+.latest-story-meta .label {
+  min-width: 0;
+  color: var(--mark);
+}
+
+.latest-story-meta time {
+  flex-shrink: 0;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.latest-story-card h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.15rem, 1.55vw, 1.5rem);
+  font-weight: 600;
+  line-height: 1.14;
+}
+
+.latest-story-card:hover h3 {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.latest-section-rail {
+  display: grid;
+  gap: 20px;
+}
+
+.latest-community-card,
+.latest-edition-card {
+  padding: 28px;
+}
+
+.latest-community-card {
+  display: flex;
+  min-height: 292px;
+  flex-direction: column;
+  align-items: flex-start;
+  background: var(--band-bg);
+  color: var(--band-ink);
+}
+
+.latest-community-card .label {
+  margin-bottom: 34px;
+  color: var(--band-ink-muted);
+}
+
+.latest-community-card h3,
+.latest-edition-card h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 2.2vw, 2.2rem);
+  font-weight: 500;
+  line-height: 1.02;
+}
+
+.latest-community-card p {
+  margin: 18px 0 28px;
+  color: var(--band-ink-muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.latest-community-card .latest-rail-link {
+  margin-top: auto;
+  padding-bottom: 5px;
+  border-bottom: 2px solid var(--band-ink);
+  color: var(--band-ink);
+}
+
+.latest-edition-card {
+  border: 1px solid var(--border);
+  background: var(--surface-raised);
+}
+
+.latest-edition-card > .label {
+  display: block;
+  margin-bottom: 12px;
+  color: var(--text-muted);
+}
+
+.latest-edition-card h3 {
+  margin-bottom: 22px;
+  font-size: clamp(1.4rem, 1.8vw, 1.8rem);
+}
+
+.latest-edition-card nav {
+  display: grid;
+}
+
+.latest-edition-card nav a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.latest-edition-card nav a:hover {
+  color: var(--mark);
+}
+
+/* --- Panel: a toned (not full-ink) full-bleed band, for rhythm rather than
    emphasis. Alternates against the plain page background the way a print
-   section front alternates paper stock, without repeating the saturated
-   .band treatment already used for Trackers: no accent rule here. --- */
+   section front alternates paper stock, without repeating the full-contrast
+   .band treatment already used for Trackers. --- */
 
 .panel {
   margin: 64px calc(-1 * var(--gutter)) 0;
@@ -1354,7 +1507,7 @@ a.byline:focus-visible {
 }
 
 .newsroom-signal-head .label {
-  color: var(--accent);
+  color: var(--band-ink-muted);
 }
 
 .newsroom-signal-head h2 {
@@ -1383,7 +1536,7 @@ a.byline:focus-visible {
 .newsroom-signal li .label {
   display: block;
   margin-bottom: 5px;
-  color: var(--accent);
+  color: var(--band-ink-muted);
 }
 
 .newsroom-signal h3 {
@@ -1395,14 +1548,15 @@ a.byline:focus-visible {
 }
 
 .newsroom-signal a:hover h3 {
-  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .newsroom-signal-link {
   display: inline-block;
   margin-top: 22px;
   padding-bottom: 5px;
-  border-bottom: 2px solid var(--accent);
+  border-bottom: 2px solid var(--band-ink);
   color: var(--band-ink);
 }
 
@@ -1432,10 +1586,10 @@ a.byline:focus-visible {
 .category-intro h1 {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(4.6rem, 11vw, 9.5rem);
+  font-size: clamp(4rem, 7vw, 6.5rem);
   font-weight: 500;
-  line-height: 0.78;
-  letter-spacing: -0.075em;
+  line-height: 0.9;
+  letter-spacing: -0.05em;
 }
 
 .category-intro p {
@@ -1456,7 +1610,7 @@ a.byline:focus-visible {
 
 .category-rule span {
   grid-column: 2;
-  background: var(--accent);
+  background: var(--bg);
 }
 
 .category-layout {
@@ -1513,13 +1667,13 @@ a.byline:focus-visible {
 }
 
 .category-toggle input:checked + .category-toggle-track {
-  background: var(--accent);
-  border-color: var(--accent-ink);
+  background: var(--text);
+  border-color: var(--text);
 }
 
 .category-toggle input:checked + .category-toggle-track span {
   transform: translateX(21px);
-  background: var(--accent-ink);
+  background: var(--bg);
 }
 
 .category-toggle input:focus-visible + .category-toggle-track {
@@ -1622,7 +1776,7 @@ a.byline:focus-visible {
 }
 
 .category-signal-heading .label {
-  color: var(--accent);
+  color: var(--band-ink-muted);
 }
 
 .category-signal-heading h2 {
@@ -1661,23 +1815,26 @@ a.byline:focus-visible {
 .category-signal li h3::before {
   content: counter(category-signal, decimal-leading-zero) ' ';
   margin-right: 6px;
-  color: var(--accent);
+  color: var(--band-ink-muted);
 }
 
 .category-signal li .label {
-  color: var(--accent);
+  color: var(--band-ink-muted);
 }
 
 .category-signal li a:hover h3 {
-  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
+/* Shared by a dark rail card and a light one: currentColor lets one rule
+   follow whichever ink each context already sets, without a colour of its own. */
 .category-signal-link,
 .category-rail-card-link {
   display: inline-block;
   margin-top: 20px;
   padding-bottom: 5px;
-  border-bottom: 2px solid var(--accent);
+  border-bottom: 2px solid currentColor;
   color: var(--band-ink);
   font-size: 0.75rem;
   font-weight: 700;
@@ -1687,7 +1844,7 @@ a.byline:focus-visible {
 
 .category-signal-link:hover,
 .category-rail-card-link:hover {
-  color: var(--accent);
+  opacity: 0.7;
 }
 
 .category-rail-card {
@@ -1740,9 +1897,12 @@ a.byline:focus-visible {
 }
 
 /* --------------------------------------------------------------------------
-   Motion: CSS only. Scroll reveals use animation-timeline behind @supports,
-   so browsers without it simply render the content in place rather than
-   leaving it stuck invisible.
+   Motion: a one-time on-load entrance for the hero only. An earlier version
+   also drove `.reveal` sections from animation-timeline: view(), but on a
+   short page the browser can run out of room to scroll before the animation
+   reaches its end, leaving the section stuck permanently semi-transparent.
+   Content must never depend on how much a reader has scrolled to become
+   visible, so scroll-linked opacity was removed rather than tuned further.
    -------------------------------------------------------------------------- */
 
 @keyframes rise {
@@ -1755,7 +1915,6 @@ a.byline:focus-visible {
     transform: none;
   }
 }
-
 
 /* Lead stage enters on load, staggered down the column */
 .stage-lead > * {
@@ -1782,28 +1941,9 @@ a.byline:focus-visible {
   animation: rise 0.6s ease-out 0.15s both;
 }
 
-@supports (animation-timeline: view()) {
-  /* Longhands, never the `animation` shorthand: the CSS minifier folds a
-     neighbouring animation-timeline into the shorthand, and browsers reject
-     the result: browsers silently dropped the whole animation. */
-  .reveal {
-    animation-name: rise;
-    animation-duration: 0.7s;
-    animation-timing-function: ease-out;
-    animation-fill-mode: both;
-    animation-timeline: view();
-    /* Completes partway through the element entering the viewport. A range
-       measured in `cover` can leave a section near the page bottom stuck
-       mid-animation: permanently semi-transparent: because the page cannot
-       scroll far enough to finish it. */
-    animation-range: entry 0% entry 45%;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .stage-lead > *,
-  .stage-rail > *,
-  .reveal {
+  .stage-rail > * {
     animation: none;
   }
 }
@@ -1937,7 +2077,7 @@ a.byline:focus-visible {
 .prose blockquote {
   margin: 32px 0;
   padding: 4px 0 4px 24px;
-  border-left: 3px solid var(--accent);
+  border-left: 3px solid var(--text);
 }
 
 .prose blockquote p {
@@ -2025,7 +2165,7 @@ a.byline:focus-visible {
 }
 
 .pill:hover {
-  border-color: var(--accent);
+  border-color: var(--text);
   color: var(--text);
 }
 
@@ -2138,7 +2278,7 @@ a.byline:focus-visible {
 
 .sidebar-trending .sidebar-eyebrow,
 .trending-topic {
-  color: var(--accent);
+  color: var(--band-ink-muted);
 }
 
 .sidebar-trending .sidebar-heading {
@@ -2171,7 +2311,7 @@ a.byline:focus-visible {
   padding-top: 2px;
   font-family: var(--font-display);
   font-size: 1.2rem;
-  color: var(--accent);
+  color: var(--band-ink-muted);
 }
 
 .trending-topic {
@@ -2188,7 +2328,8 @@ a.byline:focus-visible {
 
 .trending-list a:hover .trending-title,
 .trending-list a:focus-visible .trending-title {
-  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .topic-story-list {
@@ -2236,14 +2377,14 @@ a.byline:focus-visible {
   display: grid;
   gap: 16px;
   padding: 28px 24px;
-  background: var(--accent);
-  color: var(--accent-ink);
+  background: var(--text);
+  color: var(--bg);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-raised);
 }
 
 .sidebar-subscribe-label {
-  color: var(--accent-ink);
+  color: var(--bg);
 }
 
 .sidebar-subscribe strong {
@@ -2263,7 +2404,7 @@ a.byline:focus-visible {
 .sidebar-subscribe-action {
   justify-self: start;
   padding: 9px 14px;
-  border: 1px solid var(--accent-ink);
+  border: 1px solid var(--bg);
   border-radius: var(--radius-pill);
   font-size: 0.76rem;
   font-weight: 700;
@@ -2273,8 +2414,8 @@ a.byline:focus-visible {
 
 .sidebar-subscribe:hover .sidebar-subscribe-action,
 .sidebar-subscribe:focus-visible .sidebar-subscribe-action {
-  background: var(--accent-ink);
-  color: var(--accent);
+  background: var(--bg);
+  color: var(--text);
 }
 
 /* The recommendation strip intentionally is the page's one bolder beat:
@@ -2343,7 +2484,7 @@ a.byline:focus-visible {
 }
 
 .suggested-story-tag {
-  color: var(--accent);
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .suggested-story-title {
@@ -2720,6 +2861,10 @@ a.byline:focus-visible {
     grid-template-columns: minmax(0, 1fr) minmax(260px, 0.8fr);
   }
 
+  .latest-section-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(230px, 0.38fr);
+  }
+
   .newsroom-lead {
     grid-row: span 2;
   }
@@ -2765,6 +2910,18 @@ a.byline:focus-visible {
   }
 
   .newsroom-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .latest-section-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .latest-story-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .latest-section-rail {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -2839,38 +2996,12 @@ a.byline:focus-visible {
   .author-story-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-
-  /* Stack the menu's two groups and drop to a single topic column */
-  .menu-grid {
-    grid-template-columns: 1fr;
-    gap: 40px;
-  }
-
-  .menu-columns {
-    columns: 1;
-  }
-
-  .menu-more {
-    padding-left: 0;
-    padding-top: 32px;
-    border-left: none;
-    border-top: 1px solid var(--border);
-  }
 }
 
 @media (max-width: 780px) {
   .frame {
     --gutter: 16px;
     padding: 16px var(--gutter) 32px;
-  }
-
-  .menu-panel {
-    padding: 96px 16px 40px;
-  }
-
-  .menu-panel h2 {
-    font-size: 1.5rem;
-    margin-bottom: 20px;
   }
 
   .section-links a {
@@ -2913,36 +3044,9 @@ a.byline:focus-visible {
     column-gap: 20px;
   }
 
-  .site-header-main {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 16px;
-  }
-
   .masthead {
-    grid-column: 1 / -1;
-    grid-row: 1;
-    justify-self: start;
+    padding: 24px 0 20px;
     font-size: 2.8rem;
-    text-align: left;
-  }
-
-  .header-edition {
-    grid-column: 1;
-    grid-row: 2;
-  }
-
-  .header-actions {
-    grid-column: 2;
-    grid-row: 2;
-  }
-
-  .header-nav-row {
-    grid-template-columns: 1fr;
-    gap: 0;
-  }
-
-  .header-nav-caption {
-    display: none;
   }
 
   .stage {
@@ -2978,6 +3082,17 @@ a.byline:focus-visible {
     grid-template-columns: 1fr;
   }
 
+  .latest-story-grid,
+  .latest-section-rail {
+    grid-template-columns: 1fr;
+  }
+
+  .latest-section-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+
   .newsroom-signal {
     grid-column: auto;
   }
@@ -3002,7 +3117,7 @@ a.byline:focus-visible {
   }
 
   .category-intro h1 {
-    font-size: clamp(4rem, 22vw, 6rem);
+    font-size: clamp(3.4rem, 17vw, 5.2rem);
   }
 
   .author-page {
@@ -3033,24 +3148,19 @@ a.byline:focus-visible {
 }
 
 @media (max-width: 520px) {
-  .site-header-main {
-    grid-template-columns: 1fr;
-  }
-
-  .masthead,
-  .header-edition,
   .header-actions {
-    grid-column: auto;
-    grid-row: auto;
-  }
-
-  .header-actions {
+    flex: 1 1 auto;
     justify-content: space-between;
   }
 
   .search-box {
     flex: 1;
     width: auto;
+  }
+
+  .masthead {
+    padding: 20px 0 18px;
+    font-size: 2.4rem;
   }
 
   .section-links a {
@@ -3095,15 +3205,30 @@ a.byline:focus-visible {
 }
 
 @media (max-width: 360px) {
+  /* The three tabs become an even 3-up grid, Topics drops to its own
+     full-width row beneath rather than crowding into the same line. */
+  .categories-bar {
+    flex-wrap: wrap;
+  }
+
   .section-links {
-    grid-column: 1 / -1;
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    border-bottom: 1px solid var(--border);
+    flex: 1 1 100%;
+  }
+
+  .section-links a {
+    justify-content: center;
   }
 
   .topic-menu {
-    grid-column: 2;
+    flex: 1 1 100%;
+    margin-left: 0;
+    border-top: 1px solid var(--band-ink-muted);
+  }
+
+  .topic-menu > summary {
+    justify-content: center;
   }
 }
 

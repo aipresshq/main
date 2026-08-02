@@ -2,6 +2,7 @@
 import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Stage from '../components/Stage.astro';
+import LatestSection from '../components/LatestSection.astro';
 import FeatureBand from '../components/FeatureBand.astro';
 import SplitFeature from '../components/SplitFeature.astro';
 import HeadlineGrid from '../components/HeadlineGrid.astro';
@@ -16,6 +17,7 @@ const allTags = [...new Set(posts.flatMap((p) => p.data.tags))].sort();
 // The stage takes the top five: lead, "next" teaser, and three rail stories.
 const stagePosts = posts.slice(0, 5);
 const inStage = new Set(stagePosts.map((p) => p.id));
+const latestPosts = posts.filter((p) => !inStage.has(p.id)).slice(0, 6);
 
 // Trackers and Explainers are section fronts: complete listings by type, so a
 // story showing in both the hero and its own section is expected, as in print.
@@ -39,6 +41,13 @@ const picks = posts.filter((p) => p.data.featured);
 	editionDate={posts[0] && formatEditionDate(posts[0].data.pubDate)}
 >
 	<Stage posts={stagePosts} emptyNote="No stories published yet." />
+
+	{latestPosts.length > 0 && (
+		<LatestSection
+			posts={latestPosts}
+			communityUrl={import.meta.env.PUBLIC_SUBSTACK_URL || 'https://aisnap.substack.com'}
+		/>
+	)}
 
 	{trackers.length > 0 && <FeatureBand title="Trackers" href="/trackers/" posts={trackers} />}
 

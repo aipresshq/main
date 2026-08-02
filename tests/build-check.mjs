@@ -61,7 +61,7 @@ const sourceTopics = () => [...new Set(sourcePosts().flatMap((post) => post.tags
   .sort((a, b) => a.localeCompare(b))
   .map((label) => ({ label, href: `/tag/${slugify(label)}/` }));
 const topicMenuFrom = (html) => {
-  const navStart = html.indexOf('<nav class="section-nav"');
+  const navStart = html.indexOf('<nav class="categories-bar"');
   const navEnd = html.indexOf('</nav>', navStart);
   assert.ok(navStart >= 0 && navEnd > navStart, 'page is missing the section navigation');
   const nav = html.slice(navStart, navEnd);
@@ -638,16 +638,18 @@ check('author resolution errors identify the post and missing author slug', () =
   }
 });
 
-check('global.css defines the theme tokens and required classes', () => {
+check('global.css defines the theme tokens and required classes, with no accent colour', () => {
   const css = src('src/styles/global.css');
-  assert.match(css, /--accent:\s*#f2e14c/i, 'accent colour token missing or changed');
+  // The site is monochrome only — no accent token should exist anywhere to
+  // reintroduce a colour by accident.
+  assert.ok(!/--accent(-ink)?:/.test(css), 'an accent colour token was reintroduced');
   assert.match(css, /:root\s*\{[\s\S]*?--bg:\s*#ffffff/i, 'light background token missing');
   assert.match(css, /:root\[data-theme=['"]dark['"]\]\s*\{[\s\S]*?--bg:\s*#0a0a0a/i, 'dark background token missing');
   for (const cls of [
     '.frame',
     '.site-header',
     '.masthead',
-    '.section-nav',
+    '.categories-bar',
     '.stage',
     '.stage-lead',
     '.stage-rail',
@@ -662,7 +664,7 @@ check('global.css defines the theme tokens and required classes', () => {
     assert.ok(css.includes(cls), `missing class ${cls}`);
   }
   const header = css.match(/\.site-header\s*\{([\s\S]*?)\n\}/);
-  assert.match(header[1], /border-top:\s*4px solid var\(--accent\)/, 'header accent rule is missing');
+  assert.match(header[1], /border-top:\s*4px solid var\(--text\)/, 'header ink rule is missing');
 });
 
 check('layout is full width — no max-width cap or raised frame card', () => {
@@ -687,10 +689,13 @@ check('the explicit theme palette keeps the photographic stage dark', () => {
   const stage = css.match(/\.stage\s*\{([\s\S]*?)\n\}/);
   assert.ok(stage, 'missing stage rule');
   assert.match(stage[1], /--text:\s*#ffffff/i, 'stage must keep white text in light mode');
-  assert.match(dark[1], /--mark:\s*var\(--accent\)/, 'dark mode should retain the accent mark');
+  // Dark mode must not override --mark at all: it falls through to the
+  // :root definition (var(--text)), so it can never silently resolve to a
+  // colour again the way it once did when it pointed at --accent.
+  assert.ok(!/--mark\s*:/.test(dark[1]), 'dark mode should not redefine --mark — it must inherit the neutral :root value');
 });
 
-check('article focus rings use theme-aware marks while dark card tags use the accent', () => {
+check('article focus rings use theme-aware marks while dark card tags stay monochrome', () => {
   const css = src('src/styles/global.css');
   const bylineFocus = css.match(/a\.byline:focus-visible\s*\{([\s\S]*?)\n\}/);
   const suggestedStory = css.match(/\.suggested-story\s*\{([\s\S]*?)\n\}/);
@@ -699,7 +704,10 @@ check('article focus rings use theme-aware marks while dark card tags use the ac
 
   assert.match(bylineFocus[1], /outline:\s*2px solid var\(--mark\)/, 'byline focus must use the theme-aware mark');
   assert.ok(!/--mark\s*:/.test(suggestedStory[1]), 'dark cards must not override the theme-aware mark token');
-  assert.match(suggestedTag[1], /color:\s*var\(--accent\)/, 'dark-card tags should retain the yellow accent');
+  // The card is a fixed ink surface regardless of theme, so its tag is a
+  // literal translucent white rather than a token — but it must never be
+  // an accent colour.
+  assert.match(suggestedTag[1], /color:\s*rgba\(255,\s*255,\s*255,\s*0\.7\)/, 'dark-card tags should be translucent white');
   assert.match(suggestedFocus[1], /outline:\s*2px solid var\(--mark\)/, 'suggested-story focus must use the theme-aware mark');
 });
 
@@ -728,21 +736,27 @@ check('headline and masthead use the display and blackletter faces', () => {
   const leadBlock = css.match(/\.lead-headline\s*\{([\s\S]*?)\n\}/);
   assert.ok(leadBlock, 'missing .lead-headline rule block');
   assert.match(leadBlock[1], /font-family:\s*var\(--font-display\)/, 'lead headline is not set in the display serif');
-  assert.match(leadBlock[1], /color:\s*var\(--accent\)/, 'lead headline is not in the accent colour');
+  // The stage forces --text to white for its photographic backdrop, so the
+  // headline just follows --text rather than a dedicated colour.
+  assert.match(leadBlock[1], /color:\s*var\(--text\)/, 'lead headline should follow --text, not a dedicated colour');
 });
 
-check('homepage renders the shell: masthead, dateline, nav, and no header subscribe button', () => {
+check('homepage renders the shell: masthead, dateline, nav, and no persistent subscribe button', () => {
   const html = dist('index.html');
   assert.match(html, /<title>AI Snap \| Daily AI News<\/title>/);
   assert.ok(html.includes('class="masthead"'), 'masthead not rendered');
   assert.ok(html.includes('class="edition-date"'), 'edition dateline not rendered');
-  assert.ok(html.includes('class="section-nav"'), 'section nav not rendered');
+  assert.ok(html.includes('class="categories-bar"'), 'categories bar not rendered');
   assert.ok(html.includes('data-theme-toggle'), 'theme toggle not rendered');
   const header = html.slice(html.indexOf('<header'), html.indexOf('</header>'));
-  assert.ok(!header.includes('subscribe-button'), 'header should not render a subscribe button');
+  // The compact Menu dropdown legitimately holds a "Subscribe free" CTA now
+  // (approved design), but it must stay inside that collapsed disclosure —
+  // the always-visible chrome around it must not.
+  const headerWithoutMenuPanel = header.replace(/<details class="menu">[\s\S]*?<\/details>/, '');
+  assert.ok(!headerWithoutMenuPanel.includes('subscribe-button'), 'header chrome outside the Menu dropdown should not render a subscribe button');
 });
 
-check('the menu is a native details disclosure opening a full-screen overlay', () => {
+check('the menu is a native details disclosure opening a compact dropdown', () => {
   const html = dist('index.html');
   assert.ok(html.includes('<details class="menu">'), 'menu should be a native <details> element');
   assert.ok(html.includes('class="menu-panel"'), 'menu panel not rendered');
@@ -750,21 +764,27 @@ check('the menu is a native details disclosure opening a full-screen overlay', (
   // close control.
   assert.ok(html.includes('class="icon-open"'), 'hamburger glyph missing');
   assert.ok(html.includes('class="icon-close"'), 'close glyph missing');
-  assert.ok(html.includes('class="menu-topics"'), 'topics group missing from the menu');
-  assert.ok(html.includes('class="menu-more"'), '"more from" group missing from the menu');
+  // Topics now live only in the categories bar's Topics dropdown — the menu
+  // panel is site-wide links only, no tag list.
+  assert.ok(html.includes('class="menu-list"'), 'site-nav list missing from the menu');
+  assert.ok(!html.includes('class="menu-topics"'), 'menu should no longer duplicate the topic list');
+  assert.ok(!html.includes('class="menu-more"'), 'old two-group menu layout should be gone');
+  const menuPanel = html.slice(html.indexOf('class="menu-panel"'), html.indexOf('</details>', html.indexOf('class="menu-panel"')));
+  assert.ok(menuPanel.includes('subscribe-button'), 'menu panel should offer the subscribe CTA');
 
   const css = src('src/styles/global.css');
   const panel = css.match(/\.menu-panel\s*\{([\s\S]*?)\n\}/);
   assert.ok(panel, 'missing .menu-panel rule block');
-  assert.match(panel[1], /position:\s*fixed/, 'menu panel should cover the viewport');
-  assert.match(panel[1], /inset:\s*0/, 'menu panel should be inset 0 to fill the screen');
+  assert.match(panel[1], /position:\s*absolute/, 'menu panel should be an anchored dropdown, not a full-screen overlay');
+  assert.ok(!/inset:\s*0/.test(panel[1]), 'menu panel should not be inset 0 — that would cover the viewport');
   assert.match(css, /\.menu\[open\]\s+\.icon-close\s*\{[\s\S]*?display:\s*block/, 'close glyph is never revealed on open');
   assert.match(css, /\.menu\[open\]\s+\.icon-open\s*\{[\s\S]*?display:\s*none/, 'hamburger is never hidden on open');
 });
 
-check('section nav separates primary sections from a native topics disclosure', () => {
+check('categories bar separates primary sections from a native topics disclosure', () => {
   const html = dist('index.html');
-  const nav = html.slice(html.indexOf('class="section-nav"'), html.indexOf('</nav>'));
+  const navStart = html.indexOf('class="categories-bar"');
+  const nav = html.slice(navStart, html.indexOf('</nav>', navStart));
   const sectionLinks = nav.slice(nav.indexOf('class="section-links"'), nav.indexOf('</div>'));
   const topicMenu = nav.slice(nav.indexOf('<details class="topic-menu">'));
   const topicPanel = topicMenu.slice(topicMenu.indexOf('class="topic-menu-panel"'));
@@ -855,7 +875,8 @@ check('/tag/openai/ shows only OpenAI posts, with that topic active in the nav',
   assert.ok(linksTo(html, 'openai-ships-new-model'));
   assert.ok(linksTo(html, 'codex-usage-limit-tracker'));
   assert.ok(!linksTo(html, 'welcome-to-ai-snap'), 'wrong-tag post leaked into /tag/openai/');
-  const nav = html.slice(html.indexOf('class="section-nav"'), html.indexOf('</nav>'));
+  const navStart = html.indexOf('class="categories-bar"');
+  const nav = html.slice(navStart, html.indexOf('</nav>', navStart));
   assert.match(nav, /href="\/tag\/openai\/"[^>]*aria-current="page"/, 'OpenAI topic not marked current in the nav');
 });
 
@@ -883,7 +904,7 @@ check('Editor’s Picks is a fourth, distinct newsroom layout: lead, cards, and 
   const start = html.lastIndexOf('<section', html.indexOf(heading));
   const section = html.slice(start, html.indexOf('</section>', start) + '</section>'.length);
 
-  assert.ok(section.includes('class="newsroom-section reveal"'), 'missing the newsroom section shell');
+  assert.ok(section.includes('class="newsroom-section"'), 'missing the newsroom section shell');
   assert.ok(section.includes('class="newsroom-lead"'), 'missing the lead story');
   const cardCount = (section.match(/class="newsroom-card"/g) || []).length;
   assert.equal(cardCount, 4, `expected exactly 4 secondary photo cards, found ${cardCount}`);
@@ -931,9 +952,9 @@ check('the band bleeds past the page gutter and paints its own contrast', () => 
   assert.match(band[1], /margin:[^;]*calc\(-1 \* var\(--gutter\)\)/, 'band does not bleed past the gutter');
   assert.match(band[1], /background:\s*var\(--band-bg\)/, 'band should carry its own saturated field');
   assert.match(band[1], /color:\s*var\(--band-ink\)/, 'band needs its own ink colour');
-  // The accent becomes the rule under the section head, as red pairs with gold
-  // in the reference.
-  assert.match(band[1], /--rule:\s*var\(--accent\)/, 'band rule should take the accent');
+  // The band paints its own contrast, so its rule takes full-strength ink
+  // rather than a colour.
+  assert.match(band[1], /--rule:\s*var\(--band-ink\)/, 'band rule should take full-strength ink');
   assert.match(css, /\.frame\s*\{[\s\S]*?padding:[^;]*var\(--gutter\)/, 'frame padding must use the gutter token');
 });
 
@@ -958,36 +979,39 @@ check('the closing grid omits stories the stage already showed', () => {
   assert.ok(grid.includes('/posts/mistral-raises-series-c/'), 'other stories should still list');
 });
 
-check('scroll reveal survives minification and never traps content invisible', () => {
-  // The minifier folds a neighbouring animation-timeline into the `animation`
-  // shorthand, which browsers reject — silently killing the animation. Assert
-  // the built CSS keeps the longhands.
+check('sections never depend on scroll position to become visible', () => {
+  // This site used to fade sections in via animation-timeline: view(). On a
+  // page too short for the animation to finish before scrolling bottoms out,
+  // that leaves a section permanently stuck at low opacity — it happened on
+  // this site's own homepage. Content must never depend on how far a reader
+  // has scrolled to become visible, so the mechanism must not exist at all,
+  // built or source, and must not come back.
   const assets = new URL('../dist/_astro/', import.meta.url);
   const cssFiles = readdirSync(assets).filter((file) => file.endsWith('.css'));
   assert.ok(cssFiles.length > 0, 'no built stylesheet found');
-  const css = cssFiles.map((file) => readFileSync(new URL(file, assets), 'utf-8')).join('\n');
+  const builtCss = cssFiles.map((file) => readFileSync(new URL(file, assets), 'utf-8')).join('\n');
+  assert.ok(!/animation-timeline/.test(builtCss), 'a scroll-linked animation-timeline was reintroduced in the built CSS');
 
-  const rule = css.match(/\.reveal\{([^}]*)\}/);
-  assert.ok(rule, 'no .reveal rule in the built CSS');
-  assert.match(rule[1], /animation-name:\s*rise/, '.reveal lost its animation-name longhand');
-  assert.match(rule[1], /animation-timeline:\s*view\(\)/, '.reveal lost its scroll timeline');
-  assert.ok(
-    !/animation:[^;}]*view\(\)/.test(css),
-    'animation-timeline was folded into the animation shorthand — browsers drop that declaration'
-  );
+  // Strip comments before checking: this file's own history comment names
+  // animation-timeline while explaining why it was removed, which isn't a
+  // reintroduction of the mechanism.
+  const source = src('src/styles/global.css').replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.ok(!/animation-timeline/.test(source), 'a scroll-linked animation-timeline was reintroduced in global.css');
+  assert.ok(!/@supports\s*\(animation-timeline/.test(source), 'the removed scroll-reveal @supports block was reintroduced');
 
-  // The reveal only applies inside @supports, so unsupported browsers render
-  // the content in place instead of leaving it at opacity 0.
-  const source = src('src/styles/global.css');
+  // None of the sections that used to carry the scroll-linked class should
+  // still reference it in markup — it no longer does anything.
+  for (const component of ['FeatureBand', 'SplitFeature', 'HeadlineGrid', 'NewsroomGrid', 'RankedFeature', 'LatestSection']) {
+    assert.ok(!src(`src/components/${component}.astro`).includes('reveal'), `${component}.astro still references the removed reveal class`);
+  }
+
+  // The hero's own on-load entrance is a plain, unconditional animation (no
+  // scroll timeline involved) and must still respect reduced motion.
+  assert.match(source, /\.stage-lead > \*\s*\{[\s\S]*?animation:\s*rise/, 'hero entrance animation missing');
   assert.match(
     source,
-    /@supports \(animation-timeline: view\(\)\) \{[\s\S]*?\.reveal/,
-    'reveal must be gated behind @supports'
-  );
-  assert.match(
-    source,
-    /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\.reveal[\s\S]*?animation: none/,
-    'reduced motion must switch the reveal off'
+    /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\.stage-lead > \*[\s\S]*?animation:\s*none/,
+    'reduced motion must switch the hero entrance off'
   );
 });
 
@@ -995,7 +1019,7 @@ check('article page renders the fixed §4 template on the site shell', () => {
   const html = dist('posts/openai-ships-new-model/index.html');
   // Shell
   assert.ok(html.includes('class="masthead"'), 'article page should use the site shell');
-  assert.ok(html.includes('class="section-nav"'), 'article page missing the section nav');
+  assert.ok(html.includes('class="categories-bar"'), 'article page missing the categories bar');
   assert.ok(html.includes('class="site-footer"'), 'article page missing the footer');
   // Template blocks
   assert.ok(html.includes('article-kicker'), 'missing topic kicker');
@@ -1200,8 +1224,12 @@ check('search indexes article bodies only, not listing pages or nav chrome', () 
   assert.ok(!home.includes('data-pagefind-body'), 'listing pages must not declare a Pagefind body');
   const header = home.slice(home.indexOf('<header'), home.indexOf('</header>'));
   assert.ok(header.includes('data-pagefind-ignore'), 'top bar should be excluded from the index');
-  const nav = home.slice(home.indexOf('<nav'), home.indexOf('</nav>'));
-  assert.ok(nav.includes('data-pagefind-ignore'), 'section nav should be excluded from the index');
+  // The <header> ignore flag already covers every nav inside it (including
+  // the plain site-nav list in the compact Menu dropdown); the categories
+  // bar carries its own flag too, so check that one specifically.
+  const navStart = home.indexOf('<nav class="categories-bar"');
+  const nav = home.slice(navStart, home.indexOf('</nav>', navStart));
+  assert.ok(nav.includes('data-pagefind-ignore'), 'categories bar should be excluded from the index');
 });
 
 check('no eager Pagefind/component-ui script or stylesheet in the homepage', () => {
@@ -1225,9 +1253,9 @@ check('responsive CSS: stage collapses and topics use a contained responsive gri
   assert.ok(wide, 'missing @media (max-width: 1080px) block');
   assert.match(wide[1], /grid-template-columns:\s*1fr\s*;/, 'stage does not collapse to a single column');
 
-  const navBlock = css.match(/\.section-nav\s*\{([\s\S]*?)\n\}/);
-  assert.ok(navBlock, 'missing .section-nav rule block');
-  assert.ok(!/overflow-x:\s*auto/.test(navBlock[1]), '.section-nav must not require horizontal scrolling');
+  const navBlock = css.match(/\.categories-bar\s*\{([\s\S]*?)\n\}/);
+  assert.ok(navBlock, 'missing .categories-bar rule block');
+  assert.ok(!/overflow-x:\s*auto/.test(navBlock[1]), '.categories-bar must not require horizontal scrolling');
 
   const topicGrid = css.match(/\.topic-menu-list\s*\{([\s\S]*?)\n\}/);
   assert.ok(topicGrid, 'missing .topic-menu-list rule block');
@@ -1240,7 +1268,9 @@ check('responsive CSS: stage collapses and topics use a contained responsive gri
 
   const narrowest = css.match(/@media \(max-width: 360px\) \{([\s\S]*?)\n\}/);
   assert.ok(narrowest, 'missing narrowest viewport rules for long active topic labels');
-  assert.match(narrowest[1], /\.section-links\s*\{[\s\S]*?grid-column:\s*1\s*\/\s*-1/, 'primary sections should keep a full row when active topic labels cannot fit beside them');
+  assert.match(narrowest[1], /\.categories-bar\s*\{[\s\S]*?flex-wrap:\s*wrap/, 'categories bar should wrap rather than crowd tabs and Topics onto one line');
+  assert.match(narrowest[1], /\.section-links\s*\{[\s\S]*?flex:\s*1 1 100%/, 'primary sections should claim a full row when they wrap');
+  assert.match(narrowest[1], /\.topic-menu\s*\{[\s\S]*?flex:\s*1 1 100%/, 'Topics should drop to its own full-width row rather than crowd the tabs');
 });
 
 // --- RUNNER (do not edit below this line) ---

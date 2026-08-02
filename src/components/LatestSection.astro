@@ -1,0 +1,62 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { formatPostDate } from '../lib/date';
+
+export interface Props {
+  posts: CollectionEntry<'posts'>[];
+  communityUrl: string;
+}
+
+const { posts, communityUrl } = Astro.props;
+const stories = posts.slice(0, 6);
+---
+
+{stories.length > 0 && (
+  <section class="latest-section" aria-labelledby="latest-section-heading">
+    <div class="latest-section-head">
+      <div>
+        <span class="label latest-section-kicker">Fresh from the desk</span>
+        <h2 id="latest-section-heading">Latest</h2>
+      </div>
+      <a class="latest-section-link" href="/">
+        View all latest <span aria-hidden="true">-&gt;</span>
+      </a>
+    </div>
+
+    <div class="latest-section-layout">
+      <div class="latest-story-grid">
+        {stories.map((post) => (
+          <a class="latest-story-card" href={`/posts/${post.id}/`}>
+            <img src={post.data.cover} alt={post.data.coverAlt} loading="lazy" />
+            <div class="latest-story-meta">
+              <span class="label">{post.data.tags[0]}</span>
+              <time datetime={post.data.pubDate.toISOString()}>{formatPostDate(post.data.pubDate)}</time>
+            </div>
+            <h3>{post.data.title}</h3>
+          </a>
+        ))}
+      </div>
+
+      <aside class="latest-section-rail" aria-label="AI Snap community and edition links">
+        <a class="latest-community-card" href={communityUrl}>
+          <span class="label">Join our community</span>
+          <h3>AI news with the useful context included.</h3>
+          <p>
+            Get one thoughtful daily edition covering launches, companies, products, and the limits that shape real work.
+          </p>
+          <span class="latest-rail-link">Subscribe free <span aria-hidden="true">-&gt;</span></span>
+        </a>
+
+        <div class="latest-edition-card">
+          <span class="label">Explore the edition</span>
+          <h3>Keep following the stories that matter.</h3>
+          <nav aria-label="Edition sections">
+            <a href="/trending/">Trending stories <span aria-hidden="true">-&gt;</span></a>
+            <a href="/trackers/">Usage trackers <span aria-hidden="true">-&gt;</span></a>
+            <a href="/tag/openai/">OpenAI coverage <span aria-hidden="true">-&gt;</span></a>
+          </nav>
+        </div>
+      </aside>
+    </div>
+  </section>
+)}

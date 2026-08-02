@@ -59,13 +59,11 @@ const navTags = tags;
 	<body>
 		<div class="frame">
 			<header class="site-header" data-pagefind-ignore>
-				<div class="site-header-main">
+				<div class="utility-strip">
 					<div class="header-edition">
 						<span class="label">AI news / daily edition</span>
 						{editionDate && <span class="edition-date">{editionDate}</span>}
 					</div>
-
-					<a href="/" class="masthead" aria-label="AI Snap home">AI Snap</a>
 
 					<div class="header-actions">
 						<div class="search-box">
@@ -90,7 +88,7 @@ const navTags = tags;
 
 						<!-- Native disclosure: the menu remains keyboard-friendly and needs no JavaScript. -->
 						<details class="menu">
-							<summary class="menu-trigger" aria-label="Browse sections and topics">
+							<summary class="menu-trigger" aria-label="Site menu">
 								<span class="menu-trigger-label">Menu</span>
 								<span class="menu-trigger-icon" aria-hidden="true">
 									<svg class="icon-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -105,68 +103,50 @@ const navTags = tags;
 								</span>
 							</summary>
 							<div class="menu-panel">
-								<div class="menu-grid">
-									<section class="menu-topics">
-										<h2>Topics</h2>
-										<ul class="menu-columns">
-											{tags.map((tag) => (
-												<li>
-													<a
-														href={`/tag/${slugify(tag)}/`}
-														aria-current={activeTag?.toLowerCase() === tag.toLowerCase() ? 'page' : undefined}
-													>
-														{tag}
-													</a>
-												</li>
-											))}
-										</ul>
-									</section>
-									<section class="menu-more">
-										<h2>More from AI Snap</h2>
-										<ul>
-											{sections.map((s) => <li><a href={s.href} aria-current={s.active ? 'page' : undefined}>{s.label}</a></li>)}
-											<li><a href={substackUrl}>Newsletter</a></li>
-										</ul>
-									</section>
-								</div>
+								<nav aria-label="Site sections">
+									<ul class="menu-list">
+										{sections.map((s) => <li><a href={s.href} aria-current={s.active ? 'page' : undefined}>{s.label}</a></li>)}
+										<li><a href="/sitemap-index.xml">Sitemap</a></li>
+									</ul>
+								</nav>
+								<a class="subscribe-button menu-subscribe" href={substackUrl}>Subscribe free</a>
 							</div>
 						</details>
 					</div>
 				</div>
 
-				<div class="header-nav-row">
-					<span class="label header-nav-caption">Explore</span>
-					<nav class="section-nav" aria-label="Sections and topics" data-pagefind-ignore>
-						<div class="section-links">
-							{sections.map((s) => (
-								<a href={s.href} aria-current={s.active ? 'page' : undefined}>{s.label}</a>
-							))}
+				<a href="/" class="masthead" aria-label="AI Snap home">AI Snap</a>
+
+				<nav class="categories-bar" aria-label="Sections and topics" data-pagefind-ignore>
+					<div class="section-links">
+						{sections.map((s) => (
+							<a href={s.href} aria-current={s.active ? 'page' : undefined}>{s.label}</a>
+						))}
+					</div>
+					<details class="topic-menu">
+						<summary>
+							<span>{activeTag ?? 'Topics'}</span>
+							<svg class="topic-menu-glyph" width="12" height="8" viewBox="0 0 12 8" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+								<path d="m1 1.5 5 5 5-5" />
+							</svg>
+						</summary>
+						<div class="topic-menu-panel">
+							<h2>Browse by topic</h2>
+							<ul class="topic-menu-list">
+								{navTags.map((tag) => (
+									<li>
+										<a
+											href={`/tag/${slugify(tag)}/`}
+											aria-current={activeTag?.toLowerCase() === tag.toLowerCase() ? 'page' : undefined}
+											>
+												{tag}
+											</a>
+										</li>
+								))}
+							</ul>
 						</div>
-						<details class="topic-menu">
-							<summary>
-								<span>{activeTag ?? 'Topics'}</span>
-								<svg class="topic-menu-glyph" width="12" height="8" viewBox="0 0 12 8" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-									<path d="m1 1.5 5 5 5-5" />
-								</svg>
-							</summary>
-							<div class="topic-menu-panel">
-								<h2>Browse by topic</h2>
-								<ul class="topic-menu-list">
-									{navTags.map((tag) => (
-										<li>
-											<a
-												href={`/tag/${slugify(tag)}/`}
-												aria-current={activeTag?.toLowerCase() === tag.toLowerCase() ? 'page' : undefined}
-												>
-													{tag}
-												</a>
-											</li>
-									))}
-								</ul>
-							</div>
-						</details>
-					</nav>
-				</div>
+					</details>
+				</nav>
 			</header>
 
 			<slot />
