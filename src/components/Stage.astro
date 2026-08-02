@@ -1,93 +1,102 @@
 ---
 import { getEntry, type CollectionEntry } from 'astro:content';
-import CardFeature from './CardFeature.astro';
-import CardCompact from './CardCompact.astro';
-import HeadlineGrid from './HeadlineGrid.astro';
+import { formatPostDate } from '../lib/date';
 import { readMinutes } from '../lib/read-time';
 import { getAuthorId } from '../lib/author-reference';
 
 export interface Props {
-  /** Reverse-chronological posts for this view. */
+  /** Reverse-chronological posts: supplies the lead story and the Just In list. */
   posts: CollectionEntry<'posts'>[];
+  /** Featured posts: supplies the Editor's Pick column. */
+  picks: CollectionEntry<'posts'>[];
   /** Shown when the view has no posts at all. */
   emptyNote: string;
 }
 
-const { posts, emptyNote } = Astro.props;
-const postsWithAuthors = await Promise.all(posts.map(async (post) => {
+const { posts, picks, emptyNote } = Astro.props;
+const [lead, ...rest] = posts;
+const editorPicks = picks.filter((p) => p.id !== lead?.id).slice(0, 2);
+const justIn = rest.slice(0, 5);
+
+async function withAuthor(post: CollectionEntry<'posts'>) {
   const authorId = getAuthorId(post.data.author);
   const author = await getEntry('authors', authorId);
   if (!author) {
     throw new Error(`Missing author profile for post: ${post.id} (author: ${authorId})`);
   }
   return { post, author };
-}));
+}
 
-// lead → the hero; next → the "up next" teaser; rail → sidebar stories;
-// overflow → everything else, as a grid below the stage.
-const [lead, next, ...remaining] = posts;
-const rail = remaining.slice(0, 3);
-const overflow = remaining.slice(3);
-
-// The pager reflects which of the top stories is currently the lead.
-const pagerPosts = posts.slice(0, 4);
-const leadAuthor = postsWithAuthors[0]?.author;
+const leadWithAuthor = lead && (await withAuthor(lead));
+const picksWithAuthors = await Promise.all(editorPicks.map(withAuthor));
 ---
 
 {
-  lead && leadAuthor ? (
-    <Fragment>
-      <section class="stage">
-        <div class="stage-backdrop">
-          <img src={lead.data.cover} alt="" />
-        </div>
-
-        <div class="stage-lead">
-          <span class="label lead-kicker">{lead.data.tags[0]}</span>
-          <h1 class="lead-headline">
-            <a href={`/posts/${lead.id}/`}>{lead.data.title}</a>
-          </h1>
-
-          <div class="lead-meta">
-            <span class="label">{readMinutes(lead)} min read</span>
-            <span class="byline">
-              <span class="byline-avatar" aria-hidden="true">{leadAuthor.data.name.charAt(0)}</span>
-              <span class="byline-name">By {leadAuthor.data.name}</span>
-            </span>
+  leadWithAuthor ? (
+    <section class="hero" aria-label="Top stories">
+      {picksWithAuthors.length > 0 && (
+        <div class="hero-picks">
+          <div class="hero-column-head">
+            <h2>Editor's Pick</h2>
           </div>
-
-          {
-            pagerPosts.length > 1 && (
-              <div class="lead-pager" aria-label="Featured stories">
-                {pagerPosts.map((post, i) =>
-                  i === 0 ? (
-                    <span class="current" aria-current="true">{i + 1}</span>
-                  ) : (
-                    <a href={`/posts/${post.id}/`} aria-label={post.data.title}>{i + 1}</a>
-                  )
-                )}
-              </div>
-            )
-          }
-
-          {
-            next && (
-              <div class="lead-next">
-                <span class="label">Next</span>
-                <CardCompact post={next} />
-              </div>
-            )
-          }
+          {picksWithAuthors.map(({ post, author }) => (
+            <a class="hero-pick-card" href={`/posts/${post.id}/`}>
+              <img src={post.data.cover} alt={post.data.coverAlt} loading="lazy" />
+              <span class="label hero-pick-topic">{post.data.tags[0]}</span>
+              <h3>{post.data.title}</h3>
+              <span class="hero-pick-meta">
+                <span>{author.data.name}</span>
+                <span>{readMinutes(post)} min read</span>
+              </span>
+            </a>
+          ))}
         </div>
+      )}
 
-        <aside class="stage-rail">
-          {rail[0] && <CardFeature post={rail[0]} />}
-          {rail.slice(1).map((post) => <CardCompact post={post} />)}
+      <div class="hero-lead">
+        <span class="label hero-lead-topic">{leadWithAuthor.post.data.tags[0]}</span>
+        <h1 class="hero-lead-headline">
+          <a href={`/posts/${leadWithAuthor.post.id}/`}>{leadWithAuthor.post.data.title}</a>
+        </h1>
+        <div class="hero-lead-meta">
+          <span class="byline">
+            <span class="byline-avatar" aria-hidden="true">{leadWithAuthor.author.data.name.charAt(0)}</span>
+            <span class="byline-name">By {leadWithAuthor.author.data.name}</span>
+          </span>
+          <time class="label" datetime={leadWithAuthor.post.data.pubDate.toISOString()}>
+            {formatPostDate(leadWithAuthor.post.data.pubDate)}
+          </time>
+          <span class="label">{readMinutes(leadWithAuthor.post)} min read</span>
+        </div>
+        <a class="hero-lead-image" href={`/posts/${leadWithAuthor.post.id}/`}>
+          <img src={leadWithAuthor.post.data.cover} alt={leadWithAuthor.post.data.coverAlt} loading="eager" />
+        </a>
+      </div>
+
+      {justIn.length > 0 && (
+        <aside class="hero-just-in" aria-label="Just in">
+          <div class="hero-column-head">
+            <span class="hero-live-dot" aria-hidden="true"></span>
+            <h2>Just In</h2>
+            <a class="hero-just-in-link" href="/latest/" aria-label="View all latest stories">
+              <svg width="14" height="10" viewBox="0 0 14 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M1 5h11.5M8 1l4.5 4-4.5 4" />
+              </svg>
+            </a>
+          </div>
+          <ul>
+            {justIn.map((post) => (
+              <li>
+                <a href={`/posts/${post.id}/`}>
+                  <span class="label hero-just-in-topic">{post.data.tags[0]}</span>
+                  <h3>{post.data.title}</h3>
+                </a>
+              </li>
+            ))}
+          </ul>
         </aside>
-      </section>
-
-      {overflow.length > 0 && <HeadlineGrid title="More stories" posts={overflow} />}
-    </Fragment>
+      )}
+    </section>
   ) : (
     <section class="more-stories">
       <p class="empty-note">{emptyNote}</p>

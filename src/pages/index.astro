@@ -13,8 +13,9 @@ const posts = (await getCollection('posts')).sort(
   (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
 );
 
-// The stage takes the top five: lead, "next" teaser, and three rail stories.
-const stagePosts = posts.slice(0, 5);
+// The hero takes the top eight: the lead story, up to two Editor's Pick
+// cards (from `picks`, below), and up to five Just In headlines.
+const stagePosts = posts.slice(0, 8);
 const inStage = new Set(stagePosts.map((p) => p.id));
 const latestPosts = posts.filter((p) => !inStage.has(p.id)).slice(0, 6);
 
@@ -26,9 +27,11 @@ const evergreen = posts.filter((p) => p.data.postType === 'evergreen').slice(0, 
 // The digest is what the front hasn't already shown.
 const digest = posts.filter((p) => !inStage.has(p.id)).slice(0, 8);
 
-// Editor's Picks closes the front: a real curated signal (the `featured`
-// flag, set by whoever reviews the day's drafts per context.md §4), not a
-// fabricated "Most Read" ranking with no analytics behind it this early on.
+// Editor's Picks is a real curated signal (the `featured` flag, set by
+// whoever reviews the day's drafts per context.md §4), not a fabricated
+// "Most Read" ranking with no analytics behind it this early on. The hero's
+// Editor's Pick column and the newsroom section further down the front both
+// draw from this same signal.
 const picks = posts.filter((p) => p.data.featured);
 ---
 
@@ -37,7 +40,7 @@ const picks = posts.filter((p) => p.data.featured);
 	description="Daily AI news, evergreen comparisons, and usage-limit trackers across every major AI lab."
 	editionDate={posts[0] && formatEditionDate(posts[0].data.pubDate)}
 >
-	<Stage posts={stagePosts} emptyNote="No stories published yet." />
+	<Stage posts={stagePosts} picks={picks} emptyNote="No stories published yet." />
 
 	{latestPosts.length > 0 && (
 		<LatestSection

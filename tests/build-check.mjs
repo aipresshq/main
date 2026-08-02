@@ -595,8 +595,8 @@ check('post listings resolve author references into display names', () => {
   }
 
   const home = dist('index.html');
-  const stage = home.slice(home.indexOf('class="stage"'), home.indexOf('</section>', home.indexOf('class="stage"')));
-  assert.ok(stage.includes('By AI Snap Editorial'), 'stage byline should use the author profile name');
+  const hero = home.slice(home.indexOf('class="hero"'), home.indexOf('</section>', home.indexOf('class="hero"')));
+  assert.ok(hero.includes('By AI Snap Editorial'), 'hero byline should use the author profile name');
   assert.ok(home.includes('class="newsroom-section'), 'homepage newsroom section is missing');
   assert.ok(!home.includes('[object Object]'), 'homepage leaked an unresolved author reference');
 
@@ -655,13 +655,11 @@ check('global.css defines the theme tokens and required classes, with no accent 
     '.site-header',
     '.masthead-mark',
     '.primary-bar',
-    '.stage',
-    '.stage-lead',
-    '.stage-rail',
-    '.lead-headline',
-    '.card',
-    '.card-feature',
-    '.card-compact',
+    '.hero',
+    '.hero-picks',
+    '.hero-lead',
+    '.hero-lead-headline',
+    '.hero-just-in',
     '.theme-toggle',
     '.newsroom-section',
     '.category-front',
@@ -681,7 +679,7 @@ check('layout is full width — no max-width cap or raised frame card', () => {
   assert.ok(!/border-radius/.test(frame[1]), '.frame must not round into a card');
 });
 
-check('the explicit theme palette keeps the photographic stage dark', () => {
+check('the explicit theme palette defines light and dark tokens', () => {
   const css = src('src/styles/global.css');
   const light = css.match(/:root\s*\{([\s\S]*?)\n\}/);
   const dark = css.match(/:root\[data-theme=['"]dark['"]\]\s*\{([\s\S]*?)\n\}/);
@@ -689,11 +687,6 @@ check('the explicit theme palette keeps the photographic stage dark', () => {
   assert.match(light[1], /--mark:\s*var\(--text\)/, 'light mode should keep labels neutral');
   assert.match(dark[1], /--bg:\s*#0a0a0a/i, 'dark mode does not set a dark background');
   assert.match(dark[1], /--text:\s*#ffffff/i, 'dark mode does not set white body text');
-  // The hero is photography behind white text in both modes, so the stage must
-  // re-declare the dark palette rather than inherit the light one.
-  const stage = css.match(/\.stage\s*\{([\s\S]*?)\n\}/);
-  assert.ok(stage, 'missing stage rule');
-  assert.match(stage[1], /--text:\s*#ffffff/i, 'stage must keep white text in light mode');
   // Dark mode must not override --mark at all: it falls through to the
   // :root definition (var(--text)), so it can never silently resolve to a
   // colour again the way it once did when it pointed at --accent.
@@ -738,12 +731,9 @@ check('headline and masthead use the display and blackletter faces', () => {
   assert.ok(!mastheadVar[1].includes('Playfair'), 'masthead fallback should not name an unbundled font');
   assert.match(mastheadVar[1], /Source Serif 4/, 'masthead should fall back to the bundled display font, not a generic serif directly');
 
-  const leadBlock = css.match(/\.lead-headline\s*\{([\s\S]*?)\n\}/);
-  assert.ok(leadBlock, 'missing .lead-headline rule block');
+  const leadBlock = css.match(/\.hero-lead-headline\s*\{([\s\S]*?)\n\}/);
+  assert.ok(leadBlock, 'missing .hero-lead-headline rule block');
   assert.match(leadBlock[1], /font-family:\s*var\(--font-display\)/, 'lead headline is not set in the display serif');
-  // The stage forces --text to white for its photographic backdrop, so the
-  // headline just follows --text rather than a dedicated colour.
-  assert.match(leadBlock[1], /color:\s*var\(--text\)/, 'lead headline should follow --text, not a dedicated colour');
 });
 
 check('homepage renders the shell: masthead, dateline, nav, and no persistent subscribe button', () => {
@@ -878,7 +868,7 @@ check('a canonical topic with zero posts still gets a page and a graceful empty 
 
 check('homepage lead story is the most recent post', () => {
   const html = dist('index.html');
-  const lead = html.match(/<h1 class="lead-headline">([\s\S]*?)<\/h1>/);
+  const lead = html.match(/<h1 class="hero-lead-headline">([\s\S]*?)<\/h1>/);
   assert.ok(lead, 'no lead headline rendered');
   // Most recent by pubDate: openai-ships-new-model (2026-07-30).
   assert.ok(
@@ -889,13 +879,17 @@ check('homepage lead story is the most recent post', () => {
   assert.ok(html.includes('class="byline-name"'), 'byline not rendered');
 });
 
-check('homepage surfaces every post, and marks the current lead in the pager', () => {
+check('homepage hero surfaces an Editor\'s Pick column and a Just In list', () => {
   const html = dist('index.html');
   for (const slug of ['welcome-to-ai-snap', 'codex-usage-limit-tracker', 'openai-ships-new-model']) {
     assert.ok(linksTo(html, slug), `missing link to /posts/${slug}/`);
   }
-  assert.ok(html.includes('class="lead-pager"'), 'featured-story pager not rendered');
-  assert.match(html, /class="current" aria-current="true"/, 'pager does not mark the current lead');
+  const hero = html.slice(html.indexOf('class="hero"'), html.indexOf('</section>', html.indexOf('class="hero"')));
+  assert.ok(hero.includes('class="hero-picks"'), 'Editor\'s Pick column not rendered');
+  assert.ok(hero.includes('class="hero-pick-card"'), 'no Editor\'s Pick cards rendered');
+  assert.ok(hero.includes('class="hero-just-in"'), 'Just In column not rendered');
+  // Just In items show their own topic label, not the pager this replaced.
+  assert.ok(hero.includes('hero-just-in-topic'), 'Just In items are missing their topic label');
 });
 
 check('/trending/ shows only featured posts', () => {
@@ -1049,10 +1043,10 @@ check('sections never depend on scroll position to become visible', () => {
 
   // The hero's own on-load entrance is a plain, unconditional animation (no
   // scroll timeline involved) and must still respect reduced motion.
-  assert.match(source, /\.stage-lead > \*\s*\{[\s\S]*?animation:\s*rise/, 'hero entrance animation missing');
+  assert.match(source, /\.hero > \*\s*\{[\s\S]*?animation:\s*rise/, 'hero entrance animation missing');
   assert.match(
     source,
-    /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\.stage-lead > \*[\s\S]*?animation:\s*none/,
+    /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\.hero > \*[\s\S]*?animation:\s*none/,
     'reduced motion must switch the hero entrance off'
   );
 });
