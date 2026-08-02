@@ -104,7 +104,43 @@ img {
 
 .frame {
   padding: 24px var(--gutter) 48px;
-  overflow-x: clip;
+  /* Setting only overflow-x forces the UA to compute overflow-y as auto,
+     which makes .frame a scroll container and breaks position: sticky
+     inside it (the sticky categories bar would stick to .frame instead of
+     the viewport). Clipping both axes avoids that without allowing any
+     vertical scroll behaviour to appear. */
+  overflow: clip;
+}
+
+/* --------------------------------------------------------------------------
+   Reading progress: a thin hairline fixed above everything else, on every
+   page. It only fills in where there's an article (see the inline script in
+   BaseLayout) — elsewhere it just reads as a quiet top rule.
+   -------------------------------------------------------------------------- */
+
+.reading-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 90;
+  width: 100%;
+  height: 3px;
+  background: var(--border);
+}
+
+.reading-progress span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--text);
+  transform: scaleX(var(--reading-progress, 0));
+  transform-origin: left;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .reading-progress span {
+    transition: transform 80ms linear;
+  }
 }
 
 /* --------------------------------------------------------------------------
@@ -112,7 +148,6 @@ img {
    -------------------------------------------------------------------------- */
 
 .site-header {
-  margin-bottom: 22px;
   border-top: 4px solid var(--text);
 }
 
@@ -440,11 +475,14 @@ html[data-theme='dark'] .theme-icon-moon {
    -------------------------------------------------------------------------- */
 
 .categories-bar {
+  position: sticky;
+  top: 3px;
+  z-index: 50;
   display: flex;
   flex-wrap: wrap;
   align-items: stretch;
   gap: 8px;
-  margin: 0 calc(-1 * var(--gutter));
+  margin: 0 calc(-1 * var(--gutter)) 22px;
   padding: 0 var(--gutter);
   background: var(--band-bg);
   color: var(--band-ink);
