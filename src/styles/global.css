@@ -376,61 +376,148 @@ html[data-theme='dark'] .theme-icon-moon {
    Search (Pagefind, loaded lazily on first interaction)
    -------------------------------------------------------------------------- */
 
-.search-box {
-  position: relative;
-  width: min(240px, 26vw);
+.search-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
 }
 
-.search-icon {
+.search-trigger span {
+  font-size: 0.85rem;
+}
+
+.search-trigger-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-style: normal;
+  color: var(--text-muted);
+}
+
+.search-trigger:hover,
+.search-trigger:focus-visible {
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--bg);
+}
+
+.search-trigger:hover .search-trigger-key,
+.search-trigger:focus-visible .search-trigger-key {
+  border-color: var(--bg);
+  color: var(--bg);
+}
+
+/* --------------------------------------------------------------------------
+   Search dialog: a native <dialog> rather than a hand-rolled overlay, opened
+   full-screen like the Menu — spacious enough for real result cards instead
+   of a cramped dropdown.
+   -------------------------------------------------------------------------- */
+
+.search-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 96px 32px 56px;
+  border: none;
+  border-top: 3px solid var(--text);
+  background: var(--bg);
+  color: var(--text);
+  overflow-y: auto;
+}
+
+.search-dialog-bar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.search-dialog-field {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.search-dialog-field .search-icon {
   position: absolute;
-  left: 16px;
+  left: 0;
   top: 50%;
   transform: translateY(-50%);
   color: var(--text-muted);
   pointer-events: none;
 }
 
-.search-box input[type='search'] {
+.search-dialog-field input[type='search'] {
   width: 100%;
-  padding: 11px 12px 11px 40px;
+  padding: 12px 8px 12px 32px;
   border: 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 2px solid var(--text);
   border-radius: 0;
   background: transparent;
   color: var(--text);
-  font-family: inherit;
-  font-size: 0.9rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.4rem, 3vw, 2rem);
   -webkit-appearance: none;
   appearance: none;
 }
 
-.search-box input[type='search']::-webkit-search-cancel-button,
-.search-box input[type='search']::-webkit-search-decoration {
+.search-dialog-field input[type='search']::-webkit-search-cancel-button,
+.search-dialog-field input[type='search']::-webkit-search-decoration {
   -webkit-appearance: none;
   appearance: none;
 }
 
-.search-box input[type='search']::placeholder {
+.search-dialog-field input[type='search']::placeholder {
   color: var(--text-muted);
 }
 
-.search-box input[type='search']:focus {
+.search-dialog-field input[type='search']:focus {
   outline: none;
-  border-bottom-color: var(--mark);
+}
+
+.search-dialog-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.search-dialog-close:hover,
+.search-dialog-close:focus-visible {
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--bg);
 }
 
 #search-results {
-  position: absolute;
-  z-index: 30;
-  top: calc(100% + 8px);
-  left: 0;
-  right: 0;
-  max-height: 340px;
-  overflow-y: auto;
-  border-radius: var(--radius-card);
-  border: 1px solid var(--border);
-  background: var(--surface-raised);
-  box-shadow: var(--shadow-raised);
+  max-width: 760px;
+  margin: 48px auto 0;
 }
 
 #search-results:empty {
@@ -439,29 +526,31 @@ html[data-theme='dark'] .theme-icon-moon {
 
 .search-result {
   display: block;
-  padding: 12px 16px;
+  padding: 22px 0;
   border-bottom: 1px solid var(--border);
 }
 
-.search-result:last-child {
-  border-bottom: none;
+.search-result:first-child {
+  padding-top: 0;
 }
 
-.search-result:hover {
-  background: var(--surface);
+.search-result:hover strong {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .search-result strong {
   display: block;
   font-family: var(--font-display);
-  font-size: 0.95rem;
+  font-size: 1.3rem;
   font-weight: 500;
 }
 
 .search-result span {
   display: block;
-  margin-top: 3px;
-  font-size: 0.78rem;
+  margin-top: 6px;
+  font-size: 0.92rem;
+  line-height: 1.55;
   color: var(--text-muted);
 }
 
@@ -469,6 +558,27 @@ html[data-theme='dark'] .theme-icon-moon {
   background: none;
   color: var(--mark);
   font-weight: 600;
+}
+
+.search-empty {
+  max-width: 760px;
+  margin: 48px auto 0;
+  color: var(--text-muted);
+}
+
+.search-dialog-hint {
+  max-width: 760px;
+  margin: 56px auto 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.search-dialog-hint kbd {
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: var(--font-body);
+  font-style: normal;
 }
 
 /* --------------------------------------------------------------------------
@@ -1939,6 +2049,20 @@ a.byline:focus-visible {
 }
 
 /* --------------------------------------------------------------------------
+   Theme toggle transition: the default cross-fade is switched off so it
+   doesn't play underneath the custom circular reveal the toggle's own script
+   drives via document.documentElement.animate(...). Browsers without View
+   Transitions support never see this rule fire at all — the theme still
+   switches instantly, just without the animation.
+   -------------------------------------------------------------------------- */
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+/* --------------------------------------------------------------------------
    Motion: a one-time on-load entrance for the hero only. An earlier version
    also drove `.reveal` sections from animation-timeline: view(), but on a
    short page the browser can run out of room to scroll before the animation
@@ -3089,6 +3213,21 @@ a.byline:focus-visible {
     padding: 0;
   }
 
+  .search-trigger span,
+  .search-trigger-key {
+    display: none;
+  }
+
+  .search-trigger {
+    width: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .search-dialog {
+    padding: 88px 20px 40px;
+  }
+
   .topic-menu-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     column-gap: 20px;
@@ -3201,11 +3340,6 @@ a.byline:focus-visible {
   .header-actions {
     flex: 1 1 auto;
     justify-content: space-between;
-  }
-
-  .search-box {
-    flex: 1;
-    width: auto;
   }
 
   .masthead {
