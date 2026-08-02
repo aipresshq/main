@@ -3,6 +3,7 @@ import { getCollection, type CollectionEntry } from 'astro:content';
 import AuthorStoryCard from '../../components/AuthorStoryCard.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { formatEditionDate } from '../../lib/date';
+import { getAuthorId } from '../../lib/author-reference';
 
 export async function getStaticPaths() {
   const [authors, allPosts] = await Promise.all([
@@ -23,7 +24,7 @@ interface Props {
 
 const { author, allPosts } = Astro.props as Props;
 const posts = allPosts
-  .filter((post) => post.data.author.id === author.id)
+  .filter((post) => getAuthorId(post.data.author) === author.id)
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf() || a.id.localeCompare(b.id));
 const tags = [...new Set(allPosts.flatMap((post) => post.data.tags))].sort();
 const site = Astro.site ?? 'https://aisnap.in';

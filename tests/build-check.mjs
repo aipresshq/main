@@ -10,6 +10,7 @@ import {
 import { getSuggestedPosts } from '../src/lib/recommendations.ts';
 import { getNextOlderPost, sortPostsNewestFirst } from '../src/lib/post-order.ts';
 import { slugify } from '../src/lib/slug.ts';
+import { getAuthorId } from '../src/lib/author-reference.ts';
 
 const dist = (path) => readFileSync(new URL(`../dist/${path}`, import.meta.url), 'utf-8');
 const distExists = (path) => existsSync(new URL(`../dist/${path}`, import.meta.url));
@@ -600,6 +601,26 @@ check('post listings resolve author references into display names', () => {
   assert.ok(!latest.includes('[object Object]'), 'Latest rail leaked an unresolved author reference');
 });
 
+check('author lookups normalize string and object references before resolving', () => {
+  const helper = src('src/lib/author-reference.ts');
+  assert.match(helper, /typeof reference === ['"]string['"]/);
+  assert.match(helper, /reference\.id/);
+  assert.equal(getAuthorId('ai-snap-editorial'), 'ai-snap-editorial');
+  assert.equal(getAuthorId({ collection: 'authors', id: 'ai-snap-editorial' }), 'ai-snap-editorial');
+  assert.equal(getAuthorId({ collection: 'authors', slug: 'ai-snap-editorial' }), 'ai-snap-editorial');
+
+  for (const component of [
+    'src/components/Stage.astro',
+    'src/components/RankedFeature.astro',
+    'src/components/ArticleLatest.astro',
+    'src/pages/posts/[id].astro',
+    'src/pages/posts/[id]/fragment.astro',
+    'src/pages/authors/[author].astro',
+  ]) {
+    assert.match(src(component), /getAuthorId\(/, `${component} must normalize the author reference`);
+  }
+});
+
 check('author resolution errors identify the post and missing author slug', () => {
   for (const file of [
     'src/pages/posts/[id].astro',
@@ -609,7 +630,7 @@ check('author resolution errors identify the post and missing author slug', () =
   ]) {
     assert.match(
       src(file),
-      /Missing author profile for post: \$\{post\.id\} \(author: \$\{post\.data\.author\.id\}\)/,
+      /Missing author profile for post: \$\{post\.id\} \(author: \$\{authorId\}\)/,
       `${file} must include the post ID and missing author slug in its resolution error`,
     );
   }

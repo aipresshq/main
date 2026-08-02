@@ -8,6 +8,7 @@ import SuggestedReads from '../../components/SuggestedReads.astro';
 import { formatEditionDate } from '../../lib/date';
 import { getNextOlderPost } from '../../lib/post-order';
 import { getSuggestedPosts } from '../../lib/recommendations';
+import { getAuthorId } from '../../lib/author-reference';
 
 export async function getStaticPaths() {
   const allPosts = await getCollection('posts');
@@ -18,9 +19,10 @@ export async function getStaticPaths() {
 }
 
 const { post, allPosts } = Astro.props;
-const author = await getEntry(post.data.author);
+const authorId = getAuthorId(post.data.author);
+const author = await getEntry('authors', authorId);
 if (!author) {
-  throw new Error(`Missing author profile for post: ${post.id} (author: ${post.data.author.id})`);
+  throw new Error(`Missing author profile for post: ${post.id} (author: ${authorId})`);
 }
 
 const { title, description, pubDate, updatedDate, cover, tags } = post.data;

@@ -3,6 +3,7 @@ import { getEntry, type CollectionEntry } from 'astro:content';
 import SectionHeader from './SectionHeader.astro';
 import { formatPostDate } from '../lib/date';
 import { readMinutes } from '../lib/read-time';
+import { getAuthorId } from '../lib/author-reference';
 
 export interface Props {
   title: string;
@@ -13,9 +14,10 @@ export interface Props {
 
 const { title, href, posts } = Astro.props;
 const postsWithAuthors = await Promise.all(posts.map(async (post) => {
-  const author = await getEntry(post.data.author);
+  const authorId = getAuthorId(post.data.author);
+  const author = await getEntry('authors', authorId);
   if (!author) {
-    throw new Error(`Missing author profile for post: ${post.id} (author: ${post.data.author.id})`);
+    throw new Error(`Missing author profile for post: ${post.id} (author: ${authorId})`);
   }
   return { post, author };
 }));
