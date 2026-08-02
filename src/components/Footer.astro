@@ -1,18 +1,22 @@
 ---
 import { slugify } from '../lib/slug';
+import { topicGroups } from '../lib/topics';
 
 export interface Props {
-  tags: string[];
   substackUrl: string;
 }
 
-const { tags, substackUrl } = Astro.props;
+const { substackUrl } = Astro.props;
 
 const sections = [
   { label: 'Latest', href: '/' },
   { label: 'Trending', href: '/trending/' },
   { label: 'Trackers', href: '/trackers/' },
 ];
+
+// A quick sample across the taxonomy rather than just its first group, so
+// the preview reads as "here's what's covered" instead of only Companies.
+const footerTopics = topicGroups.flatMap((group) => group.topics.slice(0, 2)).slice(0, 6);
 
 // The dateline elsewhere comes from content; the copyright year is about the
 // site itself, so it's stamped at build time.
@@ -44,7 +48,7 @@ const year = new Date().getFullYear();
 		<section class="footer-column">
 			<h3>Topics</h3>
 			<ul>
-				{tags.slice(0, 6).map((tag) => <li><a href={`/tag/${slugify(tag)}/`}>{tag}</a></li>)}
+				{footerTopics.map((tag) => <li><a href={`/tag/${slugify(tag)}/`}>{tag}</a></li>)}
 			</ul>
 		</section>
 

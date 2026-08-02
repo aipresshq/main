@@ -4,10 +4,16 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import CategoryFront from '../../components/CategoryFront.astro';
 import { formatEditionDate } from '../../lib/date';
 import { slugify } from '../../lib/slug';
+import { knownTopics } from '../../lib/topics';
 
 export async function getStaticPaths() {
   const allPosts = await getCollection('posts');
-  const allTags = [...new Set(allPosts.flatMap((p) => p.data.tags))];
+  // Union, not just post-derived tags: a canonical topic (like Tutorials)
+  // gets a page even at zero posts, while an ad-hoc tag a post already uses
+  // still gets one too, so nothing silently disappears before the taxonomy
+  // catches up with content.
+  const postTags = allPosts.flatMap((p) => p.data.tags);
+  const allTags = [...new Set([...knownTopics, ...postTags])];
   return allTags.map((tag) => ({
     params: { tag: slugify(tag) },
     props: { tag, allPosts },
@@ -15,7 +21,6 @@ export async function getStaticPaths() {
 }
 
 const { tag, allPosts } = Astro.props;
-const allTags = [...new Set(allPosts.flatMap((p) => p.data.tags))].sort();
 const posts = allPosts
   .filter((p) => p.data.tags.includes(tag))
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
@@ -25,7 +30,6 @@ const posts = allPosts
 	title={`${tag} | AI Snap`}
 	description={`Latest AI Snap coverage tagged ${tag}.`}
 	activeTag={tag}
-	tags={allTags}
 	editionDate={posts[0] && formatEditionDate(posts[0].data.pubDate)}
 >
 	<CategoryFront

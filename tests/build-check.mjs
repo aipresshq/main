@@ -11,6 +11,7 @@ import { getSuggestedPosts } from '../src/lib/recommendations.ts';
 import { getNextOlderPost, sortPostsNewestFirst } from '../src/lib/post-order.ts';
 import { slugify } from '../src/lib/slug.ts';
 import { getAuthorId } from '../src/lib/author-reference.ts';
+import { topicGroups, knownTopics } from '../src/lib/topics.ts';
 
 const dist = (path) => readFileSync(new URL(`../dist/${path}`, import.meta.url), 'utf-8');
 const distExists = (path) => existsSync(new URL(`../dist/${path}`, import.meta.url));
@@ -834,6 +835,30 @@ check('every content-derived tag page labels and marks its own topic current', (
   }
 });
 
+check('topic dropdown is grouped into a canonical taxonomy, not a flat post-derived list', () => {
+  const html = dist('index.html');
+  const topicMenu = topicMenuFrom(html);
+  const topicPanel = topicMenu.slice(topicMenu.indexOf('class="topic-menu-panel"'));
+
+  for (const group of topicGroups) {
+    assert.ok(topicPanel.includes(`<h3>${group.label}</h3>`), `topic panel is missing the "${group.label}" group heading`);
+    for (const tag of group.topics) {
+      assert.ok(topicPanel.includes(`href="/tag/${slugify(tag)}/"`), `"${group.label}" group is missing its "${tag}" topic`);
+    }
+  }
+
+  // Trackers is a section (postType-driven), not a topic — keeping both
+  // would reintroduce the exact overlap the categories bar redesign removed.
+  assert.ok(!knownTopics.includes('Trackers'), 'Trackers should not be part of the topic taxonomy');
+});
+
+check('a canonical topic with zero posts still gets a page and a graceful empty state', () => {
+  assert.ok(distExists('tag/tutorials/index.html'), '/tag/tutorials/ was not built even though Tutorials is a canonical topic');
+  const html = dist('tag/tutorials/index.html');
+  assert.ok(html.includes('No stories tagged Tutorials yet.'), 'empty Tutorials category should show the standard no-content message');
+  assert.ok(!linksTo(html, 'welcome-to-ai-snap'), 'empty Tutorials category should not list unrelated posts');
+});
+
 check('homepage lead story is the most recent post', () => {
   const html = dist('index.html');
   const lead = html.match(/<h1 class="lead-headline">([\s\S]*?)<\/h1>/);
@@ -1257,14 +1282,14 @@ check('responsive CSS: stage collapses and topics use a contained responsive gri
   assert.ok(navBlock, 'missing .categories-bar rule block');
   assert.ok(!/overflow-x:\s*auto/.test(navBlock[1]), '.categories-bar must not require horizontal scrolling');
 
-  const topicGrid = css.match(/\.topic-menu-list\s*\{([\s\S]*?)\n\}/);
-  assert.ok(topicGrid, 'missing .topic-menu-list rule block');
-  assert.match(topicGrid[1], /display:\s*grid/, 'topic links should use a grid');
-  assert.match(topicGrid[1], /grid-template-columns:\s*repeat\([34],\s*minmax\(0,\s*1fr\)\)/, 'desktop topic grid should use multiple fluid columns');
+  const topicGrid = css.match(/\.topic-menu-groups\s*\{([\s\S]*?)\n\}/);
+  assert.ok(topicGrid, 'missing .topic-menu-groups rule block');
+  assert.match(topicGrid[1], /display:\s*grid/, 'topic groups should use a grid');
+  assert.match(topicGrid[1], /grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/, 'desktop topic groups should use three fluid columns');
 
-  const narrow = css.match(/@media \(max-width: (?:620|780)px\) \{([\s\S]*?)\n\}/);
+  const narrow = css.match(/@media \(max-width: 780px\) \{([\s\S]*?)\n\}/);
   assert.ok(narrow, 'missing narrow viewport rules');
-  assert.match(narrow[1], /\.topic-menu-list\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/, 'mobile topic grid should reduce to two columns');
+  assert.match(narrow[1], /\.topic-menu-groups\s*\{[\s\S]*?grid-template-columns:\s*1fr/, 'topic groups should stack to one column on narrow screens');
 
   const narrowest = css.match(/@media \(max-width: 360px\) \{([\s\S]*?)\n\}/);
   assert.ok(narrowest, 'missing narrowest viewport rules for long active topic labels');

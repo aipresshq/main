@@ -10,7 +10,7 @@ coverCredit: "Unsplash"
 whyItMatters: "Claude's available capacity can shape whether a long conversation continues uninterrupted, especially when documents, tools, or extensive context are involved."
 sourceName: "Claude Help Center"
 sourceUrl: "https://support.claude.com/en/articles/11647753-how-do-usage-and-length-limits-work"
-tags: ["Anthropic", "Trackers"]
+tags: ["Anthropic"]
 postType: "tracker"
 featured: false
 ---

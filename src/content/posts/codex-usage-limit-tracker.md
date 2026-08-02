@@ -10,7 +10,7 @@ coverCredit: "Unsplash"
 whyItMatters: "Codex limits can determine whether a repository task continues in one session, so clear status and reset information are important when planning substantial work."
 sourceName: "OpenAI Help Center"
 sourceUrl: "https://help.openai.com/en/articles/11369540-using-codex-with-your-chatgpt-plan"
-tags: ["OpenAI", "Trackers"]
+tags: ["OpenAI"]
 postType: "tracker"
 featured: false
 ---

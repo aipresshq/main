@@ -5,13 +5,13 @@ import '@fontsource/unifrakturmaguntia';
 import '../styles/global.css';
 import Footer from '../components/Footer.astro';
 import { slugify } from '../lib/slug';
+import { topicGroups } from '../lib/topics';
 
 export interface Props {
   title: string;
   description?: string;
   activeTab?: 'latest' | 'trending' | 'trackers' | null;
   activeTag?: string | null;
-  tags: string[];
 	/**
 	 * Dateline shown in the masthead. Server-rendered fallback only (the
 	 * latest story's date, so it's still meaningful without JS) — corrected
@@ -27,7 +27,6 @@ const {
   description,
   activeTab = null,
   activeTag = null,
-  tags,
   editionDate,
 } = Astro.props;
 
@@ -38,8 +37,6 @@ const sections = [
   { label: 'Trending', href: '/trending/', active: activeTab === 'trending' },
   { label: 'Trackers', href: '/trackers/', active: activeTab === 'trackers' },
 ];
-
-const navTags = tags;
 ---
 
 <html lang="en">
@@ -171,25 +168,32 @@ const navTags = tags;
 						</summary>
 						<div class="topic-menu-panel">
 							<h2>Browse by topic</h2>
-							<ul class="topic-menu-list">
-								{navTags.map((tag) => (
-									<li>
-										<a
-											href={`/tag/${slugify(tag)}/`}
-											aria-current={activeTag?.toLowerCase() === tag.toLowerCase() ? 'page' : undefined}
-											>
-												{tag}
-											</a>
-										</li>
+							<div class="topic-menu-groups">
+								{topicGroups.map((group) => (
+									<div class="topic-menu-group">
+										<h3>{group.label}</h3>
+										<ul>
+											{group.topics.map((tag) => (
+												<li>
+													<a
+														href={`/tag/${slugify(tag)}/`}
+														aria-current={activeTag?.toLowerCase() === tag.toLowerCase() ? 'page' : undefined}
+													>
+														{tag}
+													</a>
+												</li>
+											))}
+										</ul>
+									</div>
 								))}
-							</ul>
+							</div>
 						</div>
 					</details>
 				</nav>
 
 			<slot />
 
-			<Footer tags={tags} substackUrl={substackUrl} />
+			<Footer substackUrl={substackUrl} />
 		</div>
 
 		<script is:inline>

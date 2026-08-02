@@ -696,42 +696,56 @@ html[data-theme='dark'] .theme-icon-moon {
 }
 
 .topic-menu-panel h2 {
-  margin: 0 0 18px;
+  margin: 0 0 22px;
   font-family: var(--font-display);
   font-size: 1.3rem;
   font-weight: 500;
 }
 
-.topic-menu-list {
+/* Grouped by what actually helps someone browse (company vs. coverage
+   theme) instead of one flat list of every tag in appearance order. */
+.topic-menu-groups {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0 24px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 32px;
+}
+
+.topic-menu-group h3 {
+  margin: 0 0 12px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.topic-menu-group ul {
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.topic-menu-list a {
+.topic-menu-group a {
   display: block;
-  padding: 11px 0 9px;
+  padding: 9px 0;
   border-bottom: 1px solid var(--border);
   color: var(--text-muted);
   font-size: 0.9rem;
   line-height: 1.3;
 }
 
-.topic-menu-list a:hover,
-.topic-menu-list a[aria-current='page'] {
+.topic-menu-group a:hover,
+.topic-menu-group a[aria-current='page'] {
   color: var(--mark);
 }
 
-.topic-menu-list a[aria-current='page'] {
+.topic-menu-group a[aria-current='page'] {
   font-weight: 700;
 }
 
 .section-links a:focus-visible,
 .topic-menu > summary:focus-visible,
-.topic-menu-list a:focus-visible {
+.topic-menu-group a:focus-visible {
   outline: 2px solid var(--mark);
   outline-offset: 2px;
 }
@@ -3228,9 +3242,9 @@ a.byline:focus-visible {
     padding: 88px 20px 40px;
   }
 
-  .topic-menu-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: 20px;
+  .topic-menu-groups {
+    grid-template-columns: 1fr;
+    gap: 28px;
   }
 
   .masthead {

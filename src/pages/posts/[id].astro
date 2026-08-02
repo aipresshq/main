@@ -26,7 +26,6 @@ if (!author) {
 }
 
 const { title, description, pubDate, updatedDate, cover, tags } = post.data;
-const allTags = [...new Set(allPosts.flatMap((p) => p.data.tags))].sort();
 
 const suggested = getSuggestedPosts(post, allPosts, 4);
 const nextPost = getNextOlderPost(post.id, allPosts);
@@ -60,7 +59,6 @@ const schema = {
 <BaseLayout
   title={`${title} | AI Snap`}
   description={description}
-  tags={allTags}
   editionDate={formatEditionDate(pubDate)}
 >
   <script type="application/ld+json" set:html={JSON.stringify(schema)} />

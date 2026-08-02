@@ -10,7 +10,7 @@ coverCredit: "Unsplash"
 whyItMatters: "A limit can change which models or tools are available during an active conversation, so knowing where ChatGPT shows the current status helps readers plan important work."
 sourceName: "OpenAI Help Center"
 sourceUrl: "https://help.openai.com/en/articles/6950777-what-is-chatgpt-plus"
-tags: ["OpenAI", "Trackers"]
+tags: ["OpenAI"]
 postType: "tracker"
 featured: true
 ---

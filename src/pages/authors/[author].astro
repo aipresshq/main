@@ -26,7 +26,6 @@ const { author, allPosts } = Astro.props as Props;
 const posts = allPosts
   .filter((post) => getAuthorId(post.data.author) === author.id)
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf() || a.id.localeCompare(b.id));
-const tags = [...new Set(allPosts.flatMap((post) => post.data.tags))].sort();
 const site = Astro.site ?? 'https://aisnap.in';
 const authorUrl = new URL(`/authors/${author.id}/`, site).href;
 const socialLinks = [author.data.website, author.data.x, author.data.linkedin]
@@ -45,7 +44,6 @@ const schema = {
 <BaseLayout
   title={`${author.data.name} | AI Snap`}
   description={author.data.bio}
-  tags={tags}
   editionDate={posts[0] && formatEditionDate(posts[0].data.pubDate)}
 >
   <script type="application/ld+json" set:html={JSON.stringify(schema)} />

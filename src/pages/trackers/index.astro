@@ -5,7 +5,6 @@ import CategoryFront from '../../components/CategoryFront.astro';
 import { formatEditionDate } from '../../lib/date';
 
 const allPosts = await getCollection('posts');
-const allTags = [...new Set(allPosts.flatMap((p) => p.data.tags))].sort();
 const posts = allPosts
   .filter((p) => p.data.postType === 'tracker')
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
@@ -15,7 +14,6 @@ const posts = allPosts
 	title="Trackers | AI Snap"
 	description="Live usage-limit and pricing trackers for major AI tools, updated regularly."
 	activeTab="trackers"
-	tags={allTags}
 	editionDate={posts[0] && formatEditionDate(posts[0].data.pubDate)}
 >
 	<CategoryFront

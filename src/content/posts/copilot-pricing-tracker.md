@@ -10,7 +10,7 @@ coverCredit: "Unsplash"
 whyItMatters: "Copilot access can differ across individual and organization-managed accounts, affecting which features are available and how usage is governed."
 sourceName: "GitHub Docs"
 sourceUrl: "https://docs.github.com/en/copilot/get-started/plans"
-tags: ["Microsoft", "Trackers"]
+tags: ["Microsoft"]
 postType: "tracker"
 featured: false
 ---

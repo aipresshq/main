@@ -10,7 +10,7 @@ coverCredit: "Unsplash"
 whyItMatters: "Rate limits can slow or pause a production workflow even when an application is otherwise healthy, making project-level visibility and graceful handling essential."
 sourceName: "Google AI for Developers"
 sourceUrl: "https://ai.google.dev/gemini-api/docs/rate-limits"
-tags: ["Google DeepMind", "Trackers"]
+tags: ["Google DeepMind"]
 postType: "tracker"
 featured: true
 ---

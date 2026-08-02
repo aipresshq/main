@@ -12,7 +12,6 @@ import { formatEditionDate } from '../lib/date';
 const posts = (await getCollection('posts')).sort(
   (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
 );
-const allTags = [...new Set(posts.flatMap((p) => p.data.tags))].sort();
 
 // The stage takes the top five: lead, "next" teaser, and three rail stories.
 const stagePosts = posts.slice(0, 5);
@@ -37,7 +36,6 @@ const picks = posts.filter((p) => p.data.featured);
 	title="AI Snap | Daily AI News"
 	description="Daily AI news, evergreen comparisons, and usage-limit trackers across every major AI lab."
 	activeTab="latest"
-	tags={allTags}
 	editionDate={posts[0] && formatEditionDate(posts[0].data.pubDate)}
 >
 	<Stage posts={stagePosts} emptyNote="No stories published yet." />
