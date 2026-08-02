@@ -674,8 +674,10 @@ check('layout is full width — no max-width cap or raised frame card', () => {
 
 check('the explicit theme palette keeps the photographic stage dark', () => {
   const css = src('src/styles/global.css');
+  const light = css.match(/:root\s*\{([\s\S]*?)\n\}/);
   const dark = css.match(/:root\[data-theme=['"]dark['"]\]\s*\{([\s\S]*?)\n\}/);
-  assert.ok(dark, 'missing explicit dark theme block');
+  assert.ok(light && dark, 'missing explicit theme blocks');
+  assert.match(light[1], /--mark:\s*var\(--text\)/, 'light mode should keep labels neutral');
   assert.match(dark[1], /--bg:\s*#0a0a0a/i, 'dark mode does not set a dark background');
   assert.match(dark[1], /--text:\s*#ffffff/i, 'dark mode does not set white body text');
   // The hero is photography behind white text in both modes, so the stage must
@@ -683,7 +685,7 @@ check('the explicit theme palette keeps the photographic stage dark', () => {
   const stage = css.match(/\.stage\s*\{([\s\S]*?)\n\}/);
   assert.ok(stage, 'missing stage rule');
   assert.match(stage[1], /--text:\s*#ffffff/i, 'stage must keep white text in light mode');
-  assert.match(css, /--mark:\s*#756500/i, 'light mode does not darken the search highlight');
+  assert.match(dark[1], /--mark:\s*var\(--accent\)/, 'dark mode should retain the accent mark');
 });
 
 check('article focus rings use theme-aware marks while dark card tags use the accent', () => {
@@ -729,7 +731,7 @@ check('headline and masthead use the display and blackletter faces', () => {
 
 check('homepage renders the shell: masthead, dateline, nav, and no header subscribe button', () => {
   const html = dist('index.html');
-  assert.match(html, /<title>AI Snap — Daily AI News<\/title>/);
+  assert.match(html, /<title>AI Snap \| Daily AI News<\/title>/);
   assert.ok(html.includes('class="masthead"'), 'masthead not rendered');
   assert.ok(html.includes('class="edition-date"'), 'edition dateline not rendered');
   assert.ok(html.includes('class="section-nav"'), 'section nav not rendered');

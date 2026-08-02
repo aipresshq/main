@@ -17,7 +17,7 @@ const allTags = [...new Set(posts.flatMap((p) => p.data.tags))].sort();
 const stagePosts = posts.slice(0, 5);
 const inStage = new Set(stagePosts.map((p) => p.id));
 
-// Trackers and Explainers are section fronts — complete listings by type, so a
+// Trackers and Explainers are section fronts: complete listings by type, so a
 // story showing in both the hero and its own section is expected, as in print.
 const trackers = posts.filter((p) => p.data.postType === 'tracker').slice(0, 5);
 const evergreen = posts.filter((p) => p.data.postType === 'evergreen').slice(0, 5);
@@ -25,14 +25,14 @@ const evergreen = posts.filter((p) => p.data.postType === 'evergreen').slice(0, 
 // The digest is what the front hasn't already shown.
 const digest = posts.filter((p) => !inStage.has(p.id)).slice(0, 8);
 
-// Editor's Picks closes the front — a real curated signal (the `featured`
+// Editor's Picks closes the front: a real curated signal (the `featured`
 // flag, set by whoever reviews the day's drafts per context.md §4), not a
 // fabricated "Most Read" ranking with no analytics behind it this early on.
 const picks = posts.filter((p) => p.data.featured);
 ---
 
 <BaseLayout
-	title="AI Snap — Daily AI News"
+	title="AI Snap | Daily AI News"
 	description="Daily AI news, evergreen comparisons, and usage-limit trackers across every major AI lab."
 	activeTab="latest"
 	tags={allTags}

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   AI Snap — editorial theme
+   AI Snap editorial theme
    Blackletter masthead + high-contrast display serif headlines over a
    full-bleed monochrome hero, with translucent cards on top.
    Paper by default, with an explicit dark theme for readers who prefer ink.
@@ -16,7 +16,7 @@
   --text-muted: #686868;
   --accent: #f2e14c;
   --accent-ink: #0a0a0a;
-  --mark: #756500;
+  --mark: var(--text);
   --shadow-raised: 0 20px 50px rgba(0, 0, 0, 0.16);
   --card-bg: #ffffff;
   --card-bg-hover: #f1f1f1;
@@ -100,7 +100,7 @@ img {
 }
 
 /* --------------------------------------------------------------------------
-   Page wrapper — full width, gutters only. No max-width and no raised card:
+   Page wrapper: full width, gutters only. No max-width and no raised card:
    the layout sits directly on the page background.
    -------------------------------------------------------------------------- */
 
@@ -123,7 +123,6 @@ img {
   align-items: center;
   gap: 24px;
   padding: 18px 0 16px;
-  border-bottom: 1px solid var(--border);
 }
 
 .header-edition {
@@ -238,7 +237,7 @@ html[data-theme='dark'] .theme-icon-moon {
 }
 
 /* --------------------------------------------------------------------------
-   Full-screen menu — a native <details> disclosure, so it opens, closes and
+   Full-screen menu: a native <details> disclosure, so it opens, closes and
    takes keyboard focus without a line of JavaScript. Its restrained surface
    follows the active theme while the accent stays reserved for signals.
    -------------------------------------------------------------------------- */
@@ -457,7 +456,6 @@ html[data-theme='dark'] .theme-icon-moon {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: stretch;
   gap: 18px;
-  border-bottom: 1px solid var(--border);
 }
 
 .header-nav-caption {
@@ -686,7 +684,7 @@ html[data-theme='dark'] .theme-icon-moon {
 }
 
 /* Lead text sits directly on arbitrary cover photography, so it can't rely on
-   the muted palette — lift the small text and shadow it so it stays legible
+   the muted palette: lift the small text and shadow it so it stays legible
    whatever the image behind it. */
 .stage-lead .label,
 .stage-lead .byline-name,
@@ -810,7 +808,7 @@ a.byline:focus-visible {
    -------------------------------------------------------------------------- */
 
 /* Tokenised because cards appear in two contexts: translucent dark over the
-   hero photo, and on the page background in the article page's Related list —
+   hero photo, and on the page background in the article page's Related list:
    where light mode needs a light surface. */
 .card {
   display: block;
@@ -910,7 +908,7 @@ a.byline:focus-visible {
 }
 
 /* --------------------------------------------------------------------------
-   Homepage sections — editorial density: asymmetric grids, headlines doing
+   Homepage sections: editorial density: asymmetric grids, headlines doing
    the work, sharp imagery. Deliberately not four variations of one card grid.
    -------------------------------------------------------------------------- */
 
@@ -949,7 +947,7 @@ a.byline:focus-visible {
   text-underline-offset: 4px;
 }
 
-/* Section images are sharp, not rounded — the rounded hero reads as a poster,
+/* Section images are sharp, not rounded: the rounded hero reads as a poster,
    these read as newsprint. */
 .band img,
 .split img,
@@ -1152,7 +1150,7 @@ a.byline:focus-visible {
 /* --- Panel: a toned (not saturated) full-bleed band, for rhythm rather than
    emphasis. Alternates against the plain page background the way a print
    section front alternates paper stock, without repeating the saturated
-   .band treatment already used for Trackers — no accent rule here. --- */
+   .band treatment already used for Trackers: no accent rule here. --- */
 
 .panel {
   margin: 64px calc(-1 * var(--gutter)) 0;
@@ -1160,7 +1158,7 @@ a.byline:focus-visible {
   background: var(--panel-bg);
 }
 
-/* Three equal-weight photo cards beside a text-only column — distinct from
+/* Three equal-weight photo cards beside a text-only column: distinct from
    FeatureBand's one-dominant-plus-cluster and SplitFeature's single lead. */
 .ranked-grid {
   display: grid;
@@ -1232,7 +1230,7 @@ a.byline:focus-visible {
   border-top: none;
 }
 
-/* Text-only rows keep their headline to two lines — three would crowd a
+/* Text-only rows keep their headline to two lines: three would crowd a
    column already narrower than the photo cards beside it. */
 .ranked-list h3 {
   -webkit-line-clamp: 2;
@@ -1240,7 +1238,7 @@ a.byline:focus-visible {
 }
 
 /* --------------------------------------------------------------------------
-   Newsroom grid — the homepage's visual index: one lead, four cards, and a
+   Newsroom grid: the homepage's visual index: one lead, four cards, and a
    black-and-white editorial signal panel.
    -------------------------------------------------------------------------- */
 
@@ -1408,7 +1406,7 @@ a.byline:focus-visible {
 }
 
 /* --------------------------------------------------------------------------
-   Category fronts — a title-and-description introduction, a compact story
+   Category fronts: a title-and-description introduction, a compact story
    feed, and a category-specific editorial rail.
    -------------------------------------------------------------------------- */
 
@@ -1741,7 +1739,7 @@ a.byline:focus-visible {
 }
 
 /* --------------------------------------------------------------------------
-   Motion — CSS only. Scroll reveals use animation-timeline behind @supports,
+   Motion: CSS only. Scroll reveals use animation-timeline behind @supports,
    so browsers without it simply render the content in place rather than
    leaving it stuck invisible.
    -------------------------------------------------------------------------- */
@@ -1786,7 +1784,7 @@ a.byline:focus-visible {
 @supports (animation-timeline: view()) {
   /* Longhands, never the `animation` shorthand: the CSS minifier folds a
      neighbouring animation-timeline into the shorthand, and browsers reject
-     the result — which silently dropped the whole animation. */
+     the result: browsers silently dropped the whole animation. */
   .reveal {
     animation-name: rise;
     animation-duration: 0.7s;
@@ -1795,7 +1793,7 @@ a.byline:focus-visible {
     animation-timeline: view();
     /* Completes partway through the element entering the viewport. A range
        measured in `cover` can leave a section near the page bottom stuck
-       mid-animation — permanently semi-transparent — because the page cannot
+       mid-animation: permanently semi-transparent: because the page cannot
        scroll far enough to finish it. */
     animation-range: entry 0% entry 45%;
   }
@@ -2437,8 +2435,6 @@ a.byline:focus-visible {
   gap: 32px;
   align-items: start;
   padding: 28px 0 40px;
-  border-top: 4px solid var(--mark);
-  border-bottom: 1px solid var(--border);
 }
 
 .author-profile-avatar {
@@ -2541,8 +2537,6 @@ a.byline:focus-visible {
   justify-content: space-between;
   gap: 24px;
   margin-bottom: 22px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border);
 }
 
 .author-archive-heading h2 {
@@ -2561,8 +2555,6 @@ a.byline:focus-visible {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
 }
 
 .author-story img {
@@ -2745,7 +2737,7 @@ a.byline:focus-visible {
   }
 
   /* Stacked layout puts lead text over the middle of the photo, where the
-     left-weighted gradient no longer shields it — darken uniformly instead. */
+     left-weighted gradient no longer shields it: darken uniformly instead. */
   .stage-backdrop::after {
     background: linear-gradient(to bottom, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.82));
   }
@@ -2760,7 +2752,7 @@ a.byline:focus-visible {
     gap: 32px;
   }
 
-  /* Two photo cards per row, the text-only list spanning beneath both —
+  /* Two photo cards per row, the text-only list spanning beneath both:
      keeps some of the density rather than dropping straight to one column. */
   .ranked-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

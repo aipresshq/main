@@ -16,7 +16,7 @@ const authors = defineCollection({
 
 // Matches the fixed post template in context.md §4. Every post follows this
 // same shape regardless of source, which is the core anti-scaled-content-abuse
-// mechanism the whole project is built around — don't loosen this schema to
+// mechanism the whole project is built around: don't loosen this schema to
 // let a post skip a required field.
 const posts = defineCollection({
   loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/posts' }),
@@ -30,12 +30,12 @@ const posts = defineCollection({
 
     // §4 item 1: auto-generated header image + photo-credit-style caption.
     // Stored as a full R2 URL (not a local asset) so images never bloat the
-    // git repo — see astro.config.mjs `image.remotePatterns`.
+    // git repo: see astro.config.mjs `image.remotePatterns`.
     cover: z.string().url(),
     coverAlt: z.string(),
     coverCredit: z.string().optional(),
 
-    // §4 item 4: the human-added "why it matters" take — the actual
+    // §4 item 4: the human-added "why it matters" take: the actual
     // value-add that keeps a post outside the scaled-content-abuse definition.
     whyItMatters: z.string(),
 
@@ -48,7 +48,7 @@ const posts = defineCollection({
       })
       .optional(),
 
-    // §4 item 6: short attributed quote + link out to the original source —
+    // §4 item 6: short attributed quote + link out to the original source:
     // never full-paragraph reproduction.
     quote: z
       .object({
@@ -59,12 +59,12 @@ const posts = defineCollection({
     sourceName: z.string(),
     sourceUrl: z.string().url(),
 
-    // §4 item 7: fixed tag taxonomy — also drives §4 item 8's "Related"
+    // §4 item 7: fixed tag taxonomy: also drives §4 item 8's "Related"
     // module (3 posts auto-matched by tag) at render time.
     tags: z.array(z.string()).min(1),
 
     // §2/§3: evergreen/tracker content is the traffic backbone, daily
-    // digest posts are supporting volume — this flag lets templates and
+    // digest posts are supporting volume: this flag lets templates and
     // the homepage treat the two differently instead of listing everything
     // as one undifferentiated feed.
     postType: z.enum(['digest', 'evergreen', 'tracker']).default('digest'),

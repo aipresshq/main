@@ -46,7 +46,7 @@ const canonicalUrl = new URL(`/posts/${post.id}/`, Astro.site ?? 'https://aisnap
       data-continuous-article
       data-post-id={post.id}
       data-post-url={`/posts/${post.id}/`}
-      data-document-title={`${post.data.title} — AI Snap`}
+      data-document-title={`${post.data.title} | AI Snap`}
       data-next-fragment={nextPost ? `/posts/${nextPost.id}/fragment/` : undefined}
       data-next-url={nextPost ? `/posts/${nextPost.id}/` : undefined}
     >
