@@ -2,35 +2,30 @@
    AI Snap — editorial theme
    Blackletter masthead + high-contrast display serif headlines over a
    full-bleed monochrome hero, with translucent cards on top.
-   Dark by default, light when the reader's system asks for it.
+   Paper by default, with an explicit dark theme for readers who prefer ink.
    ========================================================================== */
 
 :root {
-  --bg: #121212;
-  --surface: rgba(255, 255, 255, 0.06);
-  --surface-strong: rgba(255, 255, 255, 0.1);
-  --surface-raised: #1f1f1f;
-  --border: rgba(255, 255, 255, 0.11);
-  --text: #ffffff;
-  --text-muted: #a3a3a3;
+  /* Paper is the default; the toggle adds the ink version without a flash. */
+  --bg: #ffffff;
+  --surface: #f4f4f4;
+  --surface-strong: #e9e9e9;
+  --surface-raised: #ffffff;
+  --border: rgba(0, 0, 0, 0.16);
+  --text: #0a0a0a;
+  --text-muted: #686868;
   --accent: #f2e14c;
-  --accent-ink: #17170a;
-  --mark: var(--accent);
-  --shadow-raised: 0 20px 50px rgba(0, 0, 0, 0.55);
-  --card-bg: rgba(20, 20, 20, 0.72);
-  --card-bg-hover: rgba(32, 32, 32, 0.82);
+  --accent-ink: #0a0a0a;
+  --mark: #756500;
+  --shadow-raised: 0 20px 50px rgba(0, 0, 0, 0.16);
+  --card-bg: #ffffff;
+  --card-bg-hover: #f1f1f1;
 
-  /* Section band. A saturated field carrying white headlines with the accent
-     as its rule — the same pairing the reference makes with red and gold. Held
-     dark in both themes so the band always reads as a distinct zone. */
-  --band-bg: #201c10;
+  /* Every field is black or white; yellow is reserved for active signals. */
+  --band-bg: #0a0a0a;
   --band-ink: #ffffff;
   --band-ink-muted: rgba(255, 255, 255, 0.72);
-
-  /* Panel: a toned section background for rhythm — subtler than the band, and
-     unlike --band-bg it does flip with the theme, since it's meant to read as
-     "the page background, one shade over" rather than a fixed distinct zone. */
-  --panel-bg: #181818;
+  --panel-bg: #f4f4f4;
 
   --font-body: 'Inter Variable', system-ui, -apple-system, sans-serif;
   /* Source Serif 4 reads closer to modern newsroom typography: disciplined,
@@ -46,42 +41,30 @@
   --gutter: 32px;
 }
 
-/* Light mode follows the reader's system preference — no JS, no toggle flash.
-   The lead stage deliberately stays dark in both modes: it's photography with
-   a scrim behind white text, and inverting it would make the hero unreadable. */
-@media (prefers-color-scheme: light) {
-  :root {
-    --bg: #faf9f7;
-    --surface: rgba(0, 0, 0, 0.04);
-    --surface-strong: rgba(0, 0, 0, 0.08);
-    --surface-raised: #ffffff;
-    --border: rgba(0, 0, 0, 0.14);
-    --text: #14130f;
-    --text-muted: #5f5c55;
-    --accent-ink: #17170a;
-    /* Yellow is unreadable as text on paper — gold reads on white, while the
-       accent itself stays for filled surfaces like the subscribe button. */
-    --mark: #7a6800;
-    --shadow-raised: 0 18px 40px rgba(0, 0, 0, 0.14);
-    --card-bg: #ffffff;
-    --card-bg-hover: #f1efe9;
-    /* The reference's actual cream, not a dark tone lightened by a formula —
-       paper stock is warm, not grey. */
-    --panel-bg: #efe9dc;
-  }
+:root[data-theme='dark'] {
+  --bg: #0a0a0a;
+  --surface: #151515;
+  --surface-strong: #222222;
+  --surface-raised: #111111;
+  --border: rgba(255, 255, 255, 0.16);
+  --text: #ffffff;
+  --text-muted: #a6a6a6;
+  --mark: var(--accent);
+  --shadow-raised: 0 20px 50px rgba(0, 0, 0, 0.55);
+  --card-bg: #151515;
+  --card-bg-hover: #222222;
+  --band-bg: #ffffff;
+  --band-ink: #0a0a0a;
+  --band-ink-muted: rgba(0, 0, 0, 0.66);
+  --panel-bg: #151515;
+}
 
-  /* Redefining the tokens on .stage cascades the dark palette to everything
-     inside it — lead text, rail cards, the next teaser — without needing a
-     light-mode override on each component. */
-  .stage {
-    --surface: rgba(255, 255, 255, 0.08);
-    --surface-strong: rgba(255, 255, 255, 0.16);
-    --border: rgba(255, 255, 255, 0.16);
-    --text: #ffffff;
-    --text-muted: #b8b5ad;
-    --card-bg: rgba(20, 20, 20, 0.72);
-    --card-bg-hover: rgba(32, 32, 32, 0.82);
-  }
+html {
+  color-scheme: light;
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
 }
 
 * {
@@ -132,7 +115,6 @@ img {
 
 .site-header {
   margin-bottom: 22px;
-  border-top: 4px solid var(--accent);
 }
 
 .site-header-main {
@@ -186,9 +168,9 @@ img {
   height: 44px;
   gap: 11px;
   padding: 0 14px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
+  border: 1px solid var(--text);
+  background: var(--text);
+  color: var(--bg);
   flex-shrink: 0;
   cursor: pointer;
   list-style: none;
@@ -199,9 +181,9 @@ img {
 }
 
 .menu-trigger:hover {
-  background: var(--surface-strong);
-  border-color: var(--mark);
-  color: var(--mark);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
 }
 
 .menu-trigger-label {
@@ -218,11 +200,47 @@ img {
   height: 18px;
 }
 
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+}
+
+.theme-toggle:hover,
+.theme-toggle:focus-visible {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.theme-toggle span {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.theme-icon-moon,
+html[data-theme='dark'] .theme-icon-sun {
+  display: none;
+}
+
+html[data-theme='dark'] .theme-icon-moon {
+  display: block;
+}
+
 /* --------------------------------------------------------------------------
    Full-screen menu — a native <details> disclosure, so it opens, closes and
-   takes keyboard focus without a line of JavaScript. The accent floods the
-   viewport; because that panel is yellow with dark ink in both themes, the
-   menu needs no light/dark variants of its own.
+   takes keyboard focus without a line of JavaScript. Its restrained surface
+   follows the active theme while the accent stays reserved for signals.
    -------------------------------------------------------------------------- */
 
 .menu {
@@ -260,8 +278,9 @@ img {
   z-index: 60;
   overflow-y: auto;
   padding: 120px 32px 56px;
-  background: var(--accent);
-  color: var(--accent-ink);
+  border-top: 3px solid var(--accent);
+  background: var(--bg);
+  color: var(--text);
 }
 
 /* Stretched rather than start-aligned, so the rule between the two groups
@@ -278,6 +297,7 @@ img {
   font-size: 1.9rem;
   font-weight: 600;
   letter-spacing: -0.01em;
+  color: var(--mark);
 }
 
 .menu-panel ul {
@@ -300,7 +320,7 @@ img {
 .menu-panel a {
   font-size: 1.15rem;
   font-weight: 500;
-  color: var(--accent-ink);
+  color: var(--text);
   opacity: 0.85;
 }
 
@@ -312,7 +332,7 @@ img {
 
 .menu-more {
   padding-left: 48px;
-  border-left: 1px solid rgba(23, 23, 10, 0.25);
+  border-left: 1px solid var(--border);
 }
 
 .subscribe-button {
@@ -499,7 +519,7 @@ img {
 .topic-menu {
   position: relative;
   min-width: 0;
-  border-left: 1px solid var(--border);
+  border-left: 0;
 }
 
 .topic-menu > summary {
@@ -510,9 +530,10 @@ img {
   height: 100%;
   min-height: 48px;
   padding: 0 18px;
+  border: 1px solid var(--text);
   list-style: none;
-  background: var(--surface);
-  color: var(--text);
+  background: var(--text);
+  color: var(--bg);
   cursor: pointer;
   font-size: 0.78rem;
   font-weight: 600;
@@ -526,7 +547,15 @@ img {
 }
 
 .topic-menu > summary:hover {
-  color: var(--mark);
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.topic-menu[open] > summary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
 }
 
 .topic-menu-glyph {
@@ -605,6 +634,13 @@ img {
   border-radius: var(--radius-frame);
   overflow: hidden;
   isolation: isolate;
+  --surface: rgba(255, 255, 255, 0.08);
+  --surface-strong: rgba(255, 255, 255, 0.16);
+  --border: rgba(255, 255, 255, 0.16);
+  --text: #ffffff;
+  --text-muted: #d0d0d0;
+  --card-bg: rgba(0, 0, 0, 0.72);
+  --card-bg-hover: rgba(0, 0, 0, 0.88);
 }
 
 .stage-backdrop {
@@ -1204,6 +1240,507 @@ a.byline:focus-visible {
 }
 
 /* --------------------------------------------------------------------------
+   Newsroom grid — the homepage's visual index: one lead, four cards, and a
+   black-and-white editorial signal panel.
+   -------------------------------------------------------------------------- */
+
+.newsroom-section {
+  margin-top: 72px;
+}
+
+.newsroom-section-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 16px;
+  margin-bottom: 28px;
+  border-bottom: 2px solid var(--text);
+}
+
+.newsroom-section-head .label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--mark);
+}
+
+.newsroom-section-head h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 3.3vw, 3.3rem);
+  font-weight: 500;
+  line-height: 0.98;
+}
+
+.newsroom-section-link,
+.newsroom-signal-link {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.newsroom-section-link:hover,
+.newsroom-signal-link:hover {
+  color: var(--mark);
+}
+
+.newsroom-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 1.05fr) minmax(360px, 1.3fr) minmax(260px, 0.8fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.newsroom-lead img,
+.newsroom-card img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  margin-bottom: 14px;
+}
+
+.newsroom-lead .label,
+.newsroom-card .label {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--mark);
+}
+
+.newsroom-lead h3,
+.newsroom-card h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: 1.12;
+}
+
+.newsroom-lead h3 {
+  font-size: clamp(1.7rem, 2.5vw, 2.5rem);
+}
+
+.newsroom-card h3 {
+  font-size: 1.15rem;
+}
+
+.newsroom-lead time,
+.newsroom-card time {
+  display: block;
+  margin-top: 10px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.newsroom-lead:hover h3,
+.newsroom-card:hover h3 {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.newsroom-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px 22px;
+}
+
+.newsroom-signal {
+  padding: 26px;
+  background: var(--band-bg);
+  color: var(--band-ink);
+}
+
+.newsroom-signal-head {
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--band-ink-muted);
+}
+
+.newsroom-signal-head .label {
+  color: var(--accent);
+}
+
+.newsroom-signal-head h2 {
+  margin: 6px 0 0;
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.newsroom-signal ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.newsroom-signal li {
+  padding: 17px 0;
+  border-bottom: 1px solid var(--band-ink-muted);
+}
+
+.newsroom-signal li:last-child {
+  border-bottom: 0;
+}
+
+.newsroom-signal li .label {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--accent);
+}
+
+.newsroom-signal h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1.16;
+}
+
+.newsroom-signal a:hover h3 {
+  color: var(--accent);
+}
+
+.newsroom-signal-link {
+  display: inline-block;
+  margin-top: 22px;
+  padding-bottom: 5px;
+  border-bottom: 2px solid var(--accent);
+  color: var(--band-ink);
+}
+
+/* --------------------------------------------------------------------------
+   Category fronts — a title-and-description introduction, a compact story
+   feed, and a category-specific editorial rail.
+   -------------------------------------------------------------------------- */
+
+.category-front {
+  margin-top: 52px;
+}
+
+.category-intro {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.1fr);
+  gap: 64px;
+  align-items: end;
+  padding-bottom: 58px;
+}
+
+.category-intro .label {
+  display: block;
+  margin-bottom: 12px;
+  color: var(--mark);
+}
+
+.category-intro h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(4.6rem, 11vw, 9.5rem);
+  font-weight: 500;
+  line-height: 0.78;
+  letter-spacing: -0.075em;
+}
+
+.category-intro p {
+  max-width: 62ch;
+  margin: 0 0 4px;
+  font-size: 1.06rem;
+  line-height: 1.65;
+  color: var(--text-muted);
+}
+
+.category-rule {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(80px, 1fr);
+  height: 12px;
+  margin: 0 calc(-1 * var(--gutter)) 64px;
+  background: var(--text);
+}
+
+.category-rule span {
+  grid-column: 2;
+  background: var(--accent);
+}
+
+.category-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 64px;
+  align-items: start;
+}
+
+.category-feed-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 48px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.category-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.category-toggle input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.category-toggle-track {
+  display: inline-flex;
+  align-items: center;
+  width: 48px;
+  height: 26px;
+  padding: 3px;
+  border: 1px solid var(--text);
+  border-radius: var(--radius-pill);
+}
+
+.category-toggle-track span {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--text);
+  transition: transform 160ms ease, background 160ms ease;
+}
+
+.category-toggle input:checked + .category-toggle-track {
+  background: var(--accent);
+  border-color: var(--accent-ink);
+}
+
+.category-toggle input:checked + .category-toggle-track span {
+  transform: translateX(21px);
+  background: var(--accent-ink);
+}
+
+.category-toggle input:focus-visible + .category-toggle-track {
+  outline: 2px solid var(--mark);
+  outline-offset: 3px;
+}
+
+.category-story {
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr);
+  gap: 26px;
+  align-items: start;
+  padding: 24px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.category-story img {
+  width: 230px;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+.category-story-copy {
+  min-width: 0;
+}
+
+.category-story-topline {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.category-story-topic {
+  color: var(--mark);
+}
+
+.category-story-topline time,
+.category-story-read {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+.category-story h2 {
+  margin: 8px 0 9px;
+  font-family: var(--font-display);
+  font-size: clamp(1.35rem, 2vw, 1.9rem);
+  font-weight: 600;
+  line-height: 1.08;
+}
+
+.category-story-description {
+  display: block;
+  max-width: 60ch;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.category-story-read {
+  display: block;
+  margin-top: 12px;
+}
+
+.category-story:hover h2 {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.category-front--headlines-only .category-story {
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 22px;
+}
+
+.category-front--headlines-only .category-story img {
+  width: 150px;
+  aspect-ratio: 16 / 10;
+}
+
+.category-front--headlines-only .category-story-description {
+  display: none;
+}
+
+.category-rail {
+  position: sticky;
+  top: 24px;
+  display: grid;
+  gap: 28px;
+}
+
+.category-signal {
+  padding: 28px;
+  background: var(--band-bg);
+  color: var(--band-ink);
+}
+
+.category-signal-heading {
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--band-ink-muted);
+}
+
+.category-signal-heading .label {
+  color: var(--accent);
+}
+
+.category-signal-heading h2 {
+  margin: 5px 0 0;
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.category-signal ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: category-signal;
+}
+
+.category-signal li {
+  counter-increment: category-signal;
+  padding: 17px 0;
+  border-bottom: 1px solid var(--band-ink-muted);
+}
+
+.category-signal li:last-child {
+  border-bottom: 0;
+}
+
+.category-signal li h3 {
+  margin: 6px 0 0;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1.18;
+}
+
+.category-signal li h3::before {
+  content: counter(category-signal, decimal-leading-zero) ' ';
+  margin-right: 6px;
+  color: var(--accent);
+}
+
+.category-signal li .label {
+  color: var(--accent);
+}
+
+.category-signal li a:hover h3 {
+  color: var(--accent);
+}
+
+.category-signal-link,
+.category-rail-card-link {
+  display: inline-block;
+  margin-top: 20px;
+  padding-bottom: 5px;
+  border-bottom: 2px solid var(--accent);
+  color: var(--band-ink);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.category-signal-link:hover,
+.category-rail-card-link:hover {
+  color: var(--accent);
+}
+
+.category-rail-card {
+  display: grid;
+  gap: 15px;
+  padding: 28px;
+  border: 1px solid var(--text);
+  background: var(--surface);
+}
+
+.category-rail-card .label {
+  color: var(--mark);
+}
+
+.category-rail-card strong {
+  max-width: 12ch;
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 0.98;
+}
+
+.category-rail-card > span:not(.label):not(.category-rail-card-link) {
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+.category-rail-card-link {
+  justify-self: start;
+  color: var(--text);
+}
+
+.category-empty {
+  margin-top: 64px;
+  padding: 48px 0;
+  border-top: 1px solid var(--border);
+}
+
+.category-empty h1 {
+  margin: 0 0 12px;
+  font-family: var(--font-display);
+  font-size: 3rem;
+  font-weight: 500;
+}
+
+.category-empty p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+/* --------------------------------------------------------------------------
    Motion — CSS only. Scroll reveals use animation-timeline behind @supports,
    so browsers without it simply render the content in place rather than
    leaving it stuck invisible.
@@ -1788,7 +2325,7 @@ a.byline:focus-visible {
   min-width: 0;
   overflow: hidden;
   border-radius: 0;
-  background: #1a1813;
+  background: #0a0a0a;
   color: #ffffff;
 }
 
@@ -2186,6 +2723,19 @@ a.byline:focus-visible {
     grid-template-columns: 1fr;
   }
 
+  .newsroom-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 0.8fr);
+  }
+
+  .newsroom-lead {
+    grid-row: span 2;
+  }
+
+  .category-layout {
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 32px;
+  }
+
   .stage-lead {
     min-height: 420px;
   }
@@ -2219,6 +2769,32 @@ a.byline:focus-visible {
 
   .ranked-list {
     grid-column: 1 / -1;
+  }
+
+  .newsroom-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .newsroom-lead {
+    grid-row: auto;
+  }
+
+  .newsroom-signal {
+    grid-column: 1 / -1;
+  }
+
+  .category-intro {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .category-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .category-rail {
+    position: static;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .suggested-reads--standalone .suggested-reads-grid,
@@ -2285,7 +2861,7 @@ a.byline:focus-visible {
     padding-left: 0;
     padding-top: 32px;
     border-left: none;
-    border-top: 1px solid rgba(23, 23, 10, 0.25);
+    border-top: 1px solid var(--border);
   }
 }
 
@@ -2328,6 +2904,15 @@ a.byline:focus-visible {
   .topic-menu-panel {
     width: calc(100vw - (2 * var(--gutter)));
     padding: 20px;
+  }
+
+  .theme-toggle span {
+    display: none;
+  }
+
+  .theme-toggle {
+    width: 44px;
+    padding: 0;
   }
 
   .topic-menu-list {
@@ -2392,6 +2977,39 @@ a.byline:focus-visible {
   .suggested-reads--standalone .suggested-reads-grid,
   .suggested-reads--stream .suggested-reads-grid {
     grid-template-columns: 1fr;
+  }
+
+  .newsroom-grid,
+  .newsroom-cards,
+  .category-rail {
+    grid-template-columns: 1fr;
+  }
+
+  .newsroom-signal {
+    grid-column: auto;
+  }
+
+  .category-rule {
+    margin-bottom: 40px;
+  }
+
+  .category-story,
+  .category-front--headlines-only .category-story {
+    grid-template-columns: 112px minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .category-story img,
+  .category-front--headlines-only .category-story img {
+    width: 112px;
+  }
+
+  .category-story-topline time {
+    display: none;
+  }
+
+  .category-intro h1 {
+    font-size: clamp(4rem, 22vw, 6rem);
   }
 
   .author-page {

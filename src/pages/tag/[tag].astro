@@ -1,7 +1,7 @@
 ---
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import Stage from '../../components/Stage.astro';
+import CategoryFront from '../../components/CategoryFront.astro';
 import { formatEditionDate } from '../../lib/date';
 import { slugify } from '../../lib/slug';
 
@@ -28,5 +28,10 @@ const posts = allPosts
 	tags={allTags}
 	editionDate={posts[0] && formatEditionDate(posts[0].data.pubDate)}
 >
-	<Stage posts={posts} emptyNote={`No stories tagged ${tag} yet.`} />
+	<CategoryFront
+		title={tag}
+		description={`Latest AI Snap coverage tagged ${tag}, with concise reporting, practical context, and the primary sources behind each story.`}
+		posts={posts}
+		emptyNote={`No stories tagged ${tag} yet.`}
+	/>
 </BaseLayout>

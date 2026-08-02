@@ -1,0 +1,67 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { formatPostDate } from '../lib/date';
+
+export interface Props {
+  title: string;
+  href?: string;
+  posts: CollectionEntry<'posts'>[];
+}
+
+const { title, href, posts } = Astro.props;
+const [lead, ...rest] = posts;
+const cards = rest.slice(0, 4);
+const signal = rest.slice(0, 5);
+---
+
+{
+  lead && (
+    <section class="newsroom-section reveal" aria-labelledby="newsroom-heading">
+      <div class="newsroom-section-head">
+        <div>
+          <span class="label">The daily desk</span>
+          <h2 id="newsroom-heading">{title}</h2>
+        </div>
+        {href && <a class="newsroom-section-link" href={href}>See all <span aria-hidden="true">-&gt;</span></a>}
+      </div>
+
+      <div class="newsroom-grid">
+        <a class="newsroom-lead" href={`/posts/${lead.id}/`}>
+          <img src={lead.data.cover} alt={lead.data.coverAlt} />
+          <span class="label">{lead.data.tags[0]}</span>
+          <h3>{lead.data.title}</h3>
+          <time datetime={lead.data.pubDate.toISOString()}>{formatPostDate(lead.data.pubDate)}</time>
+        </a>
+
+        <div class="newsroom-cards">
+          {cards.map((post) => (
+            <a class="newsroom-card" href={`/posts/${post.id}/`}>
+              <img src={post.data.cover} alt={post.data.coverAlt} loading="lazy" />
+              <span class="label">{post.data.tags[0]}</span>
+              <h3>{post.data.title}</h3>
+              <time datetime={post.data.pubDate.toISOString()}>{formatPostDate(post.data.pubDate)}</time>
+            </a>
+          ))}
+        </div>
+
+        <aside class="newsroom-signal" aria-labelledby="newsroom-signal-heading">
+          <div class="newsroom-signal-head">
+            <span class="label">Editorial signal</span>
+            <h2 id="newsroom-signal-heading">Worth your time</h2>
+          </div>
+          <ol>
+            {signal.map((post) => (
+              <li>
+                <a href={`/posts/${post.id}/`}>
+                  <span class="label">{post.data.tags[0]}</span>
+                  <h3>{post.data.title}</h3>
+                </a>
+              </li>
+            ))}
+          </ol>
+          {href && <a class="newsroom-signal-link" href={href}>Browse the desk <span aria-hidden="true">-&gt;</span></a>}
+        </aside>
+      </div>
+    </section>
+  )
+}

@@ -592,13 +592,14 @@ check('post listings resolve author references into display names', () => {
   const home = dist('index.html');
   const stage = home.slice(home.indexOf('class="stage"'), home.indexOf('</section>', home.indexOf('class="stage"')));
   assert.ok(stage.includes('By AI Snap Editorial'), 'stage byline should use the author profile name');
-  const ranked = home.slice(home.indexOf('class="panel'), home.indexOf('</section>', home.indexOf('class="panel')));
-  assert.ok(ranked.includes('AI Snap Editorial'), 'ranked stories should use the author profile name');
+  assert.ok(home.includes('class="newsroom-section'), 'homepage newsroom section is missing');
   assert.ok(!home.includes('[object Object]'), 'homepage leaked an unresolved author reference');
 
   const article = dist('posts/openai-ships-new-model/index.html');
   const latest = article.slice(article.indexOf('class="article-sidebar"'), article.indexOf('</aside>', article.indexOf('class="article-sidebar"')));
-  assert.ok(latest.includes('AI Snap Editorial'), 'Latest rail should use the author profile name');
+  if (latest.includes('sidebar-latest')) {
+    assert.ok(latest.includes('AI Snap Editorial'), 'Latest rail should use the author profile name');
+  }
   assert.ok(!latest.includes('[object Object]'), 'Latest rail leaked an unresolved author reference');
 });
 
@@ -640,7 +641,8 @@ check('author resolution errors identify the post and missing author slug', () =
 check('global.css defines the theme tokens and required classes', () => {
   const css = src('src/styles/global.css');
   assert.match(css, /--accent:\s*#f2e14c/i, 'accent colour token missing or changed');
-  assert.match(css, /--bg:\s*#121212/i, 'dark background token missing');
+  assert.match(css, /:root\s*\{[\s\S]*?--bg:\s*#ffffff/i, 'light background token missing');
+  assert.match(css, /:root\[data-theme=['"]dark['"]\]\s*\{[\s\S]*?--bg:\s*#0a0a0a/i, 'dark background token missing');
   for (const cls of [
     '.frame',
     '.site-header',
@@ -653,6 +655,9 @@ check('global.css defines the theme tokens and required classes', () => {
     '.card',
     '.card-feature',
     '.card-compact',
+    '.theme-toggle',
+    '.newsroom-section',
+    '.category-front',
   ]) {
     assert.ok(css.includes(cls), `missing class ${cls}`);
   }
@@ -667,17 +672,18 @@ check('layout is full width — no max-width cap or raised frame card', () => {
   assert.ok(!/border-radius/.test(frame[1]), '.frame must not round into a card');
 });
 
-check('light mode flips the palette but keeps the photographic stage dark', () => {
+check('the explicit theme palette keeps the photographic stage dark', () => {
   const css = src('src/styles/global.css');
-  const light = css.match(/@media \(prefers-color-scheme: light\) \{([\s\S]*?)\n\}\n/);
-  assert.ok(light, 'missing @media (prefers-color-scheme: light) block');
-  assert.match(light[1], /--bg:\s*#faf9f7/i, 'light mode does not set a light background');
-  assert.match(light[1], /--text:\s*#14130f/i, 'light mode does not darken body text');
+  const dark = css.match(/:root\[data-theme=['"]dark['"]\]\s*\{([\s\S]*?)\n\}/);
+  assert.ok(dark, 'missing explicit dark theme block');
+  assert.match(dark[1], /--bg:\s*#0a0a0a/i, 'dark mode does not set a dark background');
+  assert.match(dark[1], /--text:\s*#ffffff/i, 'dark mode does not set white body text');
   // The hero is photography behind white text in both modes, so the stage must
   // re-declare the dark palette rather than inherit the light one.
-  assert.match(light[1], /\.stage\s*\{[\s\S]*?--text:\s*#ffffff/i, 'stage must keep white text in light mode');
-  // Yellow-on-paper is unreadable, so search highlights need a darker mark.
-  assert.match(light[1], /--mark:\s*#7a6800/i, 'light mode does not darken the search highlight');
+  const stage = css.match(/\.stage\s*\{([\s\S]*?)\n\}/);
+  assert.ok(stage, 'missing stage rule');
+  assert.match(stage[1], /--text:\s*#ffffff/i, 'stage must keep white text in light mode');
+  assert.match(css, /--mark:\s*#756500/i, 'light mode does not darken the search highlight');
 });
 
 check('article focus rings use theme-aware marks while dark card tags use the accent', () => {
@@ -727,6 +733,7 @@ check('homepage renders the shell: masthead, dateline, nav, and no header subscr
   assert.ok(html.includes('class="masthead"'), 'masthead not rendered');
   assert.ok(html.includes('class="edition-date"'), 'edition dateline not rendered');
   assert.ok(html.includes('class="section-nav"'), 'section nav not rendered');
+  assert.ok(html.includes('data-theme-toggle'), 'theme toggle not rendered');
   const header = html.slice(html.indexOf('<header'), html.indexOf('</header>'));
   assert.ok(!header.includes('subscribe-button'), 'header should not render a subscribe button');
 });
@@ -864,7 +871,7 @@ check('homepage sections use three distinct editorial layouts', () => {
   assert.match(html, /class="section-link"[^>]*href="\/trackers\/"/, 'Trackers should link to its own page');
 });
 
-check('Editor’s Picks is a fourth, distinct layout: equal photo cards plus a text column', () => {
+check('Editor’s Picks is a fourth, distinct newsroom layout: lead, cards, and a signal rail', () => {
   const html = dist('index.html');
   const heading = html.includes("Editor&#39;s Picks") ? "Editor&#39;s Picks" : "Editor's Picks";
   assert.ok(html.includes(heading), 'missing the Editor’s Picks section');
@@ -872,12 +879,12 @@ check('Editor’s Picks is a fourth, distinct layout: equal photo cards plus a t
   const start = html.lastIndexOf('<section', html.indexOf(heading));
   const section = html.slice(start, html.indexOf('</section>', start) + '</section>'.length);
 
-  assert.ok(section.includes('class="panel'), 'Editor’s Picks should use the toned panel, not the saturated band');
-  assert.ok(section.includes('ranked-grid'), 'missing the ranked grid');
-  const cardCount = (section.match(/class="ranked-card"/g) || []).length;
-  assert.equal(cardCount, 3, `expected exactly 3 equal-weight photo cards, found ${cardCount}`);
-  assert.ok(section.includes('ranked-list'), 'missing the text-only column');
-  assert.ok(section.includes('ranked-byline'), 'cards should show a byline, unlike the headline-only band');
+  assert.ok(section.includes('class="newsroom-section reveal"'), 'missing the newsroom section shell');
+  assert.ok(section.includes('class="newsroom-lead"'), 'missing the lead story');
+  const cardCount = (section.match(/class="newsroom-card"/g) || []).length;
+  assert.equal(cardCount, 4, `expected exactly 4 secondary photo cards, found ${cardCount}`);
+  assert.ok(section.includes('class="newsroom-signal"'), 'missing the editorial signal rail');
+  assert.equal((section.match(/class="newsroom-signal-link"/g) || []).length, 1, 'missing the signal rail link');
 });
 
 check('Editor’s Picks draws from the featured flag, spanning post types', () => {
@@ -897,7 +904,7 @@ check('Editor’s Picks draws from the featured flag, spanning post types', () =
   }
 });
 
-check('.panel is a toned band, distinct from the saturated .band', () => {
+check('.panel is a toned band that follows the explicit theme palette', () => {
   const css = src('src/styles/global.css');
   const panel = css.match(/\n\.panel\s*\{([\s\S]*?)\n\}/);
   assert.ok(panel, 'missing .panel rule block');
@@ -905,13 +912,11 @@ check('.panel is a toned band, distinct from the saturated .band', () => {
   assert.match(panel[1], /background:\s*var\(--panel-bg\)/, 'panel should use its own toned background token');
   assert.ok(!/color:/.test(panel[1]), 'panel should not force an ink colour — it stays within the theme, unlike .band');
 
-  // Distinct light/dark values — this section should visibly re-tone with
-  // the theme, unlike .band which stays fixed dark in both.
-  const darkValue = css.match(/--panel-bg:\s*([^;]+);/)[1];
-  const light = css.match(/@media \(prefers-color-scheme: light\) \{([\s\S]*?)\n  \}\n\n  \.stage/);
-  assert.ok(light, 'could not locate the light-mode token block');
-  assert.match(light[1], /--panel-bg:/, 'light mode should redefine --panel-bg');
-  assert.ok(!light[1].includes(`--panel-bg: ${darkValue}`), 'light mode should not just repeat the dark panel colour');
+  const light = css.match(/:root\s*\{([\s\S]*?)\n\}/);
+  const dark = css.match(/:root\[data-theme=['"]dark['"]\]\s*\{([\s\S]*?)\n\}/);
+  assert.ok(light && dark, 'could not locate the explicit theme token blocks');
+  assert.match(light[1], /--panel-bg:\s*#f4f4f4/, 'light mode should use a light panel colour');
+  assert.match(dark[1], /--panel-bg:\s*#151515/, 'dark mode should use a dark panel colour');
 });
 
 check('the band bleeds past the page gutter and paints its own contrast', () => {
@@ -1093,29 +1098,30 @@ check('all standalone articles share the same hero and sidebar shell', () => {
     assert.ok(html.includes('class="article-layout"'), `${id} is missing the article layout`);
     assert.ok(html.includes('class="article-figure"'), `${id} is missing the article hero`);
     assert.ok(html.includes('class="article-sidebar"'), `${id} is missing the article sidebar`);
-    assert.ok(html.includes('sidebar-trending'), `${id} is missing the Trending sidebar module`);
-    assert.ok(html.includes('sidebar-topic'), `${id} is missing the category sidebar module`);
+    assert.equal((html.match(/class="sidebar-section sidebar-(?:latest|trending|topic)"/g) || []).length, 1, `${id} should render one focused sidebar module`);
   }
 });
 
-check('article Latest rail renders the five newest other posts in order', () => {
+check('article sidebar chooses one focused module and preserves Latest ordering when selected', () => {
   const html = dist('posts/openai-ships-new-model/index.html');
   const start = html.indexOf('class="article-sidebar"');
   const end = html.indexOf('</aside>', start);
   const latest = html.slice(start, end);
   assert.ok(start >= 0 && end > start, 'Latest sidebar missing');
-  const latestUrls = [...latest.matchAll(/class="latest-story" href="([^"]+)"/g)].map((match) => match[1]);
-  assert.deepEqual(latestUrls, [
-    '/posts/codex-usage-limit-tracker/',
-    '/posts/welcome-to-ai-snap/',
-    '/posts/claude-usage-limit-tracker/',
-    '/posts/gemini-rate-limit-tracker/',
-    '/posts/claude-vs-chatgpt-vs-gemini/',
-  ]);
-  assert.ok(latest.includes('sidebar-trending'), 'Trending sidebar module missing');
-  assert.ok(latest.includes('sidebar-topic'), 'Category sidebar module missing');
-  assert.equal((latest.match(/class="sidebar-section/g) || []).length, 3, 'all three sidebar modules must render');
+  assert.equal((latest.match(/class="sidebar-section sidebar-(?:latest|trending|topic)"/g) || []).length, 1, 'exactly one sidebar module should render');
+  assert.match(latest, /sidebar-(?:latest|trending|topic)/, 'sidebar should choose a supported module');
+  if (latest.includes('sidebar-latest')) {
+    const latestUrls = [...latest.matchAll(/class="latest-story" href="([^"]+)"/g)].map((match) => match[1]);
+    assert.deepEqual(latestUrls, [
+      '/posts/codex-usage-limit-tracker/',
+      '/posts/welcome-to-ai-snap/',
+      '/posts/claude-usage-limit-tracker/',
+      '/posts/gemini-rate-limit-tracker/',
+      '/posts/claude-vs-chatgpt-vs-gemini/',
+    ]);
+  }
   assert.ok(latest.includes('class="sidebar-subscribe"'), 'Subscribe sidebar module missing');
+  assert.match(src('src/components/ArticleLatest.astro'), /Math\.random\(\)/, 'sidebar module choice should be random');
 });
 
 check('standalone and stream Suggested Reads both render four cards', () => {

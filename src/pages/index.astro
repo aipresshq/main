@@ -5,7 +5,7 @@ import Stage from '../components/Stage.astro';
 import FeatureBand from '../components/FeatureBand.astro';
 import SplitFeature from '../components/SplitFeature.astro';
 import HeadlineGrid from '../components/HeadlineGrid.astro';
-import RankedFeature from '../components/RankedFeature.astro';
+import NewsroomGrid from '../components/NewsroomGrid.astro';
 import { formatEditionDate } from '../lib/date';
 
 const posts = (await getCollection('posts')).sort(
@@ -46,5 +46,5 @@ const picks = posts.filter((p) => p.data.featured);
 
 	{digest.length > 0 && <HeadlineGrid title="More from today" posts={digest} />}
 
-	{picks.length > 0 && <RankedFeature title="Editor's Picks" posts={picks} />}
+	{picks.length > 0 && <NewsroomGrid title="Editor's Picks" href="/trending/" posts={picks} />}
 </BaseLayout>

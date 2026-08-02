@@ -1,7 +1,7 @@
 ---
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import Stage from '../../components/Stage.astro';
+import CategoryFront from '../../components/CategoryFront.astro';
 import { formatEditionDate } from '../../lib/date';
 
 const allPosts = await getCollection('posts');
@@ -18,5 +18,10 @@ const posts = allPosts
 	tags={allTags}
 	editionDate={posts[0] && formatEditionDate(posts[0].data.pubDate)}
 >
-	<Stage posts={posts} emptyNote="No trackers published yet." />
+	<CategoryFront
+		title="Trackers"
+		description="Live usage-limit, pricing, and access guides for major AI tools, kept current as plans and product details change."
+		posts={posts}
+		emptyNote="No trackers published yet."
+	/>
 </BaseLayout>
