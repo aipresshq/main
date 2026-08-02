@@ -361,19 +361,15 @@ html[data-theme='dark'] .theme-icon-moon {
    Search (Pagefind, loaded lazily on first interaction)
    -------------------------------------------------------------------------- */
 
-/* Styled as a pill input rather than a bordered button — reads as a search
-   field sitting in the header, even though it's a button that opens the
-   full-screen results dialog rather than an input itself. */
 .search-trigger {
   display: inline-flex;
   align-items: center;
   gap: 9px;
   min-height: 40px;
-  padding: 0 16px;
+  padding: 0 14px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  background: var(--surface);
-  color: var(--text-muted);
+  background: transparent;
+  color: var(--text);
   cursor: pointer;
   font: inherit;
 }
@@ -400,14 +396,14 @@ html[data-theme='dark'] .theme-icon-moon {
 .search-trigger:hover,
 .search-trigger:focus-visible {
   border-color: var(--text);
-  background: var(--surface-strong);
-  color: var(--text);
+  background: var(--text);
+  color: var(--bg);
 }
 
 .search-trigger:hover .search-trigger-key,
 .search-trigger:focus-visible .search-trigger-key {
-  border-color: var(--text);
-  color: var(--text);
+  border-color: var(--bg);
+  color: var(--bg);
 }
 
 /* --------------------------------------------------------------------------
@@ -585,7 +581,7 @@ html[data-theme='dark'] .theme-icon-moon {
   flex-wrap: wrap;
   align-items: center;
   gap: 24px;
-  margin: 0 calc(-1 * var(--gutter));
+  margin: 0 calc(-1 * var(--gutter)) 32px;
   padding: 0 var(--gutter);
   background: var(--bg);
   color: var(--text);
