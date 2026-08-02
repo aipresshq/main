@@ -403,8 +403,9 @@ check('article fragments are canonical noindex documents with one append-safe st
     assert.match(html, new RegExp(`data-post-id="${id}"`));
     assert.match(html, new RegExp(`data-post-url="/posts/${id}/"`));
     assert.match(html, /data-document-title=/);
+    assert.ok(html.includes('class="article-layout"'), 'fragment must use the shared article layout');
+    assert.ok(html.includes('class="article-sidebar"'), 'fragment must use the shared article sidebar');
     assert.ok(!html.includes('class="topbar"'), 'fragment duplicated the global header');
-    assert.ok(!html.includes('class="article-sidebar"'), 'fragment duplicated the article sidebar');
     assert.ok(!html.includes('class="site-footer"'), 'fragment duplicated the footer');
     assert.ok(!html.includes('application/ld+json'), 'fragment duplicated article schema');
     assert.ok(!html.includes('data-continuous-stream'), 'fragment nested another controller');

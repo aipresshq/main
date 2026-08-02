@@ -1,6 +1,7 @@
 ---
 import { getCollection, getEntry } from 'astro:content';
 import ArticleContent from '../../../components/ArticleContent.astro';
+import ArticleLatest from '../../../components/ArticleLatest.astro';
 import SuggestedReads from '../../../components/SuggestedReads.astro';
 import { getNextOlderPost } from '../../../lib/post-order';
 import { getSuggestedPosts } from '../../../lib/recommendations';
@@ -24,6 +25,10 @@ if (!author) {
 
 const suggested = getSuggestedPosts(post, allPosts, 2);
 const nextPost = getNextOlderPost(post.id, allPosts);
+const latest = allPosts
+  .filter((entry) => entry.id !== post.id)
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
+  .slice(0, 5);
 const canonicalUrl = new URL(`/posts/${post.id}/`, Astro.site ?? 'https://aisnap.in').href;
 ---
 
@@ -45,7 +50,10 @@ const canonicalUrl = new URL(`/posts/${post.id}/`, Astro.site ?? 'https://aisnap
       data-next-fragment={nextPost ? `/posts/${nextPost.id}/fragment/` : undefined}
       data-next-url={nextPost ? `/posts/${nextPost.id}/` : undefined}
     >
-      <ArticleContent post={post} author={author} mode="stream" />
+      <div class="article-layout">
+        <ArticleContent post={post} author={author} mode="stream" />
+        <ArticleLatest posts={latest} currentPost={post} allPosts={allPosts} />
+      </div>
       <SuggestedReads posts={suggested} variant="stream" articleId={post.id} />
     </section>
   </body>
