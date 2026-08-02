@@ -23,7 +23,7 @@ if (!author) {
   throw new Error(`Missing author profile for post: ${post.id} (author: ${authorId})`);
 }
 
-const suggested = getSuggestedPosts(post, allPosts, 2);
+const suggested = getSuggestedPosts(post, allPosts, 4);
 const nextPost = getNextOlderPost(post.id, allPosts);
 const latest = allPosts
   .filter((entry) => entry.id !== post.id)

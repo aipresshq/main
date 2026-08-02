@@ -405,7 +405,7 @@ check('article fragments are canonical noindex documents with one append-safe st
     assert.match(html, /data-document-title=/);
     assert.ok(html.includes('class="article-layout"'), 'fragment must use the shared article layout');
     assert.ok(html.includes('class="article-sidebar"'), 'fragment must use the shared article sidebar');
-    assert.ok(!html.includes('class="topbar"'), 'fragment duplicated the global header');
+    assert.ok(!html.includes('class="site-header"'), 'fragment duplicated the global header');
     assert.ok(!html.includes('class="site-footer"'), 'fragment duplicated the footer');
     assert.ok(!html.includes('application/ld+json'), 'fragment duplicated article schema');
     assert.ok(!html.includes('data-continuous-stream'), 'fragment nested another controller');
@@ -643,7 +643,7 @@ check('global.css defines the theme tokens and required classes', () => {
   assert.match(css, /--bg:\s*#121212/i, 'dark background token missing');
   for (const cls of [
     '.frame',
-    '.topbar',
+    '.site-header',
     '.masthead',
     '.section-nav',
     '.stage',
@@ -721,13 +721,14 @@ check('headline and masthead use the display and blackletter faces', () => {
   assert.match(leadBlock[1], /color:\s*var\(--accent\)/, 'lead headline is not in the accent colour');
 });
 
-check('homepage renders the shell: masthead, dateline, nav, subscribe', () => {
+check('homepage renders the shell: masthead, dateline, nav, and no header subscribe button', () => {
   const html = dist('index.html');
   assert.match(html, /<title>AI Snap — Daily AI News<\/title>/);
   assert.ok(html.includes('class="masthead"'), 'masthead not rendered');
   assert.ok(html.includes('class="edition-date"'), 'edition dateline not rendered');
   assert.ok(html.includes('class="section-nav"'), 'section nav not rendered');
-  assert.match(html, /class="subscribe-button"[^>]*href="https:\/\/aisnap\.substack\.com"/, 'subscribe button should link to the newsletter');
+  const header = html.slice(html.indexOf('<header'), html.indexOf('</header>'));
+  assert.ok(!header.includes('subscribe-button'), 'header should not render a subscribe button');
 });
 
 check('the menu is a native details disclosure opening a full-screen overlay', () => {
@@ -1093,6 +1094,7 @@ check('all standalone articles share the same hero and sidebar shell', () => {
     assert.ok(html.includes('class="article-figure"'), `${id} is missing the article hero`);
     assert.ok(html.includes('class="article-sidebar"'), `${id} is missing the article sidebar`);
     assert.ok(html.includes('sidebar-trending'), `${id} is missing the Trending sidebar module`);
+    assert.ok(html.includes('sidebar-topic'), `${id} is missing the category sidebar module`);
   }
 });
 
@@ -1111,7 +1113,17 @@ check('article Latest rail renders the five newest other posts in order', () => 
     '/posts/claude-vs-chatgpt-vs-gemini/',
   ]);
   assert.ok(latest.includes('sidebar-trending'), 'Trending sidebar module missing');
+  assert.ok(latest.includes('sidebar-topic'), 'Category sidebar module missing');
+  assert.equal((latest.match(/class="sidebar-section/g) || []).length, 3, 'all three sidebar modules must render');
   assert.ok(latest.includes('class="sidebar-subscribe"'), 'Subscribe sidebar module missing');
+});
+
+check('standalone and stream Suggested Reads both render four cards', () => {
+  const standalone = dist('posts/openai-ships-new-model/index.html');
+  const stream = dist('posts/welcome-to-ai-snap/fragment/index.html');
+  assert.equal((standalone.match(/class="suggested-story"/g) || []).length, 4);
+  assert.equal((stream.match(/class="suggested-story"/g) || []).length, 4);
+  assert.match(src('src/pages/posts/[id]/fragment.astro'), /getSuggestedPosts\(post, allPosts, 4\)/);
 });
 
 check('article sidebar uses the approved responsive layout', () => {

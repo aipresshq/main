@@ -23,14 +23,35 @@ const postsWithAuthors = await Promise.all(posts.map(async (post) => {
   return { post, author };
 }));
 const topic = currentPost.data.tags[0];
-const trendingPosts = allPosts
-  .filter((post) => post.id !== currentPost.id && post.data.featured)
-  .sort(sortNewestFirst)
-  .slice(0, 5);
-const topicPosts = allPosts
-  .filter((post) => post.id !== currentPost.id && post.data.tags.includes(topic))
-  .sort(sortNewestFirst)
-  .slice(0, 3);
+const currentTags = new Set(currentPost.data.tags);
+const availablePosts = allPosts
+  .filter((post) => post.id !== currentPost.id)
+  .sort(sortNewestFirst);
+const uniqueById = (entries: CollectionEntry<'posts'>[]) => entries.filter((entry, index, list) => (
+  list.findIndex((candidate) => candidate.id === entry.id) === index
+));
+const trendingPosts = uniqueById([
+  ...availablePosts.filter((post) => post.data.featured),
+  ...availablePosts,
+]).slice(0, 5);
+const directTopicPosts = availablePosts.filter((post) => post.data.tags.includes(topic));
+const directTopicIds = new Set(directTopicPosts.map((post) => post.id));
+const sharedTagPosts = availablePosts.filter((post) => (
+  !directTopicIds.has(post.id)
+  && post.data.tags.some((tag) => currentTags.has(tag))
+));
+const sameDeskPosts = availablePosts.filter((post) => (
+  !directTopicIds.has(post.id)
+  && !sharedTagPosts.some((candidate) => candidate.id === post.id)
+  && post.data.postType === currentPost.data.postType
+));
+const topicPosts = uniqueById([
+  ...directTopicPosts,
+  ...sharedTagPosts,
+  ...sameDeskPosts,
+  ...availablePosts,
+]).slice(0, 3);
+const topicHeading = directTopicPosts.length > 0 ? `Latest in ${topic}` : 'More to explore';
 ---
 
 <aside class="article-sidebar" aria-label="Article sidebar" data-pagefind-ignore>
@@ -53,54 +74,46 @@ const topicPosts = allPosts
     </div>
   </section>
 
-  {
-    trendingPosts.length > 0 && (
-      <section class="sidebar-section sidebar-trending" aria-labelledby="trending-heading">
-        <div class="sidebar-heading">
-          <span class="label sidebar-eyebrow">Editorial signal</span>
-          <h2 id="trending-heading">Trending now</h2>
-        </div>
-        <ol class="trending-list">
-          {trendingPosts.map((entry, index) => (
-            <li>
-              <span class="trending-rank">{String(index + 1).padStart(2, '0')}</span>
-              <a href={`/posts/${entry.id}/`}>
-                <span class="label trending-topic">{entry.data.tags[0]}</span>
-                <span class="trending-title">{entry.data.title}</span>
-              </a>
-            </li>
-          ))}
-        </ol>
-      </section>
-    )
-  }
+  <section class="sidebar-section sidebar-trending" aria-labelledby="trending-heading">
+    <div class="sidebar-heading">
+      <span class="label sidebar-eyebrow">Editorial signal</span>
+      <h2 id="trending-heading">Trending now</h2>
+    </div>
+    <ol class="trending-list">
+      {trendingPosts.map((entry, index) => (
+        <li>
+          <span class="trending-rank">{String(index + 1).padStart(2, '0')}</span>
+          <a href={`/posts/${entry.id}/`}>
+            <span class="label trending-topic">{entry.data.tags[0]}</span>
+            <span class="trending-title">{entry.data.title}</span>
+          </a>
+        </li>
+      ))}
+    </ol>
+  </section>
 
-  {
-    topicPosts.length > 0 && (
-      <section class="sidebar-section sidebar-topic" aria-labelledby="topic-heading">
-        <div class="sidebar-heading">
-          <span class="label sidebar-eyebrow">Keep exploring</span>
-          <h2 id="topic-heading">Latest in {topic}</h2>
-        </div>
-        <div class="topic-story-list">
-          {topicPosts.map((entry) => (
-            <a class="topic-story" href={`/posts/${entry.id}/`}>
-              <img src={entry.data.cover} alt="" loading="lazy" />
-              <span class="topic-story-copy">
-                <span class="topic-story-title">{entry.data.title}</span>
-                <span class="topic-story-meta">{formatPostDate(entry.data.pubDate)}</span>
-              </span>
-            </a>
-          ))}
-        </div>
-      </section>
-    )
-  }
+  <section class="sidebar-section sidebar-topic" aria-labelledby="topic-heading">
+    <div class="sidebar-heading">
+      <span class="label sidebar-eyebrow">Keep exploring</span>
+      <h2 id="topic-heading">{topicHeading}</h2>
+    </div>
+    <div class="topic-story-list">
+      {topicPosts.map((entry) => (
+        <a class="topic-story" href={`/posts/${entry.id}/`}>
+          <img src={entry.data.cover} alt="" loading="lazy" />
+          <span class="topic-story-copy">
+            <span class="topic-story-title">{entry.data.title}</span>
+            <span class="topic-story-meta">{formatPostDate(entry.data.pubDate)}</span>
+          </span>
+        </a>
+      ))}
+    </div>
+  </section>
 
   <a class="sidebar-subscribe" href={substackUrl}>
     <span class="label sidebar-subscribe-label">The daily briefing</span>
     <strong>AI, without the noise.</strong>
     <span>Get the sharpest stories and useful context in your inbox.</span>
-    <span class="sidebar-subscribe-action">Subscribe now</span>
+    <span class="sidebar-subscribe-action">Get the daily brief</span>
   </a>
 </aside>
