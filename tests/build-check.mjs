@@ -15,12 +15,14 @@ const dist = (path) => readFileSync(new URL(`../dist/${path}`, import.meta.url),
 const distExists = (path) => existsSync(new URL(`../dist/${path}`, import.meta.url));
 const src = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf-8');
 const internalScaffoldingPatterns = [
-  /\b(?:placeholder|fixture)s?\b/i,
+  /\b(?:this|that|it)\s+(?:is|was)\s+(?:just\s+)?(?:a\s+)?placeholder(?:\s*[.!?;:]|$)/i,
   /\btest[- ]data\b/i,
   /\b(?:draft|temporary|internal)\s+(?:copy|content|text)\s+for\s+SEO\b/i,
   /\b(?:post|article|copy|content|story)\s+(?:validat(?:e|es|ed|ing)|verif(?:y|ies|ied|ying)|exercis(?:e|es|ed|ing)|checks?)\s+(?:the\s+)?`?\/[a-z0-9/-]+\/?`?\s+route\b/i,
   /\bplaceholder(?:[\s-]+\w+){0,3}[\s-]+(?:fixture|post|article|copy|content|body|comparison|story|entry|record)\b/i,
   /\bfixture[\s-]+(?:post|article|copy|content|body|story|entry|record|data)\b/i,
+  /\b(?:this|that|the|a|an)\s+fixture\s+(?:verif(?:y|ies|ied|ying)|validat(?:e|es|ed|ing)|test(?:s|ed|ing)?|checks?)\b/i,
+  /\bplaceholder\s+(?:is\s+)?used\s+(?:only\s+)?to\s+(?:verify|validate|exercise|test|check|populate)\b/i,
   /\btest[- ]fixture\b/i,
   /\bcontent collections?\s+schema\b/i,
   /\bpostType\s*===/i,
@@ -285,6 +287,8 @@ check('publication guard catches concrete scaffolding variants without rejecting
     'The API validates signed requests before routing them by region.',
     'The research paper reports results from a held-out test set.',
     'SEO can help readers discover accurate product documentation.',
+    'Placeholder text is replaced after loading.',
+    'The camera became a permanent fixture in the lab.',
   ]) {
     assert.equal(containsInternalScaffolding(copy), false, `guard rejected editorial copy: ${copy}`);
   }
