@@ -151,65 +151,52 @@ img {
   border-top: 4px solid var(--text);
 }
 
-/* Tier 1: a slim utility row above the masthead. */
-.utility-strip {
+/* A thin dateline strip: the only thing above the primary bar now. */
+.dateline-strip {
   display: flex;
+  align-items: baseline;
   flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--border);
+  gap: 10px;
+  padding: 9px 0;
+  font-size: 0.72rem;
 }
 
-.header-edition {
-  display: grid;
-  justify-items: start;
-  gap: 4px;
-}
-
-.header-edition .label {
+.dateline-strip .label {
   color: var(--mark);
 }
 
-.header-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
-  min-width: 0;
+.edition-date {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 
-/* Tier 2: the masthead stands alone, full width, generously spaced. */
-.masthead {
-  display: block;
-  padding: 32px 0 28px;
+/* The masthead now sits inline within the primary bar, sized to share a
+   single compact row with the nav and actions rather than standing alone. */
+.masthead-mark {
+  flex-shrink: 0;
   font-family: var(--font-masthead);
-  font-size: clamp(2.8rem, 5vw, 4.2rem);
+  font-size: clamp(1.6rem, 2.8vw, 2.1rem);
   font-weight: 400;
   line-height: 1;
-  letter-spacing: -0.04em;
-  text-align: center;
+  letter-spacing: -0.02em;
   white-space: nowrap;
 }
 
-.edition-date {
-  font-size: 0.85rem;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-/* The menu trigger is a compact editorial control, not a floating pill. */
+/* The menu trigger is a compact editorial control, not a floating pill. Sits
+   on the primary bar's own dark band, so it's styled against band tokens
+   rather than the page's --text/--bg, which the bar no longer uses. */
 .menu-trigger {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 44px;
+  height: 40px;
   gap: 11px;
   padding: 0 14px;
-  border: 1px solid var(--text);
-  background: var(--text);
-  color: var(--bg);
+  border: 1px solid var(--band-ink);
+  background: var(--band-ink);
+  color: var(--band-bg);
   flex-shrink: 0;
   cursor: pointer;
   list-style: none;
@@ -220,9 +207,9 @@ img {
 }
 
 .menu-trigger:hover {
-  background: var(--bg);
-  border-color: var(--text);
-  color: var(--text);
+  background: var(--band-bg);
+  border-color: var(--band-ink);
+  color: var(--band-ink);
 }
 
 .menu-trigger-label {
@@ -244,20 +231,20 @@ img {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 44px;
+  min-height: 40px;
   padding: 0 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--band-ink-muted);
   background: transparent;
-  color: var(--text);
+  color: var(--band-ink);
   cursor: pointer;
   font: inherit;
 }
 
 .theme-toggle:hover,
 .theme-toggle:focus-visible {
-  border-color: var(--text);
-  background: var(--text);
-  color: var(--bg);
+  border-color: var(--band-ink);
+  background: var(--band-ink);
+  color: var(--band-bg);
 }
 
 .theme-toggle span {
@@ -380,11 +367,11 @@ html[data-theme='dark'] .theme-icon-moon {
   display: inline-flex;
   align-items: center;
   gap: 9px;
-  min-height: 44px;
+  min-height: 40px;
   padding: 0 14px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--band-ink-muted);
   background: transparent;
-  color: var(--text);
+  color: var(--band-ink);
   cursor: pointer;
   font: inherit;
 }
@@ -400,25 +387,25 @@ html[data-theme='dark'] .theme-icon-moon {
   min-width: 20px;
   height: 20px;
   padding: 0 5px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--band-ink-muted);
   border-radius: 4px;
   font-family: var(--font-body);
   font-size: 0.7rem;
   font-style: normal;
-  color: var(--text-muted);
+  color: var(--band-ink-muted);
 }
 
 .search-trigger:hover,
 .search-trigger:focus-visible {
-  border-color: var(--text);
-  background: var(--text);
-  color: var(--bg);
+  border-color: var(--band-ink);
+  background: var(--band-ink);
+  color: var(--band-bg);
 }
 
 .search-trigger:hover .search-trigger-key,
 .search-trigger:focus-visible .search-trigger-key {
-  border-color: var(--bg);
-  color: var(--bg);
+  border-color: var(--band-bg);
+  color: var(--band-bg);
 }
 
 /* --------------------------------------------------------------------------
@@ -582,24 +569,40 @@ html[data-theme='dark'] .theme-icon-moon {
 }
 
 /* --------------------------------------------------------------------------
-   Tier 3: categories bar. Full-bleed solid ink, directly under the masthead,
-   the way a section-front rule runs edge to edge in print. Section tabs and
-   the Topics dropdown share the bar; Topics is the one place tags are
-   browsed — the compact Menu dropdown does not repeat them.
+   Primary bar: a single full-bleed solid-ink row holding the masthead, the
+   primary nav, the Topics dropdown, and the header actions together — one
+   compact bar instead of a masthead row plus a separate nav tier. Topics is
+   the one place tags are browsed — the compact Menu dropdown does not
+   repeat them.
    -------------------------------------------------------------------------- */
 
-.categories-bar {
+.primary-bar {
   position: sticky;
   top: 3px;
   z-index: 50;
   display: flex;
   flex-wrap: wrap;
-  align-items: stretch;
-  gap: 8px;
-  margin: 0 calc(-1 * var(--gutter)) 22px;
+  align-items: center;
+  gap: 24px;
+  margin: 0 calc(-1 * var(--gutter));
   padding: 0 var(--gutter);
   background: var(--band-bg);
   color: var(--band-ink);
+}
+
+.primary-bar-nav {
+  display: flex;
+  align-items: stretch;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.primary-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .section-links {
@@ -620,10 +623,6 @@ html[data-theme='dark'] .theme-icon-moon {
   white-space: nowrap;
 }
 
-.section-links a:first-child {
-  padding-left: 0;
-}
-
 .section-links a:hover,
 .section-links a[aria-current='page'] {
   color: var(--band-ink);
@@ -639,13 +638,13 @@ html[data-theme='dark'] .theme-icon-moon {
   content: '';
 }
 
-.section-links a:first-child[aria-current='page']::after {
-  left: 0;
-}
-
+/* No position: relative here — the panel's containing block is deliberately
+   .primary-bar (already positioned via `sticky`), not this trigger. The
+   trigger can sit anywhere in the bar depending on nav length; anchoring the
+   panel to the full bar's edge instead keeps it inside the viewport
+   regardless, rather than anchoring to wherever the trigger happens to be. */
 .topic-menu {
-  position: relative;
-  margin-left: auto;
+  position: static;
 }
 
 .topic-menu > summary {
@@ -1727,321 +1726,123 @@ a.byline:focus-visible {
 }
 
 /* --------------------------------------------------------------------------
-   Category fronts: a title-and-description introduction, a compact story
-   feed, and a category-specific editorial rail.
+   Category fronts: a full-bleed band introduction (eyebrow, title,
+   description) over a straightforward image-card grid, with a subscribe
+   card taking one grid cell instead of a separate full-height sidebar.
+   Shared by Latest, Trending, Trackers, and every tag page.
    -------------------------------------------------------------------------- */
 
 .category-front {
-  margin-top: 52px;
+  margin-top: 0;
 }
 
-.category-intro {
-  display: grid;
-  grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.1fr);
-  gap: 64px;
-  align-items: end;
-  padding-bottom: 58px;
+.category-band {
+  margin: 0 calc(-1 * var(--gutter)) 48px;
+  padding: 48px var(--gutter) 40px;
+  background: var(--band-bg);
+  color: var(--band-ink);
 }
 
-.category-intro .label {
+.category-band-eyebrow {
   display: block;
-  margin-bottom: 12px;
-  color: var(--mark);
+  margin-bottom: 14px;
+  color: var(--band-ink-muted);
 }
 
-.category-intro h1 {
-  margin: 0;
+.category-band h1 {
+  margin: 0 0 16px;
+  max-width: 16ch;
   font-family: var(--font-display);
-  font-size: clamp(4rem, 7vw, 6.5rem);
-  font-weight: 500;
-  line-height: 0.9;
-  letter-spacing: -0.05em;
-}
-
-.category-intro p {
-  max-width: 62ch;
-  margin: 0 0 4px;
-  font-size: 1.06rem;
-  line-height: 1.65;
-  color: var(--text-muted);
-}
-
-.category-rule {
-  display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(80px, 1fr);
-  height: 12px;
-  margin: 0 calc(-1 * var(--gutter)) 64px;
-  background: var(--text);
-}
-
-.category-rule span {
-  grid-column: 2;
-  background: var(--bg);
-}
-
-.category-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
-  gap: 64px;
-  align-items: start;
-}
-
-.category-feed-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  min-height: 48px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--border);
-}
-
-.category-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 11px;
-  cursor: pointer;
-  font-size: 0.72rem;
+  font-size: clamp(2.8rem, 6vw, 5rem);
   font-weight: 700;
-  letter-spacing: 0.08em;
+  line-height: 0.98;
+  letter-spacing: -0.02em;
   text-transform: uppercase;
 }
 
-.category-toggle input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
+.category-band p {
+  max-width: 62ch;
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: var(--band-ink-muted);
 }
 
-.category-toggle-track {
-  display: inline-flex;
-  align-items: center;
-  width: 48px;
-  height: 26px;
-  padding: 3px;
-  border: 1px solid var(--text);
-  border-radius: var(--radius-pill);
-}
-
-.category-toggle-track span {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--text);
-  transition: transform 160ms ease, background 160ms ease;
-}
-
-.category-toggle input:checked + .category-toggle-track {
-  background: var(--text);
-  border-color: var(--text);
-}
-
-.category-toggle input:checked + .category-toggle-track span {
-  transform: translateX(21px);
-  background: var(--bg);
-}
-
-.category-toggle input:focus-visible + .category-toggle-track {
-  outline: 2px solid var(--mark);
-  outline-offset: 3px;
-}
-
-.category-story {
+.category-grid {
   display: grid;
-  grid-template-columns: 230px minmax(0, 1fr);
-  gap: 26px;
-  align-items: start;
-  padding: 24px 0;
-  border-bottom: 1px solid var(--border);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 40px 28px;
 }
 
-.category-story img {
-  width: 230px;
+.category-card img {
+  width: 100%;
   aspect-ratio: 4 / 3;
   object-fit: cover;
+  margin-bottom: 14px;
 }
 
-.category-story-copy {
-  min-width: 0;
-}
-
-.category-story-topline {
+.category-card-topline {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 18px;
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
-.category-story-topic {
+.category-card-topic {
   color: var(--mark);
 }
 
-.category-story-topline time,
-.category-story-read {
+.category-card-topline time {
+  flex-shrink: 0;
   font-size: 0.76rem;
   color: var(--text-muted);
 }
 
-.category-story h2 {
-  margin: 8px 0 9px;
+.category-card h2 {
+  margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(1.35rem, 2vw, 1.9rem);
+  font-size: 1.2rem;
   font-weight: 600;
-  line-height: 1.08;
+  line-height: 1.3;
 }
 
-.category-story-description {
-  display: block;
-  max-width: 60ch;
-  font-size: 0.9rem;
-  line-height: 1.5;
-  color: var(--text-muted);
-}
-
-.category-story-read {
-  display: block;
-  margin-top: 12px;
-}
-
-.category-story:hover h2 {
+.category-card:hover h2 {
   text-decoration: underline;
-  text-underline-offset: 4px;
+  text-underline-offset: 3px;
 }
 
-.category-front--headlines-only .category-story {
-  grid-template-columns: 150px minmax(0, 1fr);
-  gap: 22px;
-}
-
-.category-front--headlines-only .category-story img {
-  width: 150px;
-  aspect-ratio: 16 / 10;
-}
-
-.category-front--headlines-only .category-story-description {
-  display: none;
-}
-
-.category-rail {
-  position: sticky;
-  top: 24px;
-  display: grid;
-  gap: 28px;
-}
-
-.category-signal {
+.category-promo {
+  display: flex;
+  flex-direction: column;
   padding: 28px;
   background: var(--band-bg);
   color: var(--band-ink);
 }
 
-.category-signal-heading {
-  padding-bottom: 18px;
-  border-bottom: 1px solid var(--band-ink-muted);
-}
-
-.category-signal-heading .label {
+.category-promo .label {
+  margin-bottom: 16px;
   color: var(--band-ink-muted);
 }
 
-.category-signal-heading h2 {
-  margin: 5px 0 0;
+.category-promo strong {
   font-family: var(--font-display);
-  font-size: 2rem;
-  font-weight: 500;
-  line-height: 1;
-}
-
-.category-signal ol {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  counter-reset: category-signal;
-}
-
-.category-signal li {
-  counter-increment: category-signal;
-  padding: 17px 0;
-  border-bottom: 1px solid var(--band-ink-muted);
-}
-
-.category-signal li:last-child {
-  border-bottom: 0;
-}
-
-.category-signal li h3 {
-  margin: 6px 0 0;
-  font-family: var(--font-display);
-  font-size: 1.1rem;
+  font-size: 1.5rem;
   font-weight: 600;
-  line-height: 1.18;
+  line-height: 1.25;
 }
 
-.category-signal li h3::before {
-  content: counter(category-signal, decimal-leading-zero) ' ';
-  margin-right: 6px;
-  color: var(--band-ink-muted);
-}
-
-.category-signal li .label {
-  color: var(--band-ink-muted);
-}
-
-.category-signal li a:hover h3 {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-/* Shared by a dark rail card and a light one: currentColor lets one rule
-   follow whichever ink each context already sets, without a colour of its own. */
-.category-signal-link,
-.category-rail-card-link {
-  display: inline-block;
-  margin-top: 20px;
-  padding-bottom: 5px;
-  border-bottom: 2px solid currentColor;
-  color: var(--band-ink);
-  font-size: 0.75rem;
+.category-promo-link {
+  margin-top: auto;
+  padding-top: 20px;
+  font-size: 0.78rem;
   font-weight: 700;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.category-signal-link:hover,
-.category-rail-card-link:hover {
-  opacity: 0.7;
-}
-
-.category-rail-card {
-  display: grid;
-  gap: 15px;
-  padding: 28px;
-  border: 1px solid var(--text);
-  background: var(--surface);
-}
-
-.category-rail-card .label {
-  color: var(--mark);
-}
-
-.category-rail-card strong {
-  max-width: 12ch;
-  font-family: var(--font-display);
-  font-size: 2rem;
-  font-weight: 600;
-  line-height: 0.98;
-}
-
-.category-rail-card > span:not(.label):not(.category-rail-card-link) {
-  font-size: 0.9rem;
-  line-height: 1.55;
-  color: var(--text-muted);
-}
-
-.category-rail-card-link {
-  justify-self: start;
-  color: var(--text);
+.category-promo:hover {
+  opacity: 0.85;
 }
 
 .category-empty {
@@ -3049,9 +2850,8 @@ a.byline:focus-visible {
     grid-row: span 2;
   }
 
-  .category-layout {
-    grid-template-columns: minmax(0, 1fr) 300px;
-    gap: 32px;
+  .category-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .stage-lead {
@@ -3111,20 +2911,6 @@ a.byline:focus-visible {
 
   .newsroom-signal {
     grid-column: 1 / -1;
-  }
-
-  .category-intro {
-    grid-template-columns: 1fr;
-    gap: 24px;
-  }
-
-  .category-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .category-rail {
-    position: static;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .suggested-reads--standalone .suggested-reads-grid,
@@ -3198,12 +2984,7 @@ a.byline:focus-visible {
     font-size: 0.72rem;
   }
 
-  .section-links a:first-child {
-    padding-left: 10px;
-  }
-
-  .section-links a[aria-current='page']::after,
-  .section-links a:first-child[aria-current='page']::after {
+  .section-links a[aria-current='page']::after {
     right: 10px;
     left: 10px;
   }
@@ -3247,9 +3028,24 @@ a.byline:focus-visible {
     gap: 28px;
   }
 
-  .masthead {
-    padding: 24px 0 20px;
-    font-size: 2.8rem;
+  /* Not enough room for masthead + nav + actions on one line: the nav
+     (sections + Topics) drops to its own full-width row beneath. */
+  .masthead-mark {
+    order: 1;
+  }
+
+  .primary-bar-actions {
+    order: 2;
+  }
+
+  .primary-bar-nav {
+    order: 3;
+    flex: 1 1 100%;
+  }
+
+  .primary-bar {
+    padding-top: 8px;
+    padding-bottom: 8px;
   }
 
   .stage {
@@ -3281,7 +3077,7 @@ a.byline:focus-visible {
 
   .newsroom-grid,
   .newsroom-cards,
-  .category-rail {
+  .category-grid {
     grid-template-columns: 1fr;
   }
 
@@ -3298,29 +3094,6 @@ a.byline:focus-visible {
 
   .newsroom-signal {
     grid-column: auto;
-  }
-
-  .category-rule {
-    margin-bottom: 40px;
-  }
-
-  .category-story,
-  .category-front--headlines-only .category-story {
-    grid-template-columns: 112px minmax(0, 1fr);
-    gap: 16px;
-  }
-
-  .category-story img,
-  .category-front--headlines-only .category-story img {
-    width: 112px;
-  }
-
-  .category-story-topline time {
-    display: none;
-  }
-
-  .category-intro h1 {
-    font-size: clamp(3.4rem, 17vw, 5.2rem);
   }
 
   .author-page {
@@ -3351,14 +3124,8 @@ a.byline:focus-visible {
 }
 
 @media (max-width: 520px) {
-  .header-actions {
-    flex: 1 1 auto;
-    justify-content: space-between;
-  }
-
-  .masthead {
-    padding: 20px 0 18px;
-    font-size: 2.4rem;
+  .masthead-mark {
+    font-size: 1.4rem;
   }
 
   .section-links a {
@@ -3367,12 +3134,7 @@ a.byline:focus-visible {
     letter-spacing: 0.05em;
   }
 
-  .section-links a:first-child {
-    padding-left: 4px;
-  }
-
-  .section-links a[aria-current='page']::after,
-  .section-links a:first-child[aria-current='page']::after {
+  .section-links a[aria-current='page']::after {
     right: 4px;
     left: 4px;
   }
@@ -3405,7 +3167,7 @@ a.byline:focus-visible {
 @media (max-width: 360px) {
   /* The three tabs become an even 3-up grid, Topics drops to its own
      full-width row beneath rather than crowding into the same line. */
-  .categories-bar {
+  .primary-bar-nav {
     flex-wrap: wrap;
   }
 
@@ -3421,7 +3183,6 @@ a.byline:focus-visible {
 
   .topic-menu {
     flex: 1 1 100%;
-    margin-left: 0;
     border-top: 1px solid var(--band-ink-muted);
   }
 

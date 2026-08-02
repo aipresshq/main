@@ -62,13 +62,17 @@ const sourceTopics = () => [...new Set(sourcePosts().flatMap((post) => post.tags
   .sort((a, b) => a.localeCompare(b))
   .map((label) => ({ label, href: `/tag/${slugify(label)}/` }));
 const topicMenuFrom = (html) => {
-  const navStart = html.indexOf('<nav class="categories-bar"');
+  const navStart = html.indexOf('<nav class="primary-bar"');
   const navEnd = html.indexOf('</nav>', navStart);
   assert.ok(navStart >= 0 && navEnd > navStart, 'page is missing the section navigation');
   const nav = html.slice(navStart, navEnd);
   const menuStart = nav.indexOf('<details class="topic-menu">');
   assert.ok(menuStart >= 0, 'section navigation is missing the Topics disclosure');
-  return nav.slice(menuStart);
+  // Bounded by the Topics disclosure's own closing tag, not the end of the
+  // bar: the bar also holds the Menu dropdown (with its own aria-current
+  // links) after Topics now, which an unbounded slice would sweep in too.
+  const menuEnd = nav.indexOf('</details>', menuStart);
+  return nav.slice(menuStart, menuEnd);
 };
 const topicSummaryLabel = (topicMenu) => {
   const summary = topicMenu.match(/<summary[^>]*>[\s\S]*?<span>([^<]+)<\/span>/);
@@ -649,8 +653,8 @@ check('global.css defines the theme tokens and required classes, with no accent 
   for (const cls of [
     '.frame',
     '.site-header',
-    '.masthead',
-    '.categories-bar',
+    '.masthead-mark',
+    '.primary-bar',
     '.stage',
     '.stage-lead',
     '.stage-rail',
@@ -745,16 +749,19 @@ check('headline and masthead use the display and blackletter faces', () => {
 check('homepage renders the shell: masthead, dateline, nav, and no persistent subscribe button', () => {
   const html = dist('index.html');
   assert.match(html, /<title>AI Snap \| Daily AI News<\/title>/);
-  assert.ok(html.includes('class="masthead"'), 'masthead not rendered');
+  assert.ok(html.includes('class="masthead-mark"'), 'masthead not rendered');
   assert.ok(html.includes('class="edition-date"'), 'edition dateline not rendered');
-  assert.ok(html.includes('class="categories-bar"'), 'categories bar not rendered');
+  assert.ok(html.includes('class="primary-bar"'), 'primary bar not rendered');
   assert.ok(html.includes('data-theme-toggle'), 'theme toggle not rendered');
-  const header = html.slice(html.indexOf('<header'), html.indexOf('</header>'));
+  // The masthead, nav, and actions all live on the primary bar now (the
+  // <header> above it is just the thin dateline strip).
+  const barStart = html.indexOf('<nav class="primary-bar"');
+  const bar = html.slice(barStart, html.indexOf('</nav>', barStart));
   // The compact Menu dropdown legitimately holds a "Subscribe free" CTA now
   // (approved design), but it must stay inside that collapsed disclosure —
   // the always-visible chrome around it must not.
-  const headerWithoutMenuPanel = header.replace(/<details class="menu">[\s\S]*?<\/details>/, '');
-  assert.ok(!headerWithoutMenuPanel.includes('subscribe-button'), 'header chrome outside the Menu dropdown should not render a subscribe button');
+  const barWithoutMenuPanel = bar.replace(/<details class="menu">[\s\S]*?<\/details>/, '');
+  assert.ok(!barWithoutMenuPanel.includes('subscribe-button'), 'bar chrome outside the Menu dropdown should not render a subscribe button');
 });
 
 check('the menu is a native details disclosure opening a full-screen overlay', () => {
@@ -782,26 +789,36 @@ check('the menu is a native details disclosure opening a full-screen overlay', (
   assert.match(css, /\.menu\[open\]\s+\.icon-open\s*\{[\s\S]*?display:\s*none/, 'hamburger is never hidden on open');
 });
 
-check('categories bar separates primary sections from a native topics disclosure', () => {
-  const html = dist('index.html');
-  const navStart = html.indexOf('class="categories-bar"');
+check('primary bar separates primary sections from a native topics disclosure', () => {
+  // /latest/, not the homepage: "Latest" is its own dedicated page now, and
+  // the homepage is a distinct front page tied to no single nav tab.
+  const html = dist('latest/index.html');
+  const navStart = html.indexOf('class="primary-bar"');
   const nav = html.slice(navStart, html.indexOf('</nav>', navStart));
   const sectionLinks = nav.slice(nav.indexOf('class="section-links"'), nav.indexOf('</div>'));
   const topicMenu = nav.slice(nav.indexOf('<details class="topic-menu">'));
   const topicPanel = topicMenu.slice(topicMenu.indexOf('class="topic-menu-panel"'));
 
-  assert.match(sectionLinks, /href="\/"[^>]*aria-current="page"/, 'Latest should expose the current page on the homepage');
+  assert.match(sectionLinks, /href="\/latest\/"[^>]*aria-current="page"/, 'Latest should expose the current page on /latest/');
   assert.ok(sectionLinks.includes('href="/trending/"'));
   assert.ok(sectionLinks.includes('href="/trackers/"'));
   assert.equal((sectionLinks.match(/<a\b/g) || []).length, 3, 'only primary sections belong in .section-links');
   assert.ok(topicMenu.startsWith('<details class="topic-menu">'), 'Topics should use a native <details> disclosure');
-  assert.match(topicMenu, /<summary[^>]*>[\s\S]*?Topics[\s\S]*?<\/summary>/, 'homepage disclosure should be labelled Topics');
+  assert.match(topicMenu, /<summary[^>]*>[\s\S]*?Topics[\s\S]*?<\/summary>/, '/latest/ disclosure should be labelled Topics');
   assert.ok(topicPanel.includes('Browse by topic'), 'topic panel needs an editorial index heading');
 
   for (const { href } of sourceTopics()) {
     assert.ok(topicPanel.includes(`href="${href}"`), `topic panel is missing ${href}`);
   }
   assert.ok(!sectionLinks.includes('/tag/'), 'topic links must not be flattened into the primary section list');
+});
+
+check('homepage is a distinct front page, tied to no single nav tab', () => {
+  const html = dist('index.html');
+  const navStart = html.indexOf('class="primary-bar"');
+  const nav = html.slice(navStart, html.indexOf('</nav>', navStart));
+  const sectionLinks = nav.slice(nav.indexOf('class="section-links"'), nav.indexOf('</div>'));
+  assert.ok(!sectionLinks.includes('aria-current="page"'), 'homepage should not mark Latest/Trending/Trackers as current — it is its own front page');
 });
 
 check('article pages render generic Topics without a route-current topic', () => {
@@ -900,7 +917,7 @@ check('/tag/openai/ shows only OpenAI posts, with that topic active in the nav',
   assert.ok(linksTo(html, 'openai-ships-new-model'));
   assert.ok(linksTo(html, 'codex-usage-limit-tracker'));
   assert.ok(!linksTo(html, 'welcome-to-ai-snap'), 'wrong-tag post leaked into /tag/openai/');
-  const navStart = html.indexOf('class="categories-bar"');
+  const navStart = html.indexOf('class="primary-bar"');
   const nav = html.slice(navStart, html.indexOf('</nav>', navStart));
   assert.match(nav, /href="\/tag\/openai\/"[^>]*aria-current="page"/, 'OpenAI topic not marked current in the nav');
 });
@@ -1043,8 +1060,8 @@ check('sections never depend on scroll position to become visible', () => {
 check('article page renders the fixed §4 template on the site shell', () => {
   const html = dist('posts/openai-ships-new-model/index.html');
   // Shell
-  assert.ok(html.includes('class="masthead"'), 'article page should use the site shell');
-  assert.ok(html.includes('class="categories-bar"'), 'article page missing the categories bar');
+  assert.ok(html.includes('class="masthead-mark"'), 'article page should use the site shell');
+  assert.ok(html.includes('class="primary-bar"'), 'article page missing the primary bar');
   assert.ok(html.includes('class="site-footer"'), 'article page missing the footer');
   // Template blocks
   assert.ok(html.includes('article-kicker'), 'missing topic kicker');
@@ -1248,13 +1265,13 @@ check('search indexes article bodies only, not listing pages or nav chrome', () 
   const home = dist('index.html');
   assert.ok(!home.includes('data-pagefind-body'), 'listing pages must not declare a Pagefind body');
   const header = home.slice(home.indexOf('<header'), home.indexOf('</header>'));
-  assert.ok(header.includes('data-pagefind-ignore'), 'top bar should be excluded from the index');
-  // The <header> ignore flag already covers every nav inside it (including
-  // the plain site-nav list in the compact Menu dropdown); the categories
-  // bar carries its own flag too, so check that one specifically.
-  const navStart = home.indexOf('<nav class="categories-bar"');
+  assert.ok(header.includes('data-pagefind-ignore'), 'dateline strip should be excluded from the index');
+  // The masthead, nav, Topics dropdown, and Menu dropdown (with its
+  // subscribe CTA) all live on the primary bar now, not inside <header> —
+  // it carries its own ignore flag, covering everything nested inside it.
+  const navStart = home.indexOf('<nav class="primary-bar"');
   const nav = home.slice(navStart, home.indexOf('</nav>', navStart));
-  assert.ok(nav.includes('data-pagefind-ignore'), 'categories bar should be excluded from the index');
+  assert.ok(nav.includes('data-pagefind-ignore'), 'primary bar should be excluded from the index');
 });
 
 check('no eager Pagefind/component-ui script or stylesheet in the homepage', () => {
@@ -1278,9 +1295,9 @@ check('responsive CSS: stage collapses and topics use a contained responsive gri
   assert.ok(wide, 'missing @media (max-width: 1080px) block');
   assert.match(wide[1], /grid-template-columns:\s*1fr\s*;/, 'stage does not collapse to a single column');
 
-  const navBlock = css.match(/\.categories-bar\s*\{([\s\S]*?)\n\}/);
-  assert.ok(navBlock, 'missing .categories-bar rule block');
-  assert.ok(!/overflow-x:\s*auto/.test(navBlock[1]), '.categories-bar must not require horizontal scrolling');
+  const navBlock = css.match(/\.primary-bar\s*\{([\s\S]*?)\n\}/);
+  assert.ok(navBlock, 'missing .primary-bar rule block');
+  assert.ok(!/overflow-x:\s*auto/.test(navBlock[1]), '.primary-bar must not require horizontal scrolling');
 
   const topicGrid = css.match(/\.topic-menu-groups\s*\{([\s\S]*?)\n\}/);
   assert.ok(topicGrid, 'missing .topic-menu-groups rule block');
@@ -1293,7 +1310,7 @@ check('responsive CSS: stage collapses and topics use a contained responsive gri
 
   const narrowest = css.match(/@media \(max-width: 360px\) \{([\s\S]*?)\n\}/);
   assert.ok(narrowest, 'missing narrowest viewport rules for long active topic labels');
-  assert.match(narrowest[1], /\.categories-bar\s*\{[\s\S]*?flex-wrap:\s*wrap/, 'categories bar should wrap rather than crowd tabs and Topics onto one line');
+  assert.match(narrowest[1], /\.primary-bar-nav\s*\{[\s\S]*?flex-wrap:\s*wrap/, 'primary bar nav should wrap rather than crowd tabs and Topics onto one line');
   assert.match(narrowest[1], /\.section-links\s*\{[\s\S]*?flex:\s*1 1 100%/, 'primary sections should claim a full row when they wrap');
   assert.match(narrowest[1], /\.topic-menu\s*\{[\s\S]*?flex:\s*1 1 100%/, 'Topics should drop to its own full-width row rather than crowd the tabs');
 });

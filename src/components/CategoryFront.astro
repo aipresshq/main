@@ -1,87 +1,52 @@
 ---
 import type { CollectionEntry } from 'astro:content';
 import { formatPostDate } from '../lib/date';
-import { readMinutes } from '../lib/read-time';
 
 export interface Props {
   title: string;
   description: string;
   posts: CollectionEntry<'posts'>[];
   emptyNote: string;
+  substackUrl: string;
 }
 
-const { title, description, posts, emptyNote } = Astro.props;
+const { title, description, posts, emptyNote, substackUrl } = Astro.props;
 const categoryId = `category-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+// The promo card takes a grid cell of its own, in the first row alongside
+// the first two stories — same spot a subscribe/community card holds in
+// the reference layout, rather than a separate full-height sidebar column.
+const PROMO_POSITION = 2;
 ---
 
 {
   posts.length > 0 ? (
     <section class="category-front" aria-labelledby={`${categoryId}-title`}>
-      <header class="category-intro">
-        <div>
-          <span class="label">AI Snap / category</span>
-          <h1 id={`${categoryId}-title`}>{title}</h1>
-        </div>
+      <header class="category-band">
+        <span class="label category-band-eyebrow">AI Snap / category</span>
+        <h1 id={`${categoryId}-title`}>{title}</h1>
         <p>{description}</p>
       </header>
 
-      <div class="category-rule" aria-hidden="true"><span></span></div>
-
-      <div class="category-layout">
-        <main class="category-feed">
-          <div class="category-feed-toolbar">
-            <span class="label">{posts.length} {posts.length === 1 ? 'story' : 'stories'}</span>
-            <label class="category-toggle">
-              <span>Headlines only</span>
-              <input type="checkbox" data-category-toggle aria-label="Show headlines only" />
-              <span class="category-toggle-track" aria-hidden="true"><span></span></span>
-            </label>
-          </div>
-
-          <div class="category-story-list">
-            {posts.map((post) => (
-              <a class="category-story" href={`/posts/${post.id}/`}>
-                <img src={post.data.cover} alt={post.data.coverAlt} loading="lazy" />
-                <span class="category-story-copy">
-                  <span class="category-story-topline">
-                    <span class="label category-story-topic">{post.data.tags[0]}</span>
-                    <time datetime={post.data.pubDate.toISOString()}>{formatPostDate(post.data.pubDate)}</time>
-                  </span>
-                  <h2>{post.data.title}</h2>
-                  <span class="category-story-description">{post.data.description}</span>
-                  <span class="category-story-read">{readMinutes(post)} min read</span>
-                </span>
+      <div class="category-grid">
+        {posts.map((post, index) => (
+          <>
+            {index === PROMO_POSITION && (
+              <a class="category-promo" href={substackUrl}>
+                <span class="label">Join our community</span>
+                <strong>AI news with the useful context included.</strong>
+                <span class="category-promo-link">Subscribe free <span aria-hidden="true">-&gt;</span></span>
               </a>
-            ))}
-          </div>
-        </main>
-
-        <aside class="category-rail" aria-label={`${title} editorial rail`}>
-          <section class="category-signal">
-            <div class="category-signal-heading">
-              <span class="label">Editorial signal</span>
-              <h2>Top of this desk</h2>
-            </div>
-            <ol>
-              {posts.slice(0, 5).map((post) => (
-                <li>
-                  <a href={`/posts/${post.id}/`}>
-                    <span class="label">{post.data.tags[0]}</span>
-                    <h3>{post.data.title}</h3>
-                  </a>
-                </li>
-              ))}
-            </ol>
-            <a class="category-signal-link" href="/trending/">See all <span aria-hidden="true">-&gt;</span></a>
-          </section>
-
-          <a class="category-rail-card" href="/trackers/">
-            <span class="label">Keep checking</span>
-            <strong>Track what changes.</strong>
-            <span>Usage limits, pricing, and product details move quickly. Follow the live desks.</span>
-            <span class="category-rail-card-link">Explore trackers <span aria-hidden="true">-&gt;</span></span>
-          </a>
-        </aside>
+            )}
+            <a class="category-card" href={`/posts/${post.id}/`}>
+              <img src={post.data.cover} alt={post.data.coverAlt} loading="lazy" />
+              <span class="category-card-topline">
+                <span class="label category-card-topic">{post.data.tags[0]}</span>
+                <time datetime={post.data.pubDate.toISOString()}>{formatPostDate(post.data.pubDate)}</time>
+              </span>
+              <h2>{post.data.title}</h2>
+            </a>
+          </>
+        ))}
       </div>
     </section>
   ) : (
@@ -91,12 +56,3 @@ const categoryId = `category-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
     </section>
   )
 }
-
-<script>
-  const categoryToggle = document.querySelector<HTMLInputElement>('[data-category-toggle]');
-  const categoryFront = categoryToggle?.closest<HTMLElement>('.category-front');
-
-  categoryToggle?.addEventListener('change', () => {
-    categoryFront?.classList.toggle('category-front--headlines-only', categoryToggle.checked);
-  });
-</script>

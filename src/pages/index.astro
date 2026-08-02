@@ -35,7 +35,6 @@ const picks = posts.filter((p) => p.data.featured);
 <BaseLayout
 	title="AI Snap | Daily AI News"
 	description="Daily AI news, evergreen comparisons, and usage-limit trackers across every major AI lab."
-	activeTab="latest"
 	editionDate={posts[0] && formatEditionDate(posts[0].data.pubDate)}
 >
 	<Stage posts={stagePosts} emptyNote="No stories published yet." />

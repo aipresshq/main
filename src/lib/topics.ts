@@ -16,7 +16,7 @@ export const topicGroups: TopicGroup[] = [
   },
   {
     label: 'Coverage',
-    topics: ['AI', 'Comparisons', 'Funding', 'Product Launch', 'Research'],
+    topics: ['AI', 'Comparisons', 'Funding', 'Policy & Regulation', 'Product Launch', 'Research'],
   },
   {
     label: 'Tutorials',
