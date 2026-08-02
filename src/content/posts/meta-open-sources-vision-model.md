@@ -3,12 +3,13 @@ title: "How to assess an open vision model from Meta"
 description: "A practical guide to examining access, licensing, evaluation evidence, and deployment tradeoffs around a Meta vision model."
 author: "ai-snap-editorial"
 pubDate: 2026-07-22
+updatedDate: 2026-08-02
 cover: "https://images.unsplash.com/photo-1535378917042-10a22c95931a"
 coverAlt: "Abstract rendering of a machine-learning model"
 coverCredit: "Unsplash"
 whyItMatters: "An openly available vision model can expand research and deployment options, but its practical value depends on the licence, documentation, and performance on a reader's own data."
-sourceName: "AI Snap"
-sourceUrl: "https://aisnap.in"
+sourceName: "Meta AI"
+sourceUrl: "https://ai.meta.com/blog/llama-3-2-connect-2024-vision-edge-mobile-devices/"
 tags: ["Meta", "Research"]
 postType: "digest"
 featured: true
@@ -16,7 +17,7 @@ featured: true
 
 ## Start with what is available
 
-An announcement about an open vision model is only the beginning of the assessment. Confirm what Meta actually makes available: model weights, code, a technical report, or access through a hosted service. Those forms of access create different opportunities and obligations, and the word "open" does not define them on its own.
+An announcement about an open vision model is only the beginning of the assessment. Confirm what [Meta actually makes available](https://ai.meta.com/blog/llama-3-2-connect-2024-vision-edge-mobile-devices/): model weights, code, a technical report, or access through a hosted service. Those forms of access create different opportunities and obligations, and the word "open" does not define them on its own.
 
 ## What to examine
 

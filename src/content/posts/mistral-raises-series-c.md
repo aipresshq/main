@@ -3,12 +3,13 @@ title: "How to read reports of a Mistral funding round"
 description: "What to verify in reports of a Mistral financing round and which strategic signals matter beyond the headline."
 author: "ai-snap-editorial"
 pubDate: 2026-07-23
+updatedDate: 2026-08-02
 cover: "https://images.unsplash.com/photo-1518186285589-2f7649de83e0"
 coverAlt: "Dark server room corridor"
 coverCredit: "Unsplash"
 whyItMatters: "New capital can influence a model company's computing capacity, product strategy, and independence, but the implications depend on confirmed terms and how the company deploys the funds."
-sourceName: "AI Snap"
-sourceUrl: "https://aisnap.in"
+sourceName: "Mistral AI"
+sourceUrl: "https://mistral.ai/news/mistral-ai-raises-1-7-b-to-accelerate-technological-progress-with-ai/"
 tags: ["Mistral", "Funding"]
 postType: "digest"
 featured: true
@@ -16,7 +17,7 @@ featured: true
 
 ## Start with confirmation
 
-Reports of a Mistral financing round should be read as a strategic signal only after the basic facts are confirmed. The company or investors should identify the round, while reliable filings or direct statements can clarify participants and purpose. Unnamed sourcing alone is not enough for precise claims about valuation or use of proceeds.
+Reports of a Mistral financing round should be read as a strategic signal only after the basic facts are confirmed. The [company's announcement](https://mistral.ai/news/mistral-ai-raises-1-7-b-to-accelerate-technological-progress-with-ai/) or investors should identify the round, while reliable filings or direct statements can clarify participants and purpose. Unnamed sourcing alone is not enough for precise claims about valuation or use of proceeds.
 
 ## What the round could change
 

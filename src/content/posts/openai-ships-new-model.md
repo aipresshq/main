@@ -3,12 +3,13 @@ title: "How to evaluate OpenAI model claims"
 description: "A reader's guide to checking access, evidence, limitations, and practical workflow gains around an OpenAI model announcement."
 author: "ai-snap-editorial"
 pubDate: 2026-07-30
+updatedDate: 2026-08-02
 cover: "https://images.unsplash.com/photo-1677442136019-21780ecad995"
 coverAlt: "Abstract render of a neural network"
 coverCredit: "Unsplash"
 whyItMatters: "A new model matters when it improves real work reliably, not merely when its launch materials present a stronger headline."
-sourceName: "AI Snap"
-sourceUrl: "https://aisnap.in"
+sourceName: "OpenAI developer documentation"
+sourceUrl: "https://developers.openai.com/api/docs/models"
 tags: ["OpenAI", "Product Launch"]
 postType: "digest"
 featured: false
@@ -26,4 +27,4 @@ Claims about reasoning, coding, speed, or efficiency are most useful when the ev
 
 ## What to watch
 
-Pay attention to reliability after broader use, especially factual accuracy, instruction following, tool behavior, and the stability of long workflows. Confirm current availability and terms in OpenAI's product interface and official documentation. The practical question is whether the model reduces review effort without introducing new risks, not whether it wins every published comparison.
+Pay attention to reliability after broader use, especially factual accuracy, instruction following, tool behavior, and the stability of long workflows. Confirm current availability and terms in OpenAI's product interface and [official model documentation](https://developers.openai.com/api/docs/models). The practical question is whether the model reduces review effort without introducing new risks, not whether it wins every published comparison.

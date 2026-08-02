@@ -3,6 +3,7 @@ title: "Claude vs ChatGPT vs Gemini: which model for which job"
 description: "A practical comparison of Claude, ChatGPT, and Gemini by working style, tool fit, and the kinds of tasks each should be evaluated on."
 author: "ai-snap-editorial"
 pubDate: 2026-07-25
+updatedDate: 2026-08-02
 cover: "https://images.unsplash.com/photo-1550745165-9bc0b252726f"
 coverAlt: "Three retro devices arranged side by side"
 coverCredit: "Unsplash"
@@ -13,14 +14,14 @@ factsTable:
     - ["Claude", "Document analysis and careful drafting", "Does it preserve nuance across revisions?", "Current model and plan availability"]
     - ["ChatGPT", "General research and tool-assisted work", "Do its tools match the task?", "Current model and feature access"]
     - ["Gemini", "Multimodal and Google-connected workflows", "Does the surrounding ecosystem help?", "Current model and account eligibility"]
-sourceName: "AI Snap"
-sourceUrl: "https://aisnap.in"
+sourceName: "Official provider documentation"
+sourceUrl: "https://help.openai.com/en/articles/9260256-chatgpt-capabilities-overview"
 tags: ["Anthropic", "OpenAI", "Comparisons"]
 postType: "evergreen"
 featured: true
 ---
 
-## What happened
+## How to compare them
 
 Claude, ChatGPT, and Gemini are broad product families rather than single, fixed models. Their available features can differ by account, region, plan, and product surface, which makes a permanent winner difficult to name.
 
@@ -32,4 +33,4 @@ Multimodal work deserves its own evaluation. Use material similar to what you ha
 
 ## Make the comparison fair
 
-Use the same prompt, source material, and acceptance criteria for each product. Record where a human had to correct facts, restore context, or reshape the output. Then confirm current access and terms in each provider's interface and official documentation. The strongest choice is the one that performs reliably on your recurring work with an acceptable review burden.
+Use the same prompt, source material, and acceptance criteria for each product. Record where a human had to correct facts, restore context, or reshape the output. Then confirm current access and terms in [Claude's documentation](https://support.claude.com/en/articles/8114491-get-started-with-claude), [ChatGPT's capabilities overview](https://help.openai.com/en/articles/9260256-chatgpt-capabilities-overview), and [Gemini's help documentation](https://support.google.com/gemini/answer/13275745?hl=en). The strongest choice is the one that performs reliably on your recurring work with an acceptable review burden.

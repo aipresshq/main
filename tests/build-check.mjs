@@ -2,7 +2,11 @@
 // for a static-only Astro site. Run `npm run build` first, then this script.
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import assert from 'node:assert';
-import { canStartContinuousLoad, parseArticleFragment } from '../src/scripts/continuous-reader.ts';
+import {
+  canStartContinuousLoad,
+  handleContinuousReaderPageTransition,
+  validateArticleFragmentCandidates,
+} from '../src/scripts/continuous-reader.ts';
 import { getSuggestedPosts } from '../src/lib/recommendations.ts';
 import { getNextOlderPost, sortPostsNewestFirst } from '../src/lib/post-order.ts';
 import { slugify } from '../src/lib/slug.ts';
@@ -11,6 +15,10 @@ const dist = (path) => readFileSync(new URL(`../dist/${path}`, import.meta.url),
 const distExists = (path) => existsSync(new URL(`../dist/${path}`, import.meta.url));
 const src = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf-8');
 const internalScaffoldingPatterns = [
+  /\b(?:placeholder|fixture)s?\b/i,
+  /\btest[- ]data\b/i,
+  /\b(?:draft|temporary|internal)\s+(?:copy|content|text)\s+for\s+SEO\b/i,
+  /\b(?:post|article|copy|content|story)\s+(?:validat(?:e|es|ed|ing)|verif(?:y|ies|ied|ying)|exercis(?:e|es|ed|ing)|checks?)\s+(?:the\s+)?`?\/[a-z0-9/-]+\/?`?\s+route\b/i,
   /\bplaceholder(?:[\s-]+\w+){0,3}[\s-]+(?:fixture|post|article|copy|content|body|comparison|story|entry|record)\b/i,
   /\bfixture[\s-]+(?:post|article|copy|content|body|story|entry|record|data)\b/i,
   /\btest[- ]fixture\b/i,
@@ -77,25 +85,44 @@ const decodePublicCopy = (text) => text
     lt: '<',
     gt: '>',
   })[entity.toLowerCase()]);
+const attributesFromTag = (tag) => new Map(
+  [...tag.matchAll(/\b([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/gi)]
+    .map((match) => [match[1].toLowerCase(), match[2] ?? match[3] ?? match[4]]),
+);
+const collectJsonStrings = (value, copy) => {
+  if (typeof value === 'string') {
+    copy.push(value);
+  } else if (Array.isArray(value)) {
+    for (const item of value) collectJsonStrings(item, copy);
+  } else if (value && typeof value === 'object') {
+    for (const item of Object.values(value)) collectJsonStrings(item, copy);
+  }
+};
 const extractPublicCopy = (html) => {
+  const metadata = [];
   const withoutNonCopy = html
     .replace(/<!--[\s\S]*?-->/g, ' ')
-    .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, ' ');
-  const metadata = [];
+    .replace(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi, (_, rawAttributes, body) => {
+      const attributes = attributesFromTag(`<script ${rawAttributes}>`);
+      const type = (attributes.get('type') ?? '').split(';', 1)[0].trim().toLowerCase();
+      if (type === 'application/ld+json') {
+        try {
+          collectJsonStrings(JSON.parse(body), metadata);
+        } catch {
+          metadata.push(body);
+        }
+      }
+      return ' ';
+    })
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi, ' ');
 
   for (const [tag] of withoutNonCopy.matchAll(/<[^>]+>/g)) {
-    const attributes = new Map(
-      [...tag.matchAll(/\b([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/gi)]
-        .map((match) => [match[1].toLowerCase(), match[2] ?? match[3] ?? match[4]]),
-    );
-    for (const attribute of ['alt', 'title', 'aria-label']) {
+    const attributes = attributesFromTag(tag);
+    for (const attribute of ['alt', 'title', 'aria-label', 'placeholder']) {
       if (attributes.has(attribute)) metadata.push(attributes.get(attribute));
     }
-    if (/^<meta\b/i.test(tag)) {
-      const descriptionType = (attributes.get('name') ?? attributes.get('property') ?? '').toLowerCase();
-      if (['description', 'og:description', 'twitter:description'].includes(descriptionType)) {
-        metadata.push(attributes.get('content') ?? '');
-      }
+    if (/^<meta\b/i.test(tag) && attributes.has('content')) {
+      metadata.push(attributes.get('content'));
     }
   }
 
@@ -145,8 +172,96 @@ check('public posts contain no internal fixture language', () => {
   }
 });
 
+check('substantially rewritten posts disclose the final editorial update date', () => {
+  for (const { id } of sourcePosts()) {
+    assert.match(
+      src(`src/content/posts/${id}.md`),
+      /^updatedDate:\s*2026-08-02\s*$/m,
+      `${id} must disclose the 2026-08-02 rewrite`,
+    );
+  }
+});
+
+check('provider analysis posts attribute and link verified primary documentation', () => {
+  const expected = {
+    'chatgpt-plus-limit-tracker': {
+      sourceName: 'OpenAI Help Center',
+      sourceUrl: 'https://help.openai.com/en/articles/6950777-what-is-chatgpt-plus',
+    },
+    'claude-usage-limit-tracker': {
+      sourceName: 'Claude Help Center',
+      sourceUrl: 'https://support.claude.com/en/articles/11647753-how-do-usage-and-length-limits-work',
+    },
+    'claude-vs-chatgpt-vs-gemini': {
+      sourceName: 'Official provider documentation',
+      sourceUrl: 'https://help.openai.com/en/articles/9260256-chatgpt-capabilities-overview',
+      inlineUrls: [
+        'https://support.claude.com/en/articles/8114491-get-started-with-claude',
+        'https://help.openai.com/en/articles/9260256-chatgpt-capabilities-overview',
+        'https://support.google.com/gemini/answer/13275745?hl=en',
+      ],
+    },
+    'codex-usage-limit-tracker': {
+      sourceName: 'OpenAI Help Center',
+      sourceUrl: 'https://help.openai.com/en/articles/11369540-using-codex-with-your-chatgpt-plan',
+    },
+    'copilot-pricing-tracker': {
+      sourceName: 'GitHub Docs',
+      sourceUrl: 'https://docs.github.com/en/copilot/get-started/plans',
+    },
+    'gemini-rate-limit-tracker': {
+      sourceName: 'Google AI for Developers',
+      sourceUrl: 'https://ai.google.dev/gemini-api/docs/rate-limits',
+    },
+    'meta-open-sources-vision-model': {
+      sourceName: 'Meta AI',
+      sourceUrl: 'https://ai.meta.com/blog/llama-3-2-connect-2024-vision-edge-mobile-devices/',
+    },
+    'mistral-raises-series-c': {
+      sourceName: 'Mistral AI',
+      sourceUrl: 'https://mistral.ai/news/mistral-ai-raises-1-7-b-to-accelerate-technological-progress-with-ai/',
+    },
+    'openai-ships-new-model': {
+      sourceName: 'OpenAI developer documentation',
+      sourceUrl: 'https://developers.openai.com/api/docs/models',
+    },
+  };
+
+  for (const [id, attribution] of Object.entries(expected)) {
+    const markdown = src(`src/content/posts/${id}.md`);
+    const body = markdown.replace(/^---\s*\n[\s\S]*?\n---\s*\n/, '');
+    assert.ok(markdown.includes(`sourceName: "${attribution.sourceName}"`), `${id} has the wrong source name`);
+    assert.ok(markdown.includes(`sourceUrl: "${attribution.sourceUrl}"`), `${id} has the wrong source URL`);
+    for (const url of attribution.inlineUrls ?? [attribution.sourceUrl]) {
+      assert.ok(body.includes(`](${url})`), `${id} must link ${url} in the article copy`);
+    }
+  }
+});
+
+check('tracker and product comparison guides use topic-specific opening headings', () => {
+  const expectedHeadings = {
+    'chatgpt-plus-limit-tracker': 'How the limit works',
+    'claude-usage-limit-tracker': 'How the limit works',
+    'claude-vs-chatgpt-vs-gemini': 'How to compare them',
+    'codex-usage-limit-tracker': 'How the limit works',
+    'copilot-pricing-tracker': 'How plan access works',
+    'gemini-rate-limit-tracker': 'How the rate limit works',
+  };
+
+  for (const [id, heading] of Object.entries(expectedHeadings)) {
+    const markdown = src(`src/content/posts/${id}.md`);
+    assert.ok(markdown.includes(`## ${heading}`), `${id} is missing its topic-specific heading`);
+    assert.ok(!markdown.includes('## What happened'), `${id} retains the event-reporting heading`);
+  }
+});
+
 check('publication guard catches concrete scaffolding variants without rejecting source verification', () => {
   for (const copy of [
+    'This is a placeholder.',
+    'This fixture verifies the route.',
+    'This article validates the /trackers/ route.',
+    'This is test data for the homepage.',
+    'Draft copy for SEO.',
     'This post checks the Content Collections schema.',
     'This article is used only to verify the /trackers/ route.',
     'This post is used to populate the homepage Trackers band.',
@@ -166,24 +281,40 @@ check('publication guard catches concrete scaffolding variants without rejecting
     false,
     'ordinary source-verification prose must remain publishable',
   );
+  for (const copy of [
+    'The API validates signed requests before routing them by region.',
+    'The research paper reports results from a held-out test set.',
+    'SEO can help readers discover accurate product documentation.',
+  ]) {
+    assert.equal(containsInternalScaffolding(copy), false, `guard rejected editorial copy: ${copy}`);
+  }
 });
 
 check('public copy extraction includes visible metadata and excludes non-copy markup', () => {
   const copy = extractPublicCopy(`
     <!-- Comment test fixture -->
     <meta name="description" content="Reader-facing summary">
+    <meta property="og:title" content="Social headline">
+    <script type="application/ld+json">
+      {"headline":"Structured headline","author":{"name":"Structured author"}}
+    </script>
     <script>const note = 'Script test fixture';</script>
     <style>.testing-scaffolding { display: none; }</style>
     <img class="fixture-post" data-copy="Implementation scaffolding" alt="Cover explanation" title="Expanded image title">
     <button aria-label="Open topics">Visible label</button>
+    <input type="search" placeholder="Search stories">
   `);
 
   for (const expected of [
     'Reader-facing summary',
+    'Social headline',
+    'Structured headline',
+    'Structured author',
     'Cover explanation',
     'Expanded image title',
     'Open topics',
     'Visible label',
+    'Search stories',
   ]) {
     assert.ok(copy.includes(expected), `public copy omitted: ${expected}`);
   }
@@ -201,6 +332,26 @@ check('public copy extraction includes visible metadata and excludes non-copy ma
     containsInternalScaffolding(extractPublicCopy('<meta name="description" content="Placeholder fixture post">')),
     true,
     'reader-visible metadata must pass through the publication guard',
+  );
+  assert.equal(
+    containsInternalScaffolding(extractPublicCopy(
+      '<script type="application/ld+json">{"headline":"Placeholder fixture post"}</script>',
+    )),
+    true,
+    'JSON-LD metadata must pass through the publication guard',
+  );
+  assert.equal(
+    containsInternalScaffolding(extractPublicCopy('<input placeholder="Placeholder fixture post">')),
+    true,
+    'form placeholder copy must pass through the publication guard',
+  );
+  assert.equal(
+    containsInternalScaffolding(extractPublicCopy(`
+      <script>const headline = 'Placeholder fixture post';</script>
+      <style>.placeholder-fixture { display: none; }</style>
+    `)),
+    false,
+    'executable JavaScript and CSS must stay outside the publication guard',
   );
 });
 
@@ -345,9 +496,61 @@ check('continuous reader lifecycle and terminal states reject queued loading wor
   assert.match(controller, /delete sentinel\.dataset\.nextFragment/);
 });
 
-check('fragment parsing accepts one marked article and rejects malformed responses', () => {
-  if (typeof DOMParser === 'undefined') return;
-  assert.equal(parseArticleFragment('<html><body></body></html>'), undefined);
+check('persisted page transitions preserve and restore the continuous reader before terminal cleanup', () => {
+  const calls = [];
+  let loadingArmed = true;
+  let historyTrackingArmed = true;
+  const actions = {
+    restore() {
+      calls.push('restore');
+      loadingArmed = true;
+      historyTrackingArmed = true;
+    },
+    cleanup() {
+      calls.push('cleanup');
+      loadingArmed = false;
+      historyTrackingArmed = false;
+    },
+  };
+
+  handleContinuousReaderPageTransition('pagehide', true, actions);
+  assert.deepEqual(calls, []);
+  assert.equal(loadingArmed, true);
+  assert.equal(historyTrackingArmed, true);
+
+  handleContinuousReaderPageTransition('pageshow', true, actions);
+  assert.deepEqual(calls, ['restore']);
+  assert.equal(loadingArmed, true);
+  assert.equal(historyTrackingArmed, true);
+
+  handleContinuousReaderPageTransition('pageshow', false, actions);
+  assert.deepEqual(calls, ['restore']);
+
+  handleContinuousReaderPageTransition('pagehide', false, actions);
+  assert.deepEqual(calls, ['restore', 'cleanup']);
+  assert.equal(loadingArmed, false);
+  assert.equal(historyTrackingArmed, false);
+});
+
+check('fragment candidate validation accepts one complete article and rejects malformed responses', () => {
+  const article = { marker: 'valid article' };
+  const valid = {
+    article,
+    postId: 'valid-post',
+    postUrl: '/posts/valid-post/',
+    documentTitle: 'Valid post - AI Snap',
+  };
+
+  assert.equal(validateArticleFragmentCandidates([valid]), article);
+  assert.equal(validateArticleFragmentCandidates([valid, { ...valid }]), undefined);
+
+  for (const field of ['postId', 'postUrl', 'documentTitle']) {
+    assert.equal(
+      validateArticleFragmentCandidates([{ ...valid, [field]: '   ' }]),
+      undefined,
+      `candidate missing ${field} must be rejected`,
+    );
+  }
 });
 
 check('posts resolve validated author profiles into linked bylines and schema', () => {
@@ -764,7 +967,7 @@ check('article page renders the fixed §4 template on the site shell', () => {
   assert.ok(html.includes('class="article-standfirst"'), 'missing standfirst');
   assert.ok(html.includes('class="byline-name"'), 'missing byline');
   assert.ok(html.includes('Photo: Unsplash'), 'missing cover credit');
-  assert.match(html, /Source:[\s\S]*?aisnap\.in/, 'missing attributed source link');
+  assert.match(html, /Source:[\s\S]*?developers\.openai\.com/, 'missing attributed primary-source link');
   assert.ok(html.includes('class="article-tags"'), 'missing tag list');
   assert.match(html, /\d+ min read/, 'missing read time');
 });

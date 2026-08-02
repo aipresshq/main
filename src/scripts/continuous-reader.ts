@@ -1,19 +1,58 @@
-export function parseArticleFragment(html: string): HTMLElement | undefined {
-  const document = new DOMParser().parseFromString(html, 'text/html');
-  const articles = document.querySelectorAll<HTMLElement>('[data-continuous-article]');
+interface ArticleFragmentCandidate<T> {
+  article: T;
+  postId: string | undefined;
+  postUrl: string | undefined;
+  documentTitle: string | undefined;
+}
 
-  if (articles.length !== 1) return undefined;
+export function validateArticleFragmentCandidates<T>(
+  candidates: readonly ArticleFragmentCandidate<T>[],
+): T | undefined {
+  if (candidates.length !== 1) return undefined;
 
-  const article = articles[0];
+  const candidate = candidates[0];
   if (
-    !article.dataset.postId?.trim()
-    || !article.dataset.postUrl?.trim()
-    || !article.dataset.documentTitle?.trim()
+    !candidate.postId?.trim()
+    || !candidate.postUrl?.trim()
+    || !candidate.documentTitle?.trim()
   ) {
     return undefined;
   }
 
-  return article;
+  return candidate.article;
+}
+
+export function parseArticleFragment(html: string): HTMLElement | undefined {
+  const document = new DOMParser().parseFromString(html, 'text/html');
+  const candidates = [...document.querySelectorAll<HTMLElement>('[data-continuous-article]')]
+    .map((article) => ({
+      article,
+      postId: article.dataset.postId,
+      postUrl: article.dataset.postUrl,
+      documentTitle: article.dataset.documentTitle,
+    }));
+
+  return validateArticleFragmentCandidates(candidates);
+}
+
+type ContinuousReaderPageTransition = 'pagehide' | 'pageshow';
+
+interface ContinuousReaderLifecycleActions {
+  restore: () => void;
+  cleanup: () => void;
+}
+
+export function handleContinuousReaderPageTransition(
+  transition: ContinuousReaderPageTransition,
+  persisted: boolean,
+  actions: ContinuousReaderLifecycleActions,
+): void {
+  if (transition === 'pagehide') {
+    if (!persisted) actions.cleanup();
+    return;
+  }
+
+  if (persisted) actions.restore();
 }
 
 interface ContinuousLoadState {
@@ -176,15 +215,35 @@ export function initContinuousReader(root: HTMLElement): (() => void) | undefine
 
   sentinelObserver.observe(sentinel);
 
+  const restore = () => {
+    if (cleanedUp || terminal) return;
+    syncActiveArticle();
+
+    const bounds = sentinel.getBoundingClientRect();
+    if (bounds.top <= window.innerHeight + 800 && bounds.bottom >= -800) {
+      void loadNextArticle();
+    }
+  };
+
   const cleanup = () => {
     if (cleanedUp) return;
     cleanedUp = true;
     abortController?.abort();
     disarmSentinel();
     articleObserver.disconnect();
-    window.removeEventListener('pagehide', cleanup);
+    window.removeEventListener('pagehide', onPageHide);
+    window.removeEventListener('pageshow', onPageShow);
   };
 
-  window.addEventListener('pagehide', cleanup, { once: true });
+  const lifecycleActions = { restore, cleanup };
+  function onPageHide(event: PageTransitionEvent) {
+    handleContinuousReaderPageTransition('pagehide', event.persisted, lifecycleActions);
+  }
+  function onPageShow(event: PageTransitionEvent) {
+    handleContinuousReaderPageTransition('pageshow', event.persisted, lifecycleActions);
+  }
+
+  window.addEventListener('pagehide', onPageHide);
+  window.addEventListener('pageshow', onPageShow);
   return cleanup;
 }

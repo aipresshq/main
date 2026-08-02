@@ -3,6 +3,7 @@ title: "Welcome to AI Snap"
 description: "AI Snap explains fast-moving AI news with concise reporting, practical context, and clear guidance on what readers should verify."
 author: "ai-snap-editorial"
 pubDate: 2026-07-28
+updatedDate: 2026-08-02
 cover: "https://images.unsplash.com/photo-1620712943543-bcc4688e7485"
 coverAlt: "Abstract render of interconnected AI network nodes"
 coverCredit: "Unsplash"

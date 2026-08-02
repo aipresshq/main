@@ -3,24 +3,25 @@ title: "Claude Usage Limit Reset Tracker"
 description: "How Claude usage limits affect conversations, where reset details appear, and why available capacity can vary by task and plan."
 author: "ai-snap-editorial"
 pubDate: 2026-07-27
+updatedDate: 2026-08-02
 cover: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5"
 coverAlt: "Abstract green data streams on a dark background"
 coverCredit: "Unsplash"
 whyItMatters: "Claude's available capacity can shape whether a long conversation continues uninterrupted, especially when documents, tools, or extensive context are involved."
-sourceName: "AI Snap"
-sourceUrl: "https://aisnap.in"
+sourceName: "Claude Help Center"
+sourceUrl: "https://support.claude.com/en/articles/11647753-how-do-usage-and-length-limits-work"
 tags: ["Anthropic", "Trackers"]
 postType: "tracker"
 featured: false
 ---
 
-## What happened
+## How the limit works
 
 Claude usage limits determine how much work an account can complete within a given allowance. Long conversations, large attachments, selected models, and tool-heavy tasks may consume capacity differently, so two sessions can reach a limit at different points.
 
 ## Where to check
 
-Claude normally surfaces limit and reset information in the product when capacity is running low or unavailable. Check the notice attached to the conversation and the account or plan area for the most relevant status. Anthropic's official account documentation is the authority for how a plan is currently handled.
+Claude normally surfaces limit and reset information in the product when capacity is running low or unavailable. Check the notice attached to the conversation and the account or plan area for the most relevant status. Anthropic's [official account documentation](https://support.claude.com/en/articles/11647753-how-do-usage-and-length-limits-work) is the authority for how a plan is currently handled.
 
 ## Why the cap varies
 
