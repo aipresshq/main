@@ -4,14 +4,20 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import Stage from '../components/Stage.astro';
 import LatestSection from '../components/LatestSection.astro';
 import FeatureBand from '../components/FeatureBand.astro';
-import SplitFeature from '../components/SplitFeature.astro';
 import HeadlineGrid from '../components/HeadlineGrid.astro';
 import NewsroomGrid from '../components/NewsroomGrid.astro';
+import DeskIndex from '../components/DeskIndex.astro';
+import RelatedNews from '../components/RelatedNews.astro';
+import DeskShowcase from '../components/DeskShowcase.astro';
+import BriefingBoard from '../components/BriefingBoard.astro';
+import StoryTimeline from '../components/StoryTimeline.astro';
+import TopicDirectory from '../components/TopicDirectory.astro';
 import { formatEditionDate } from '../lib/date';
+import { sortPostsNewestFirst } from '../lib/post-order';
+import { slugify } from '../lib/slug';
+import { topicGroups } from '../lib/topics';
 
-const posts = (await getCollection('posts')).sort(
-  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
-);
+const posts = sortPostsNewestFirst(await getCollection('posts'));
 
 // The hero takes the top eight: the lead story, up to two Editor's Pick
 // cards (from `picks`, below), and up to five Just In headlines.
@@ -19,10 +25,9 @@ const stagePosts = posts.slice(0, 8);
 const inStage = new Set(stagePosts.map((p) => p.id));
 const latestPosts = posts.filter((p) => !inStage.has(p.id)).slice(0, 6);
 
-// Trackers and Explainers are section fronts: complete listings by type, so a
-// story showing in both the hero and its own section is expected, as in print.
+// Trackers are a section front: the complete listing by type means a story
+// showing in both the hero and its own section is expected, as in print.
 const trackers = posts.filter((p) => p.data.postType === 'tracker').slice(0, 5);
-const evergreen = posts.filter((p) => p.data.postType === 'evergreen').slice(0, 5);
 
 // The digest is what the front hasn't already shown.
 const digest = posts.filter((p) => !inStage.has(p.id)).slice(0, 8);
@@ -33,27 +38,106 @@ const digest = posts.filter((p) => !inStage.has(p.id)).slice(0, 8);
 // Editor's Pick column and the newsroom section further down the front both
 // draw from this same signal.
 const picks = posts.filter((p) => p.data.featured);
+const signalPosts = picks.slice(0, 5);
+
+const companyTags = new Set([
+  'OpenAI',
+  'Anthropic',
+  'Google DeepMind',
+  'Meta',
+  'Microsoft',
+  'Mistral',
+]);
+const deskStoryIds = new Set<string>();
+
+function takeDeskStories(predicate: (post: (typeof posts)[number]) => boolean) {
+  const selected = posts
+    .filter((post) => !deskStoryIds.has(post.id) && predicate(post))
+    .slice(0, 3);
+
+  selected.forEach((post) => deskStoryIds.add(post.id));
+  return selected;
+}
+
+const applicationsPosts = takeDeskStories(
+  (post) => post.data.tags.includes('Product Launch') || post.data.tags.includes('AI'),
+);
+const usagePosts = takeDeskStories((post) => post.data.postType === 'tracker');
+const companyPosts = takeDeskStories(
+  (post) => post.data.postType !== 'tracker' && post.data.tags.some((tag) => companyTags.has(tag)),
+);
+
+const deskColumns = [
+  { title: 'Applications', href: '/tag/product-launch/', posts: applicationsPosts },
+  { title: 'Companies & labs', href: '/latest/', posts: companyPosts },
+  { title: 'Usage & access', href: '/trackers/', posts: usagePosts },
+];
+
+const relatedNews = picks.slice(0, 6);
+
+const deskShowcasePosts = posts.slice(0, 11);
+const [deskLead, ...deskRemainder] = deskShowcasePosts;
+const deskHeadlines = deskRemainder.slice(0, 3);
+const deskSidePosts = deskRemainder.slice(3, 6);
+const deskLowerPosts = deskRemainder.slice(6, 10);
+const showcaseTopics = ['OpenAI', 'Comparisons', 'Research', 'Product Launch', 'Funding'].map(
+  (topic) => ({
+    label: topic,
+    href: `/tag/${slugify(topic)}/`,
+  }),
+);
+const briefingPosts = posts.filter((post) => post.id !== deskLead?.id).slice(0, 5);
+const timelinePosts = posts.slice(0, 6);
+const directoryGroups = topicGroups.map((group) => ({
+  label: group.label,
+  topics: group.topics.map((topic) => ({
+    label: topic,
+    href: `/tag/${slugify(topic)}/`,
+    count: posts.filter((post) => post.data.tags.includes(topic)).length,
+  })),
+}));
 ---
 
 <BaseLayout
-	title="AI Snap | Daily AI News"
-	description="Daily AI news, evergreen comparisons, and usage-limit trackers across every major AI lab."
-	editionDate={posts[0] && formatEditionDate(posts[0].data.pubDate)}
+  title="AI Snap | Daily AI News"
+  description="Daily AI news, evergreen comparisons, and usage-limit trackers across every major AI lab."
+  editionDate={posts[0] && formatEditionDate(posts[0].data.pubDate)}
 >
-	<Stage posts={stagePosts} picks={picks} emptyNote="No stories published yet." />
+  <Stage posts={stagePosts} picks={picks} emptyNote="No stories published yet." />
 
-	{latestPosts.length > 0 && (
-		<LatestSection
-			posts={latestPosts}
-			communityUrl={import.meta.env.PUBLIC_SUBSTACK_URL || 'https://aisnap.substack.com'}
-		/>
-	)}
+  {latestPosts.length > 0 && <LatestSection posts={latestPosts} signalPosts={signalPosts} />}
 
-	{trackers.length > 0 && <FeatureBand title="Trackers" href="/trackers/" posts={trackers} />}
+  <DeskIndex columns={deskColumns} signalPosts={signalPosts} />
 
-	{evergreen.length > 0 && <SplitFeature title="Explainers & comparisons" posts={evergreen} />}
+  <RelatedNews posts={relatedNews} />
 
-	{digest.length > 0 && <HeadlineGrid title="More from today" posts={digest} />}
+  {
+    deskLead && (
+      <DeskShowcase
+        title="Across AI"
+        href="/tag/ai/"
+        lead={deskLead}
+        headlines={deskHeadlines}
+        sidePosts={deskSidePosts}
+        lowerPosts={deskLowerPosts}
+        topics={showcaseTopics}
+      />
+    )
+  }
 
-	{picks.length > 0 && <NewsroomGrid title="Editor's Picks" href="/trending/" posts={picks} />}
+  {
+    briefingPosts.length > 0 && deskLead && (
+      <BriefingBoard posts={briefingPosts} feature={deskLead} />
+    )
+  }
+
+  {timelinePosts.length > 0 && <StoryTimeline posts={timelinePosts} />}
+
+  <TopicDirectory groups={directoryGroups} />
+
+  {trackers.length > 0 && <FeatureBand title="Trackers" href="/trackers/" posts={trackers} />}
+
+  {digest.length > 0 && <HeadlineGrid title="More from today" posts={digest} />}
+
+  {picks.length > 0 && <NewsroomGrid title="Editor's Picks" href="/trending/" posts={picks} />}
 </BaseLayout>

@@ -17,12 +17,18 @@ const signal = rest.slice(0, 5);
 {
   lead && (
     <section class="newsroom-section" aria-labelledby="newsroom-heading">
-      <div class="newsroom-section-head">
+      <div class="newsroom-section-head home-section-heading">
         <div>
           <span class="label">The daily desk</span>
-          <h2 id="newsroom-heading">{title}</h2>
+          <h2 class="home-section-heading-title" id="newsroom-heading">
+            {title}
+          </h2>
         </div>
-        {href && <a class="newsroom-section-link" href={href}>See all <span aria-hidden="true">-&gt;</span></a>}
+        {href && (
+          <a class="newsroom-section-link home-section-heading-link" href={href}>
+            See all <span aria-hidden="true">-&gt;</span>
+          </a>
+        )}
       </div>
 
       <div class="newsroom-grid">
@@ -30,7 +36,9 @@ const signal = rest.slice(0, 5);
           <img src={lead.data.cover} alt={lead.data.coverAlt} />
           <span class="label">{lead.data.tags[0]}</span>
           <h3>{lead.data.title}</h3>
-          <time datetime={lead.data.pubDate.toISOString()}>{formatPostDate(lead.data.pubDate)}</time>
+          <time datetime={lead.data.pubDate.toISOString()}>
+            {formatPostDate(lead.data.pubDate)}
+          </time>
         </a>
 
         <div class="newsroom-cards">
@@ -39,7 +47,9 @@ const signal = rest.slice(0, 5);
               <img src={post.data.cover} alt={post.data.coverAlt} loading="lazy" />
               <span class="label">{post.data.tags[0]}</span>
               <h3>{post.data.title}</h3>
-              <time datetime={post.data.pubDate.toISOString()}>{formatPostDate(post.data.pubDate)}</time>
+              <time datetime={post.data.pubDate.toISOString()}>
+                {formatPostDate(post.data.pubDate)}
+              </time>
             </a>
           ))}
         </div>
@@ -59,7 +69,11 @@ const signal = rest.slice(0, 5);
               </li>
             ))}
           </ol>
-          {href && <a class="newsroom-signal-link" href={href}>Browse the desk <span aria-hidden="true">-&gt;</span></a>}
+          {href && (
+            <a class="newsroom-signal-link" href={href}>
+              Browse the desk <span aria-hidden="true">-&gt;</span>
+            </a>
+          )}
         </aside>
       </div>
     </section>

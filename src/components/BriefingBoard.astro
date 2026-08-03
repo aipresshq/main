@@ -1,0 +1,51 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { formatPostDate } from '../lib/date';
+
+export interface Props {
+  posts: CollectionEntry<'posts'>[];
+  feature: CollectionEntry<'posts'>;
+}
+
+const { posts, feature } = Astro.props;
+---
+
+<section class="briefing-board" aria-labelledby="briefing-board-heading">
+  <header class="briefing-board-head home-section-heading">
+    <div>
+      <span class="label">The short list</span>
+      <h2 class="home-section-heading-title" id="briefing-board-heading">What to know now</h2>
+    </div>
+    <a class="home-section-heading-link" href="/latest/"
+      >See the full index <span aria-hidden="true">-&gt;</span></a
+    >
+  </header>
+
+  <div class="briefing-board-layout">
+    <ol class="briefing-board-list">
+      {
+        posts.slice(0, 5).map((post, index) => (
+          <li>
+            <span class="briefing-board-rank">{String(index + 1).padStart(2, '0')}</span>
+            <a href={`/posts/${post.id}/`}>
+              <span class="label">{post.data.tags[0]}</span>
+              <strong>{post.data.title}</strong>
+              <time datetime={post.data.pubDate.toISOString()}>
+                {formatPostDate(post.data.pubDate)}
+              </time>
+            </a>
+          </li>
+        ))
+      }
+    </ol>
+
+    <a class="briefing-board-feature" href={`/posts/${feature.id}/`}>
+      <span class="label">Read the context</span>
+      <h3>{feature.data.title}</h3>
+      <p>{feature.data.description}</p>
+      <span class="briefing-board-feature-link"
+        >Open story <span aria-hidden="true">-&gt;</span></span
+      >
+    </a>
+  </div>
+</section>

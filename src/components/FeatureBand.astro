@@ -15,27 +15,29 @@ const secondaries = rest.slice(0, 4);
 ---
 
 <section class="band">
-	<SectionHeader title={title} href={href} />
+  <SectionHeader title={title} href={href} />
 
-	<div class="band-grid">
-		<a class="band-lead" href={`/posts/${lead.id}/`}>
-			<img src={lead.data.cover} alt={lead.data.coverAlt} />
-			<h3>{lead.data.title}</h3>
-		</a>
+  <div class="band-grid">
+    <a class="band-lead" href={`/posts/${lead.id}/`}>
+      <img src={lead.data.cover} alt={lead.data.coverAlt} />
+      <h3>{lead.data.title}</h3>
+    </a>
 
-		{
-			secondaries.length > 0 && (
-				/* Two or fewer stack into one column, so they fill the lead's
+    {
+      secondaries.length > 0 && (
+        /* Two or fewer stack into one column, so they fill the lead's
 				   height instead of leaving the right side half empty. */
-				<div class:list={['band-secondaries', { 'band-secondaries-stacked': secondaries.length <= 2 }]}>
-					{secondaries.map((post) => (
-						<a class="band-item" href={`/posts/${post.id}/`}>
-							<img src={post.data.cover} alt={post.data.coverAlt} />
-							<h3>{post.data.title}</h3>
-						</a>
-					))}
-				</div>
-			)
-		}
-	</div>
+        <div
+          class:list={['band-secondaries', { 'band-secondaries-stacked': secondaries.length <= 2 }]}
+        >
+          {secondaries.map((post) => (
+            <a class="band-item" href={`/posts/${post.id}/`}>
+              <img src={post.data.cover} alt={post.data.coverAlt} />
+              <h3>{post.data.title}</h3>
+            </a>
+          ))}
+        </div>
+      )
+    }
+  </div>
 </section>

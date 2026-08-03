@@ -4,59 +4,103 @@ import { formatPostDate } from '../lib/date';
 
 export interface Props {
   posts: CollectionEntry<'posts'>[];
-  communityUrl: string;
+  signalPosts?: CollectionEntry<'posts'>[];
 }
 
-const { posts, communityUrl } = Astro.props;
+const { posts, signalPosts = [] } = Astro.props;
 const stories = posts.slice(0, 6);
+const signal = signalPosts.slice(0, 4);
 ---
 
-{stories.length > 0 && (
-  <section class="latest-section" aria-labelledby="latest-section-heading">
-    <div class="latest-section-head">
-      <div>
-        <span class="label latest-section-kicker">Fresh from the desk</span>
-        <h2 id="latest-section-heading">Latest</h2>
-      </div>
-      <a class="latest-section-link" href="/latest/">
-        View all latest <span aria-hidden="true">-&gt;</span>
-      </a>
-    </div>
-
-    <div class="latest-section-layout">
-      <div class="latest-story-grid">
-        {stories.map((post) => (
-          <a class="latest-story-card" href={`/posts/${post.id}/`}>
-            <img src={post.data.cover} alt={post.data.coverAlt} loading="lazy" />
-            <div class="latest-story-meta">
-              <span class="label">{post.data.tags[0]}</span>
-              <time datetime={post.data.pubDate.toISOString()}>{formatPostDate(post.data.pubDate)}</time>
-            </div>
-            <h3>{post.data.title}</h3>
-          </a>
-        ))}
-      </div>
-
-      <aside class="latest-section-rail" aria-label="AI Snap community and edition links">
-        <a class="latest-community-card" href={communityUrl}>
-          <span class="label">Join our community</span>
-          <h3>AI news with the useful context included.</h3>
-          <p>
-            Get one thoughtful daily edition covering launches, companies, products, and the limits that shape real work.
-          </p>
-          <span class="latest-rail-link">Subscribe free <span aria-hidden="true">-&gt;</span></span>
-        </a>
-
-        <div class="latest-edition-card">
-          <span class="label">Explore the edition</span>
-          <h3>Keep following the stories that matter.</h3>
-          <nav aria-label="Edition sections">
-            <a href="/trending/">Trending stories <span aria-hidden="true">-&gt;</span></a>
-            <a href="/trackers/">Usage trackers <span aria-hidden="true">-&gt;</span></a>
-            <a href="/tag/openai/">OpenAI coverage <span aria-hidden="true">-&gt;</span></a>
-          </nav>
+{
+  stories.length > 0 && (
+    <section class="latest-section" aria-labelledby="latest-section-heading">
+      <div class="latest-section-head home-section-heading">
+        <div>
+          <span class="label latest-section-kicker">Fresh from the desk</span>
+          <h2 class="home-section-heading-title" id="latest-section-heading">
+            Latest
+          </h2>
         </div>
-      </aside>
-    </div>
-  </section>
-)}
+        <a class="latest-section-link home-section-heading-link" href="/latest/">
+          View all latest <span aria-hidden="true">-&gt;</span>
+        </a>
+      </div>
+
+      <div class="latest-section-layout">
+        <div class="latest-story-grid">
+          {stories.map((post) => (
+            <a class="latest-story-card" href={`/posts/${post.id}/`}>
+              <img src={post.data.cover} alt={post.data.coverAlt} loading="lazy" />
+              <div class="latest-story-meta">
+                <span class="label">{post.data.tags[0]}</span>
+                <time datetime={post.data.pubDate.toISOString()}>
+                  {formatPostDate(post.data.pubDate)}
+                </time>
+              </div>
+              <h3>{post.data.title}</h3>
+            </a>
+          ))}
+        </div>
+
+        <aside class="latest-section-rail" aria-label="AI Snap editorial links">
+          <section class="latest-focus-card" aria-labelledby="latest-focus-heading">
+            <span class="label">Coverage map</span>
+            <h3 id="latest-focus-heading">Go deeper by desk.</h3>
+            <p>
+              Move from the latest updates into the labs, launches, and comparisons behind the
+              headlines.
+            </p>
+            <nav aria-label="Coverage map links">
+              <a href="/tag/openai/">
+                AI labs <span aria-hidden="true">-&gt;</span>
+              </a>
+              <a href="/tag/product-launch/">
+                Product launches <span aria-hidden="true">-&gt;</span>
+              </a>
+              <a href="/tag/comparisons/">
+                Research and comparisons <span aria-hidden="true">-&gt;</span>
+              </a>
+            </nav>
+          </section>
+
+          {signal.length > 0 && (
+            <section class="latest-signal-card" aria-labelledby="latest-signal-heading">
+              <div class="latest-signal-heading">
+                <span class="label">Editor's signal</span>
+                <h3 id="latest-signal-heading">Worth your time</h3>
+              </div>
+              <ol class="latest-signal-list">
+                {signal.map((post, index) => (
+                  <li>
+                    <span class="latest-signal-rank">{String(index + 1).padStart(2, '0')}</span>
+                    <a href={`/posts/${post.id}/`}>{post.data.title}</a>
+                  </li>
+                ))}
+              </ol>
+              <a class="latest-rail-link" href="/trending/">
+                Browse curated picks <span aria-hidden="true">-&gt;</span>
+              </a>
+            </section>
+          )}
+
+          <div class="latest-edition-card">
+            <span class="label">Explore the edition</span>
+            <h3>Keep following the stories that matter.</h3>
+            <nav aria-label="Edition sections">
+              <a href="/trending/">
+                Trending stories <span aria-hidden="true">-&gt;</span>
+              </a>
+              <a href="/trackers/">
+                Usage trackers <span aria-hidden="true">-&gt;</span>
+              </a>
+              <a href="/tag/openai/">
+                OpenAI coverage <span aria-hidden="true">-&gt;</span>
+              </a>
+            </nav>
+          </div>
+        </aside>
+      </div>
+    </section>
+  )
+}

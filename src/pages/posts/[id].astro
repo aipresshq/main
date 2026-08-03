@@ -3,10 +3,11 @@ import { getCollection, getEntry } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ArticleContent from '../../components/ArticleContent.astro';
 import ArticleLatest from '../../components/ArticleLatest.astro';
+import ArticleEndcap from '../../components/ArticleEndcap.astro';
 import ContinuousReader from '../../components/ContinuousReader.astro';
 import SuggestedReads from '../../components/SuggestedReads.astro';
 import { formatEditionDate } from '../../lib/date';
-import { getNextOlderPost } from '../../lib/post-order';
+import { getNextOlderPost, getPreviousNewerPost, sortPostsNewestFirst } from '../../lib/post-order';
 import { getSuggestedPosts } from '../../lib/recommendations';
 import { getAuthorId } from '../../lib/author-reference';
 
@@ -25,15 +26,13 @@ if (!author) {
   throw new Error(`Missing author profile for post: ${post.id} (author: ${authorId})`);
 }
 
-const { title, description, pubDate, updatedDate, cover, tags } = post.data;
+const { title, description, pubDate, updatedDate, cover } = post.data;
 
 const suggested = getSuggestedPosts(post, allPosts, 4);
 const nextPost = getNextOlderPost(post.id, allPosts);
+const previousPost = getPreviousNewerPost(post.id, allPosts);
 
-const latest = allPosts
-  .filter((p) => p.id !== post.id)
-  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
-  .slice(0, 5);
+const latest = sortPostsNewestFirst(allPosts.filter((p) => p.id !== post.id)).slice(0, 5);
 
 const schema = {
   '@context': 'https://schema.org',
@@ -43,11 +42,13 @@ const schema = {
   image: [cover],
   datePublished: pubDate.toISOString(),
   ...(updatedDate && { dateModified: updatedDate.toISOString() }),
-  author: [{
-    '@type': 'Person',
-    name: author.data.name,
-    url: new URL(`/authors/${author.id}/`, Astro.site ?? 'https://aisnap.in').href,
-  }],
+  author: [
+    {
+      '@type': 'Person',
+      name: author.data.name,
+      url: new URL(`/authors/${author.id}/`, Astro.site ?? 'https://aisnap.in').href,
+    },
+  ],
   publisher: { '@type': 'Organization', name: 'AI Snap' },
   mainEntityOfPage: {
     '@type': 'WebPage',
@@ -61,14 +62,15 @@ const schema = {
   description={description}
   editionDate={formatEditionDate(pubDate)}
 >
-  <script type="application/ld+json" set:html={JSON.stringify(schema)} />
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(schema)} />
 
   <ContinuousReader currentPost={post} nextPost={nextPost}>
     <div class="article-layout">
       <ArticleContent post={post} author={author} />
-      <ArticleLatest posts={latest} currentPost={post} allPosts={allPosts} />
+      <ArticleLatest posts={latest} currentPost={post} />
     </div>
-
-    <SuggestedReads posts={suggested} articleId={post.id} />
   </ContinuousReader>
+
+  <ArticleEndcap author={author} previousPost={previousPost} nextPost={nextPost} />
+  <SuggestedReads posts={suggested} articleId={post.id} />
 </BaseLayout>

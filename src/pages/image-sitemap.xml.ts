@@ -16,7 +16,7 @@ export const GET: APIRoute = async ({ site }) => {
       <image:loc>${post.data.cover}</image:loc>
       <image:caption>${escapeXml(post.data.coverAlt)}</image:caption>
     </image:image>
-  </url>`
+  </url>`,
     )
     .join('\n');
 

@@ -3,6 +3,7 @@ import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import CategoryFront from '../../components/CategoryFront.astro';
 import { formatEditionDate } from '../../lib/date';
+import { sortPostsNewestFirst } from '../../lib/post-order';
 import { slugify } from '../../lib/slug';
 import { knownTopics } from '../../lib/topics';
 
@@ -21,22 +22,19 @@ export async function getStaticPaths() {
 }
 
 const { tag, allPosts } = Astro.props;
-const posts = allPosts
-  .filter((p) => p.data.tags.includes(tag))
-  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+const posts = sortPostsNewestFirst(allPosts.filter((p) => p.data.tags.includes(tag)));
 ---
 
 <BaseLayout
-	title={`${tag} | AI Snap`}
-	description={`Latest AI Snap coverage tagged ${tag}.`}
-	activeTag={tag}
-	editionDate={posts[0] && formatEditionDate(posts[0].data.pubDate)}
+  title={`${tag} | AI Snap`}
+  description={`Latest AI Snap coverage tagged ${tag}.`}
+  activeTag={tag}
+  editionDate={posts[0] && formatEditionDate(posts[0].data.pubDate)}
 >
-	<CategoryFront
-		title={tag}
-		description={`Latest AI Snap coverage tagged ${tag}, with concise reporting, practical context, and the primary sources behind each story.`}
-		posts={posts}
-		emptyNote={`No stories tagged ${tag} yet.`}
-		substackUrl={import.meta.env.PUBLIC_SUBSTACK_URL || 'https://aisnap.substack.com'}
-	/>
+  <CategoryFront
+    title={tag}
+    description={`Latest AI Snap coverage tagged ${tag}, with concise reporting, practical context, and the primary sources behind each story.`}
+    posts={posts}
+    emptyNote={`No stories tagged ${tag} yet.`}
+  />
 </BaseLayout>

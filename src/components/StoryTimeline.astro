@@ -1,0 +1,35 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { formatPostDate } from '../lib/date';
+
+export interface Props {
+  posts: CollectionEntry<'posts'>[];
+}
+
+const { posts } = Astro.props;
+---
+
+<section class="story-timeline" aria-labelledby="story-timeline-heading">
+  <header class="story-timeline-head home-section-heading">
+    <div>
+      <span class="label">Recent signals</span>
+      <h2 class="home-section-heading-title" id="story-timeline-heading">A week in AI</h2>
+    </div>
+    <span class="label">Newest first</span>
+  </header>
+
+  <div class="story-timeline-track">
+    {
+      posts.slice(0, 6).map((post) => (
+        <a class="story-timeline-item" href={`/posts/${post.id}/`}>
+          <time datetime={post.data.pubDate.toISOString()}>
+            {formatPostDate(post.data.pubDate)}
+          </time>
+          <span class="story-timeline-dot" aria-hidden="true" />
+          <span class="label">{post.data.tags[0]}</span>
+          <h3>{post.data.title}</h3>
+        </a>
+      ))
+    }
+  </div>
+</section>

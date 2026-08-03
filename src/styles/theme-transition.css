@@ -1,0 +1,52 @@
+/* --------------------------------------------------------------------------
+   Theme toggle transition: the default cross-fade is switched off so it
+   doesn't play underneath the custom circular reveal the toggle's own script
+   drives via document.documentElement.animate(...). Browsers without View
+   Transitions support never see this rule fire at all — the theme still
+   switches instantly, just without the animation.
+   -------------------------------------------------------------------------- */
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+/* --------------------------------------------------------------------------
+   Motion: a one-time on-load entrance for the hero only. An earlier version
+   also drove `.reveal` sections from animation-timeline: view(), but on a
+   short page the browser can run out of room to scroll before the animation
+   reaches its end, leaving the section stuck permanently semi-transparent.
+   Content must never depend on how much a reader has scrolled to become
+   visible, so scroll-linked opacity was removed rather than tuned further.
+   -------------------------------------------------------------------------- */
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The hero's three columns enter on load, staggered left to right */
+.hero > * {
+  animation: rise 0.6s ease-out both;
+}
+
+.hero-lead {
+  animation-delay: 0.07s;
+}
+
+.hero-just-in {
+  animation-delay: 0.14s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero > * {
+    animation: none;
+  }
+}

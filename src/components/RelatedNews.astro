@@ -1,0 +1,44 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { formatPostDate } from '../lib/date';
+
+export interface Props {
+  posts: CollectionEntry<'posts'>[];
+}
+
+const { posts } = Astro.props;
+const stories = posts.slice(0, 6);
+---
+
+{
+  stories.length > 0 && (
+    <section class="related-news" aria-labelledby="related-news-heading">
+      <div class="related-news-head home-section-heading">
+        <div>
+          <span class="label">Across the desk</span>
+          <h2 class="home-section-heading-title" id="related-news-heading">
+            Related news
+          </h2>
+        </div>
+        <a class="related-news-link home-section-heading-link" href="/latest/">
+          View all latest <span aria-hidden="true">-&gt;</span>
+        </a>
+      </div>
+
+      <div class="related-news-grid">
+        {stories.map((post) => (
+          <a class="related-news-card" href={`/posts/${post.id}/`}>
+            <img src={post.data.cover} alt={post.data.coverAlt} loading="lazy" />
+            <div class="related-news-meta">
+              <span class="label">{post.data.tags[0]}</span>
+              <time datetime={post.data.pubDate.toISOString()}>
+                {formatPostDate(post.data.pubDate)}
+              </time>
+            </div>
+            <h3>{post.data.title}</h3>
+          </a>
+        ))}
+      </div>
+    </section>
+  )
+}

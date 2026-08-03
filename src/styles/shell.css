@@ -1,0 +1,864 @@
+/* --------------------------------------------------------------------------
+   Page wrapper: full width, gutters only. No max-width and no raised card:
+   the layout sits directly on the page background.
+   -------------------------------------------------------------------------- */
+
+.frame {
+  padding: 0 var(--gutter) 48px;
+  /* Setting only overflow-x forces the UA to compute overflow-y as auto,
+     which makes .frame a scroll container and breaks position: sticky
+     inside it (the sticky categories bar would stick to .frame instead of
+     the viewport). Clipping both axes avoids that without allowing any
+     vertical scroll behaviour to appear. */
+  overflow: clip;
+}
+
+/* --------------------------------------------------------------------------
+   Reading progress: a thin hairline fixed above everything else, on every
+   page. It only fills in where there's an article (see the inline script in
+   BaseLayout) — elsewhere it just reads as a quiet top rule.
+   -------------------------------------------------------------------------- */
+
+.reading-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 90;
+  width: 100%;
+  height: 3px;
+  background: var(--border);
+}
+
+.reading-progress span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--text);
+  transform: scaleX(var(--reading-progress, 0));
+  transform-origin: left;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .reading-progress span {
+    transition: transform 80ms linear;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Site header: a quiet broadsheet masthead with one clear navigation rail.
+   -------------------------------------------------------------------------- */
+
+.site-header {
+  margin: 0 calc(-1 * var(--gutter));
+  padding: 0 var(--gutter);
+  border-top: 4px solid var(--text);
+  background: var(--band-bg);
+  color: var(--band-ink);
+}
+
+/* A thin dateline strip: the only thing above the primary bar now. */
+.dateline-strip {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 9px 0;
+  font-size: 0.72rem;
+}
+
+.dateline-strip .label {
+  color: var(--band-ink);
+}
+
+.edition-date {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--band-ink);
+  white-space: nowrap;
+}
+
+/* The masthead now sits inline within the primary bar, sized to share a
+   single compact row with the nav and actions rather than standing alone. */
+.masthead-mark {
+  flex-shrink: 0;
+  font-family: var(--font-masthead);
+  font-size: clamp(1.6rem, 2.8vw, 2.1rem);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  width: 44px;
+  padding: 0;
+  border: 1px solid var(--band-ink-muted);
+  background: transparent;
+  color: var(--band-ink);
+  cursor: pointer;
+  font: inherit;
+}
+
+.theme-toggle:hover,
+.theme-toggle:focus-visible {
+  border-color: var(--band-ink);
+  background: var(--band-ink);
+  color: var(--band-bg);
+}
+
+.theme-icon-moon,
+html[data-theme='dark'] .theme-icon-sun {
+  display: none;
+}
+
+html[data-theme='dark'] .theme-icon-moon {
+  display: block;
+}
+
+/* --------------------------------------------------------------------------
+   Search (Pagefind, loaded lazily on first interaction)
+   -------------------------------------------------------------------------- */
+
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: min(420px, 34vw);
+  min-width: 300px;
+  height: 42px;
+  padding: 0 10px 0 13px;
+  border: 1px solid var(--band-ink);
+  background: var(--band-bg);
+  color: var(--band-ink);
+}
+
+.search-box .search-icon {
+  flex-shrink: 0;
+}
+
+.search-box input[type='search'] {
+  width: 100%;
+  min-width: 0;
+  padding: 0 10px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--band-ink);
+  font: 500 0.9rem/1 var(--font-body);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.search-box input[type='search']::-webkit-search-cancel-button,
+.search-box input[type='search']::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.search-box input[type='search']::placeholder {
+  color: var(--band-ink);
+  opacity: 0.62;
+}
+
+.search-box-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  border: 1px solid currentColor;
+  font: 0.68rem/1 var(--font-body);
+  font-style: normal;
+  opacity: 0.7;
+}
+
+.search-box:focus-within {
+  border-color: var(--band-ink);
+}
+
+.search-results {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  left: auto;
+  z-index: 80;
+  display: none;
+  width: min(560px, calc(100vw - 32px));
+  max-height: min(70vh, 580px);
+  overflow-y: auto;
+  border: 1px solid var(--text);
+  border-top-width: 3px;
+  background: var(--bg);
+  color: var(--text);
+  box-shadow: 10px 10px 0 var(--surface);
+}
+
+.search-box.is-open .search-results:not(:empty) {
+  display: block;
+}
+
+.search-results-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 16px 11px;
+  border-bottom: 1px solid var(--border);
+  font: 700 0.67rem/1 var(--font-body);
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.search-results-count {
+  color: var(--text-muted);
+  font-size: 0.61rem;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+
+.search-result {
+  position: relative;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.search-result.is-active,
+.search-result:hover {
+  background: var(--surface);
+  box-shadow: inset 3px 0 var(--text);
+}
+
+.search-result:last-child {
+  border-bottom: 0;
+}
+
+.search-result:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: -2px;
+}
+
+.search-result-index {
+  padding-top: 4px;
+  color: var(--text-muted);
+  font: 700 0.67rem/1 var(--font-body);
+  letter-spacing: 0.1em;
+}
+
+.search-result.is-active .search-result-index,
+.search-result:hover .search-result-index {
+  color: var(--text);
+}
+
+.search-result-copy {
+  min-width: 0;
+}
+
+.search-result:hover strong,
+.search-result:focus-visible strong,
+.search-result.is-active strong {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.search-result strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.14rem;
+  font-weight: 500;
+  line-height: 1.08;
+}
+
+.search-result-excerpt {
+  display: block;
+  margin-top: 7px;
+  overflow: hidden;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.search-result mark {
+  background: var(--text);
+  color: var(--bg);
+  font-weight: 600;
+}
+
+.search-status {
+  margin: 0;
+  padding: 18px 16px 20px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+/* --------------------------------------------------------------------------
+   Primary bar: a solid theme-aware band holding the masthead, primary nav,
+   Categories dropdown, and header actions together in one sticky row.
+   -------------------------------------------------------------------------- */
+
+.primary-bar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 24px;
+  margin: 0 calc(-1 * var(--gutter)) 32px;
+  padding: 0 var(--gutter);
+  background: var(--band-bg);
+  color: var(--band-ink);
+  transition:
+    box-shadow 320ms ease,
+    background-color 320ms ease,
+    color 320ms ease;
+}
+
+.primary-bar-nav {
+  display: flex;
+  align-items: stretch;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.primary-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.section-links {
+  display: flex;
+  align-items: stretch;
+}
+
+.section-links a {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 15px 18px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--band-ink-muted);
+  white-space: nowrap;
+}
+
+.section-links a:hover,
+.section-links a[aria-current='page'] {
+  color: var(--band-ink);
+}
+
+.section-links a[aria-current='page']::after {
+  position: absolute;
+  right: 18px;
+  bottom: 0;
+  left: 18px;
+  height: 2px;
+  background: var(--band-ink);
+  content: '';
+}
+
+/* No position: relative here — the panel's containing block is deliberately
+   .primary-bar (already positioned via `sticky`), not this trigger. The
+   trigger can sit anywhere in the bar depending on nav length; anchoring the
+   panel to the full bar's edge instead keeps it inside the viewport
+   regardless, rather than anchoring to wherever the trigger happens to be. */
+.category-menu {
+  position: static;
+  padding-left: 18px;
+  border-left: 1px solid var(--band-ink-muted);
+}
+
+.category-menu > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+  padding: 15px 0;
+  list-style: none;
+  color: var(--band-ink-muted);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.category-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.category-menu > summary:hover,
+.category-menu[open] > summary {
+  color: var(--band-ink);
+}
+
+.category-menu-glyph {
+  flex: 0 0 auto;
+  transition: transform 160ms ease;
+}
+
+.category-menu[open] .category-menu-glyph {
+  transform: rotate(180deg);
+}
+
+/* Full-bleed under the whole bar, rather than a boxed dropdown pinned to the
+   trigger, keeps the category index easy to scan at every viewport width. */
+.category-menu-panel {
+  position: absolute;
+  z-index: 40;
+  top: 100%;
+  right: 0;
+  left: 0;
+  padding: 40px var(--gutter) 44px;
+  border-top: 1px solid var(--band-ink-muted);
+  background: var(--band-bg);
+  color: var(--band-ink);
+  box-shadow: var(--shadow-raised);
+}
+
+.category-menu-panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 24px;
+  max-width: 1180px;
+  margin: 0 auto 28px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--band-ink-muted);
+}
+
+.category-menu-panel h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 500;
+}
+
+.category-menu-panel-count {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--band-ink);
+  white-space: nowrap;
+}
+
+/* Grouped by what actually helps someone browse (company vs. coverage
+   theme) instead of one flat list of every tag in appearance order. */
+.category-menu-groups {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 48px;
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.category-menu-group h3 {
+  margin: 0 0 14px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--band-ink);
+}
+
+.category-menu-group ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.category-menu-group a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--band-ink-muted);
+  color: var(--band-ink);
+  font-size: 0.92rem;
+  line-height: 1.3;
+  transition: color 120ms ease;
+}
+
+.category-menu-group a::after {
+  flex-shrink: 0;
+  content: '→';
+  opacity: 0;
+  color: var(--band-ink);
+  transform: translateX(-4px);
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+
+.category-menu-group a:hover,
+.category-menu-group a[aria-current='page'] {
+  color: var(--band-ink);
+}
+
+.category-menu-group a:hover::after {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.category-menu-group a[aria-current='page'] {
+  font-weight: 700;
+}
+
+.category-menu-group a[aria-current='page']::after {
+  content: 'current';
+  opacity: 1;
+  transform: none;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.section-links a:focus-visible,
+.category-menu > summary:focus-visible {
+  outline: 2px solid var(--band-ink);
+  outline-offset: 2px;
+}
+
+.category-menu-group a:focus-visible {
+  outline: 2px solid var(--band-ink);
+  outline-offset: 2px;
+}
+
+.saved-menu {
+  position: static;
+}
+
+.saved-menu > summary {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 40px;
+  border: 1px solid var(--band-ink-muted);
+  list-style: none;
+  color: var(--band-ink);
+  cursor: pointer;
+}
+
+.saved-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.saved-menu > summary:hover,
+.saved-menu[open] > summary {
+  border-color: var(--band-ink);
+  background: var(--band-ink);
+  color: var(--band-bg);
+}
+
+.saved-menu > summary:focus-visible {
+  border-color: var(--band-ink);
+  background: var(--band-ink);
+  color: var(--band-bg);
+  outline: 2px solid var(--band-ink);
+  outline-offset: 3px;
+}
+
+.saved-count {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  min-width: 14px;
+  height: 14px;
+  padding: 1px 3px;
+  background: var(--band-ink);
+  color: var(--band-bg);
+  font-size: 0.58rem;
+  font-weight: 700;
+  line-height: 12px;
+  text-align: center;
+}
+
+.saved-menu > summary:hover .saved-count,
+.saved-menu[open] > summary .saved-count,
+.saved-menu > summary:focus-visible .saved-count {
+  background: var(--band-bg);
+  color: var(--band-ink);
+}
+
+.saved-menu-panel {
+  position: absolute;
+  z-index: 60;
+  top: 100%;
+  right: var(--gutter);
+  width: min(440px, calc(100vw - (2 * var(--gutter))));
+  padding: 24px;
+  border: 1px solid var(--band-ink);
+  background: var(--band-bg);
+  color: var(--band-ink);
+  box-shadow: var(--shadow-raised);
+}
+
+.saved-menu-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--band-ink-muted);
+}
+
+.saved-menu-heading h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.saved-menu-heading > span {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--band-ink-muted);
+}
+
+.saved-list {
+  display: grid;
+}
+
+.saved-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--band-ink-muted);
+}
+
+.saved-item a {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  line-height: 1.2;
+}
+
+.saved-item a:hover,
+.saved-item a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.saved-item-remove {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--band-ink-muted);
+  background: transparent;
+  color: var(--band-ink);
+  cursor: pointer;
+  font: 1.15rem/1 var(--font-body);
+}
+
+.saved-item-remove:hover,
+.saved-item-remove:focus-visible {
+  border-color: var(--band-ink);
+  background: var(--band-ink);
+  color: var(--band-bg);
+}
+
+.saved-item-remove:focus-visible {
+  outline: 2px solid var(--band-ink);
+  outline-offset: 3px;
+}
+
+.saved-empty {
+  margin: 0;
+  padding: 18px 0 2px;
+  color: var(--band-ink-muted);
+  font-size: 0.88rem;
+}
+
+/* --------------------------------------------------------------------------
+   Footer: an inverted editorial closeout, kept separate from archive pages
+   because it belongs to the shared site shell.
+   -------------------------------------------------------------------------- */
+
+.site-footer {
+  margin: 96px calc(-1 * var(--gutter)) -48px;
+  padding: 42px var(--gutter) 22px;
+  background: var(--text);
+  color: var(--bg);
+}
+
+.footer-topline,
+.footer-base {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.footer-topline {
+  padding-bottom: 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--bg) 34%, transparent);
+}
+
+.site-footer .label,
+.footer-topline-note,
+.footer-base {
+  color: color-mix(in srgb, var(--bg) 68%, transparent);
+}
+
+.footer-topline-note,
+.footer-base {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.footer-intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.45fr);
+  gap: 56px;
+  align-items: end;
+  padding: 46px 0 42px;
+}
+
+.footer-intro-copy {
+  max-width: 700px;
+}
+
+.footer-wordmark {
+  display: block;
+  width: fit-content;
+  margin-bottom: 24px;
+  font-family: var(--font-masthead);
+  font-size: clamp(2.7rem, 5vw, 4.8rem);
+  line-height: 0.8;
+}
+
+.footer-headline {
+  max-width: 12ch;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2.4rem, 5vw, 5rem);
+  font-weight: 500;
+  line-height: 0.94;
+  letter-spacing: -0.035em;
+}
+
+.footer-intro-copy p {
+  max-width: 48ch;
+  margin: 22px 0 0;
+  color: color-mix(in srgb, var(--bg) 72%, transparent);
+  font-size: 0.94rem;
+  line-height: 1.6;
+}
+
+.footer-cta-links {
+  display: grid;
+  align-self: stretch;
+}
+
+.footer-cta-links a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 0;
+  border-top: 1px solid color-mix(in srgb, var(--bg) 34%, transparent);
+  color: var(--bg);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.footer-cta-links a:last-child {
+  border-bottom: 1px solid color-mix(in srgb, var(--bg) 34%, transparent);
+}
+
+.footer-cta-links a span {
+  font-size: 1.1rem;
+  line-height: 1;
+  transition: transform 180ms ease;
+}
+
+.footer-cta-links a:hover,
+.footer-cta-links a:focus-visible {
+  color: var(--bg);
+}
+
+.footer-cta-links a:hover span,
+.footer-cta-links a:focus-visible span {
+  transform: translateX(4px);
+}
+
+.footer-rule {
+  height: 1px;
+  background: color-mix(in srgb, var(--bg) 34%, transparent);
+}
+
+.footer-columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 32px;
+  padding: 30px 0 34px;
+}
+
+.footer-column h3 {
+  margin: 0 0 13px;
+  color: color-mix(in srgb, var(--bg) 68%, transparent);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.footer-column ul {
+  display: grid;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.footer-column a {
+  color: var(--bg);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  line-height: 1.15;
+}
+
+.footer-column a:hover,
+.footer-column a:focus-visible {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+
+.footer-base {
+  padding-top: 18px;
+  border-top: 1px solid color-mix(in srgb, var(--bg) 34%, transparent);
+  line-height: 1.4;
+}

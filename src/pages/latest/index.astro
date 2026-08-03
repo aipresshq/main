@@ -10,16 +10,15 @@ const posts = sortPostsNewestFirst(allPosts);
 ---
 
 <BaseLayout
-	title="Latest | AI Snap"
-	description="Every AI Snap story, newest first: launches, trackers, comparisons, and the daily digest."
-	activeTab="latest"
-	editionDate={posts[0] && formatEditionDate(posts[0].data.pubDate)}
+  title="Latest | AI Snap"
+  description="Every AI Snap story, newest first: launches, trackers, comparisons, and the daily digest."
+  activeTab="latest"
+  editionDate={posts[0] && formatEditionDate(posts[0].data.pubDate)}
 >
-	<CategoryFront
-		title="Latest"
-		description="Every story, newest first — the daily digest alongside trackers, comparisons, and explainers."
-		posts={posts}
-		emptyNote="No stories published yet."
-		substackUrl={import.meta.env.PUBLIC_SUBSTACK_URL || 'https://aisnap.substack.com'}
-	/>
+  <CategoryFront
+    title="Latest"
+    description="Every story, newest first — the daily digest alongside trackers, comparisons, and explainers."
+    posts={posts}
+    emptyNote="No stories published yet."
+  />
 </BaseLayout>

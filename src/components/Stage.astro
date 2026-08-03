@@ -60,7 +60,9 @@ const picksWithAuthors = await Promise.all(editorPicks.map(withAuthor));
         </h1>
         <div class="hero-lead-meta">
           <span class="byline">
-            <span class="byline-avatar" aria-hidden="true">{leadWithAuthor.author.data.name.charAt(0)}</span>
+            <span class="byline-avatar" aria-hidden="true">
+              {leadWithAuthor.author.data.name.charAt(0)}
+            </span>
             <span class="byline-name">By {leadWithAuthor.author.data.name}</span>
           </span>
           <time class="label" datetime={leadWithAuthor.post.data.pubDate.toISOString()}>
@@ -69,17 +71,31 @@ const picksWithAuthors = await Promise.all(editorPicks.map(withAuthor));
           <span class="label">{readMinutes(leadWithAuthor.post)} min read</span>
         </div>
         <a class="hero-lead-image" href={`/posts/${leadWithAuthor.post.id}/`}>
-          <img src={leadWithAuthor.post.data.cover} alt={leadWithAuthor.post.data.coverAlt} loading="eager" />
+          <img
+            src={leadWithAuthor.post.data.cover}
+            alt={leadWithAuthor.post.data.coverAlt}
+            loading="eager"
+          />
         </a>
       </div>
 
       {justIn.length > 0 && (
         <aside class="hero-just-in" aria-label="Just in">
           <div class="hero-column-head">
-            <span class="hero-live-dot" aria-hidden="true"></span>
+            <span class="hero-live-dot" aria-hidden="true" />
             <h2>Just In</h2>
             <a class="hero-just-in-link" href="/latest/" aria-label="View all latest stories">
-              <svg width="14" height="10" viewBox="0 0 14 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <svg
+                width="14"
+                height="10"
+                viewBox="0 0 14 10"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
                 <path d="M1 5h11.5M8 1l4.5 4-4.5 4" />
               </svg>
             </a>

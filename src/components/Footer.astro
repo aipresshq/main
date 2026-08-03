@@ -2,21 +2,17 @@
 import { slugify } from '../lib/slug';
 import { topicGroups } from '../lib/topics';
 
-export interface Props {
-  substackUrl: string;
-}
-
-const { substackUrl } = Astro.props;
+export interface Props {}
 
 const sections = [
   { label: 'Latest', href: '/latest/' },
   { label: 'Trending', href: '/trending/' },
   { label: 'Trackers', href: '/trackers/' },
+  { label: 'Tutorials', href: '/tag/tutorials/' },
 ];
 
-// A quick sample across the taxonomy rather than just its first group, so
-// the preview reads as "here's what's covered" instead of only Companies.
-const footerTopics = topicGroups.flatMap((group) => group.topics.slice(0, 2)).slice(0, 6);
+// Keep the footer useful without turning it into a second full categories page.
+const footerTopics = topicGroups.flatMap((group) => group.topics.slice(0, 2)).slice(0, 8);
 
 // The dateline elsewhere comes from content; the copyright year is about the
 // site itself, so it's stamped at build time.
@@ -24,45 +20,69 @@ const year = new Date().getFullYear();
 ---
 
 <footer class="site-footer" data-pagefind-ignore>
-	<div class="footer-cta">
-		<h2 class="footer-headline">Subscribe to keep up with the latest updates!</h2>
-		<div class="footer-cta-aside">
-			<p>
-				One daily edition covering every major AI lab: releases, funding, and the
-				usage-limit trackers we keep current. Free, no noise.
-			</p>
-			<a class="subscribe-button" href={substackUrl}>Subscribe free</a>
-		</div>
-	</div>
+  <div class="footer-topline">
+    <span class="label">AI Snap / Daily AI News</span>
+    <span class="footer-topline-note">Source-linked reporting / Human-reviewed publishing</span>
+  </div>
 
-	<a href="/" class="footer-wordmark">AI Snap</a>
+  <div class="footer-intro">
+    <div class="footer-intro-copy">
+      <a href="/" class="footer-wordmark" aria-label="AI Snap home">AI Snap</a>
+      <h2 class="footer-headline">Context for the fast-moving AI desk.</h2>
+      <p>
+        Clear reporting, practical explainers, and trackers for the products and companies shaping
+        artificial intelligence.
+      </p>
+    </div>
 
-	<div class="footer-columns">
-		<section class="footer-column">
-			<h3>Sections</h3>
-			<ul>
-				{sections.map((s) => <li><a href={s.href}>{s.label}</a></li>)}
-			</ul>
-		</section>
+    <nav class="footer-cta-links" aria-label="Footer editorial sections">
+      <a href="/latest/">Latest updates <span aria-hidden="true">-&gt;</span></a>
+      <a href="/trending/">Editor's picks <span aria-hidden="true">-&gt;</span></a>
+      <a href="/trackers/">Usage trackers <span aria-hidden="true">-&gt;</span></a>
+      <a href="/tag/tutorials/">Tutorials <span aria-hidden="true">-&gt;</span></a>
+    </nav>
+  </div>
 
-		<section class="footer-column">
-			<h3>Topics</h3>
-			<ul>
-				{footerTopics.map((tag) => <li><a href={`/tag/${slugify(tag)}/`}>{tag}</a></li>)}
-			</ul>
-		</section>
+  <div class="footer-rule" aria-hidden="true"></div>
 
-		<section class="footer-column">
-			<h3>Follow</h3>
-			<ul>
-				<li><a href={substackUrl}>Newsletter</a></li>
-				<li><a href="/sitemap-index.xml">Sitemap</a></li>
-			</ul>
-		</section>
-	</div>
+  <div class="footer-columns">
+    <section class="footer-column">
+      <h3>Read</h3>
+      <ul>
+        {
+          sections.map((s) => (
+            <li>
+              <a href={s.href}>{s.label}</a>
+            </li>
+          ))
+        }
+      </ul>
+    </section>
 
-	<div class="footer-base">
-		<span>© {year} AI Snap. All rights reserved.</span>
-		<span>AI-assisted drafting, human-reviewed before publishing.</span>
-	</div>
+    <section class="footer-column">
+      <h3>Topics</h3>
+      <ul>
+        {
+          footerTopics.map((tag) => (
+            <li>
+              <a href={`/tag/${slugify(tag)}/`}>{tag}</a>
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+
+    <section class="footer-column">
+      <h3>Explore</h3>
+      <ul>
+        <li><a href="/authors/ai-snap-editorial/">AI Snap Editorial</a></li>
+        <li><a href="/sitemap-index.xml">Sitemap</a></li>
+      </ul>
+    </section>
+  </div>
+
+  <div class="footer-base">
+    <span>© {year} AI Snap. All rights reserved.</span>
+    <span>Built for reading, not noise.</span>
+  </div>
 </footer>

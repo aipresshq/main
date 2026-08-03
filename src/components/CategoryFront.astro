@@ -1,52 +1,170 @@
 ---
 import type { CollectionEntry } from 'astro:content';
 import { formatPostDate } from '../lib/date';
+import { readMinutes } from '../lib/read-time';
 
 export interface Props {
   title: string;
   description: string;
   posts: CollectionEntry<'posts'>[];
   emptyNote: string;
-  substackUrl: string;
 }
 
-const { title, description, posts, emptyNote, substackUrl } = Astro.props;
+const { title, description, posts, emptyNote } = Astro.props;
 const categoryId = `category-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
-// The promo card takes a grid cell of its own, in the first row alongside
-// the first two stories — same spot a subscribe/community card holds in
-// the reference layout, rather than a separate full-height sidebar column.
-const PROMO_POSITION = 2;
+const featuredPosts = posts.slice(0, 3);
+const featuredPost = featuredPosts[0];
+const latestPosts = posts.slice(featuredPosts.length);
+const latestDate = posts[0] ? formatPostDate(posts[0].data.pubDate) : '';
 ---
 
 {
   posts.length > 0 ? (
     <section class="category-front" aria-labelledby={`${categoryId}-title`}>
-      <header class="category-band">
-        <span class="label category-band-eyebrow">AI Snap / category</span>
-        <h1 id={`${categoryId}-title`}>{title}</h1>
-        <p>{description}</p>
+      <header class="category-intro">
+        <div>
+          <span class="label">AI Snap / category</span>
+          <h1 id={`${categoryId}-title`}>{title}</h1>
+        </div>
+        <div class="category-intro-details">
+          <p>{description}</p>
+          <div class="category-intro-meta" aria-label={`${title} category summary`}>
+            <span>
+              {posts.length} {posts.length === 1 ? 'story' : 'stories'}
+            </span>
+            {latestDate && <span>Updated {latestDate}</span>}
+          </div>
+        </div>
       </header>
 
-      <div class="category-grid">
-        {posts.map((post, index) => (
-          <>
-            {index === PROMO_POSITION && (
-              <a class="category-promo" href={substackUrl}>
-                <span class="label">Join our community</span>
-                <strong>AI news with the useful context included.</strong>
-                <span class="category-promo-link">Subscribe free <span aria-hidden="true">-&gt;</span></span>
-              </a>
-            )}
-            <a class="category-card" href={`/posts/${post.id}/`}>
-              <img src={post.data.cover} alt={post.data.coverAlt} loading="lazy" />
-              <span class="category-card-topline">
-                <span class="label category-card-topic">{post.data.tags[0]}</span>
-                <time datetime={post.data.pubDate.toISOString()}>{formatPostDate(post.data.pubDate)}</time>
+      <div class="category-rule" aria-hidden="true">
+        <span />
+      </div>
+
+      {featuredPost && (
+        <section class="category-featured" aria-labelledby={`${categoryId}-featured-title`}>
+          <div class="category-featured-heading">
+            <div>
+              <span class="label">Featured stories</span>
+              <h2 id={`${categoryId}-featured-title`}>Start with the important stories</h2>
+            </div>
+            <span class="category-featured-count label">{featuredPosts.length} selected</span>
+          </div>
+
+          <div class="category-featured-grid">
+            <a class="category-featured-lead" href={`/posts/${featuredPost.id}/`}>
+              <img src={featuredPost.data.cover} alt={featuredPost.data.coverAlt} loading="eager" />
+              <span class="category-featured-copy">
+                <span class="label">{featuredPost.data.tags[0]}</span>
+                <h3>{featuredPost.data.title}</h3>
+                <p>{featuredPost.data.description}</p>
+                <span class="category-featured-meta">
+                  <time datetime={featuredPost.data.pubDate.toISOString()}>
+                    {formatPostDate(featuredPost.data.pubDate)}
+                  </time>
+                  <span>{readMinutes(featuredPost)} min read</span>
+                </span>
               </span>
-              <h2>{post.data.title}</h2>
             </a>
-          </>
-        ))}
+
+            <div class="category-featured-side">
+              {featuredPosts.slice(1).map((post) => (
+                <a class="category-featured-card" href={`/posts/${post.id}/`}>
+                  <img src={post.data.cover} alt={post.data.coverAlt} loading="lazy" />
+                  <span>
+                    <span class="label">{post.data.tags[0]}</span>
+                    <h3>{post.data.title}</h3>
+                    <span class="category-featured-card-meta">
+                      {formatPostDate(post.data.pubDate)} · {readMinutes(post)} min read
+                    </span>
+                  </span>
+                </a>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      <div class="category-layout">
+        <main class="category-feed">
+          <div class="category-feed-toolbar">
+            <div class="category-feed-heading">
+              <span class="label">Latest updates</span>
+              <span class="category-feed-count">
+                {latestPosts.length} {latestPosts.length === 1 ? 'story' : 'stories'}
+              </span>
+            </div>
+            <label class="category-toggle">
+              <span>Headlines only</span>
+              <input type="checkbox" data-category-toggle aria-label="Show headlines only" />
+              <span class="category-toggle-track" aria-hidden="true">
+                <span />
+              </span>
+            </label>
+          </div>
+
+          {latestPosts.length > 0 ? (
+            <div class="category-story-list">
+              {latestPosts.map((post) => (
+                <a class="category-story" href={`/posts/${post.id}/`}>
+                  <img src={post.data.cover} alt={post.data.coverAlt} loading="lazy" />
+                  <span class="category-story-copy">
+                    <span class="category-story-topline">
+                      <span class="label category-story-topic">{post.data.tags[0]}</span>
+                      <time datetime={post.data.pubDate.toISOString()}>
+                        {formatPostDate(post.data.pubDate)}
+                      </time>
+                    </span>
+                    <h2>{post.data.title}</h2>
+                    <span class="category-story-description">{post.data.description}</span>
+                    <span class="category-story-read">{readMinutes(post)} min read</span>
+                  </span>
+                </a>
+              ))}
+            </div>
+          ) : (
+            <p class="category-feed-empty">Every story in this category is featured above.</p>
+          )}
+        </main>
+
+        <aside class="category-rail" aria-label={`${title} editorial rail`}>
+          <section class="category-signal">
+            <div class="category-signal-heading">
+              <span class="label">Editorial signal</span>
+              <h2>Top of this desk</h2>
+            </div>
+            <ol>
+              {posts.slice(0, 5).map((post) => (
+                <li>
+                  <a href={`/posts/${post.id}/`}>
+                    <span class="label">{post.data.tags[0]}</span>
+                    <h3>{post.data.title}</h3>
+                  </a>
+                </li>
+              ))}
+            </ol>
+            <a class="category-signal-link" href="/latest/">
+              See all <span aria-hidden="true">-&gt;</span>
+            </a>
+          </section>
+
+          <section class="category-rail-card" aria-labelledby={`${categoryId}-explore-heading`}>
+            <span class="label">Keep exploring</span>
+            <strong id={`${categoryId}-explore-heading`}>Move through the desk.</strong>
+            <span>Switch between the latest updates, selected stories, and usage trackers.</span>
+            <nav class="category-rail-nav" aria-label="Editorial sections">
+              <a href="/latest/">
+                Latest updates <span aria-hidden="true">-&gt;</span>
+              </a>
+              <a href="/trending/">
+                Editor's picks <span aria-hidden="true">-&gt;</span>
+              </a>
+              <a href="/trackers/">
+                Usage trackers <span aria-hidden="true">-&gt;</span>
+              </a>
+            </nav>
+          </section>
+        </aside>
       </div>
     </section>
   ) : (
@@ -56,3 +174,12 @@ const PROMO_POSITION = 2;
     </section>
   )
 }
+
+<script>
+  const categoryToggle = document.querySelector<HTMLInputElement>('[data-category-toggle]');
+  const categoryFront = categoryToggle?.closest<HTMLElement>('.category-front');
+
+  categoryToggle?.addEventListener('change', () => {
+    categoryFront?.classList.toggle('category-front--headlines-only', categoryToggle.checked);
+  });
+</script>

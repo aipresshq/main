@@ -8,7 +8,13 @@ export interface Props {
 const { title, href } = Astro.props;
 ---
 
-<div class="section-head">
-	<h2 class="section-title">{title}</h2>
-	{href && <a class="section-link" href={href}>View all <span aria-hidden="true">→</span></a>}
+<div class="section-head home-section-heading">
+  <h2 class="section-title home-section-heading-title">{title}</h2>
+  {
+    href && (
+      <a class="section-link home-section-heading-link" href={href}>
+        View all <span aria-hidden="true">→</span>
+      </a>
+    )
+  }
 </div>

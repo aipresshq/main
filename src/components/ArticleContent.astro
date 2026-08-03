@@ -43,18 +43,71 @@ const {
     <p class="article-standfirst">{description}</p>
 
     <div class="article-meta">
-      <a class="byline" href={`/authors/${author.id}/`}>
+      <a class="byline article-byline" href={`/authors/${author.id}/`}>
         <img class="byline-avatar" src={author.data.avatar} alt="" />
         <span class="byline-copy">
           <span class="byline-name">{author.data.name}</span>
           <span class="byline-role">{author.data.role}</span>
         </span>
       </a>
-      <span class="label">
-        <time datetime={pubDate.toISOString()}>{formatPostDate(pubDate)}</time>
-        {updatedDate && <> · Updated {formatPostDate(updatedDate)}</>}
-        · {readMinutes(post)} min read
-      </span>
+      <div class="article-meta-details">
+        <span class="label">
+          <time datetime={pubDate.toISOString()}>{formatPostDate(pubDate)}</time>
+          {updatedDate && <> · Updated {formatPostDate(updatedDate)}</>}
+          {' · '}{readMinutes(post)} min read
+        </span>
+      </div>
+      <div class="article-actions" aria-label="Story actions">
+        <button
+          class="article-bookmark"
+          type="button"
+          data-bookmark-toggle
+          data-bookmark-id={post.id}
+          data-bookmark-title={title}
+          data-bookmark-url={`/posts/${post.id}/`}
+          aria-pressed="false"
+        >
+          <svg
+            width="15"
+            height="15"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M6 3.5h12a1 1 0 0 1 1 1v16l-7-4-7 4v-16a1 1 0 0 1 1-1Z"></path>
+          </svg>
+          <span data-bookmark-label>Save</span>
+        </button>
+        <button
+          class="article-share"
+          type="button"
+          data-share-story
+          data-share-title={title}
+          data-share-url={`/posts/${post.id}/`}
+        >
+          <svg
+            width="15"
+            height="15"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="18" cy="5" r="2.5"></circle>
+            <circle cx="6" cy="12" r="2.5"></circle>
+            <circle cx="18" cy="19" r="2.5"></circle>
+            <path d="m8.2 10.8 7.6-4.5M8.2 13.2l7.6 4.5"></path>
+          </svg>
+          <span data-share-label>Share</span>
+        </button>
+      </div>
     </div>
   </header>
 
@@ -67,23 +120,40 @@ const {
     <div class="prose">
       <Content />
 
-      <h2>Why it matters</h2>
-      <p>{whyItMatters}</p>
+      <section class="article-context" aria-labelledby={`why-it-matters-${post.id}`}>
+        <span class="label article-context-label">Editorial context</span>
+        <h2 id={`why-it-matters-${post.id}`}>Why it matters</h2>
+        <p>{whyItMatters}</p>
+      </section>
 
       {
         factsTable && (
-          <div class="table-scroll">
-            <table>
-              <thead>
-                <tr>{factsTable.columns.map((col) => <th scope="col">{col}</th>)}</tr>
-              </thead>
-              <tbody>
-                {factsTable.rows.map((row) => (
-                  <tr>{row.map((cell) => <td>{cell}</td>)}</tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <aside class="article-facts" aria-labelledby={`key-facts-${post.id}`}>
+            <div class="article-facts-heading">
+              <span class="label">At a glance</span>
+              <h3 id={`key-facts-${post.id}`}>Key facts</h3>
+            </div>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    {factsTable.columns.map((col) => (
+                      <th scope="col">{col}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {factsTable.rows.map((row) => (
+                    <tr>
+                      {row.map((cell) => (
+                        <td>{cell}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </aside>
         )
       }
 
@@ -102,7 +172,15 @@ const {
         Source: <a href={sourceUrl} rel="noopener nofollow">{sourceName}</a>
       </p>
       <ul class="article-tags">
-        {tags.map((tag) => <li><a class="pill" href={`/tag/${slugify(tag)}/`}>{tag}</a></li>)}
+        {
+          tags.map((tag) => (
+            <li>
+              <a class="pill" href={`/tag/${slugify(tag)}/`}>
+                {tag}
+              </a>
+            </li>
+          ))
+        }
       </ul>
     </footer>
   </div>

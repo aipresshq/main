@@ -1,0 +1,234 @@
+/* --------------------------------------------------------------------------
+   Author archive: a profile rule and monogram-sized portrait introduce the
+   desk, then the archive returns to a measured, image-led newsroom grid.
+   -------------------------------------------------------------------------- */
+
+.author-page {
+  margin-top: 40px;
+}
+
+.author-profile {
+  display: grid;
+  grid-template-columns: 176px minmax(0, 1fr) minmax(180px, 0.34fr);
+  gap: 40px;
+  align-items: stretch;
+  margin: 0 calc(-1 * var(--gutter));
+  padding: 56px var(--gutter) 60px;
+  background: var(--band-bg);
+  color: var(--band-ink);
+}
+
+.author-profile-portrait {
+  align-self: start;
+}
+
+.author-profile-avatar {
+  width: 176px;
+  height: 176px;
+  object-fit: cover;
+  background: var(--band-ink);
+}
+
+.author-profile-copy {
+  min-width: 0;
+}
+
+.author-profile-kicker,
+.author-story-tag {
+  display: block;
+  color: currentColor;
+}
+
+.author-profile h1,
+.author-archive-heading h2,
+.author-story-title {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.015em;
+}
+
+.author-profile h1 {
+  margin: 12px 0 5px;
+  font-size: clamp(3rem, 6vw, 6.4rem);
+  line-height: 0.9;
+  letter-spacing: -0.035em;
+}
+
+.author-profile-role {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: currentColor;
+  opacity: 0.72;
+}
+
+.author-profile-bio {
+  max-width: 60ch;
+  margin: 18px 0 0;
+  font-size: 1rem;
+  line-height: 1.65;
+  color: currentColor;
+  opacity: 0.78;
+}
+
+.author-profile-aside {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  padding: 5px 0 0 24px;
+  border-left: 1px solid var(--band-ink-muted);
+}
+
+.author-profile-count-label {
+  color: currentColor;
+  opacity: 0.72;
+}
+
+.author-story-count {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 10px 0 0;
+  color: currentColor;
+}
+
+.author-story-count strong {
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 5vw, 5rem);
+  font-weight: 500;
+  line-height: 0.86;
+  letter-spacing: -0.04em;
+}
+
+.author-story-count span {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.72;
+}
+
+.author-socials {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 12px;
+  margin-top: auto;
+  padding-top: 28px;
+}
+
+.author-socials a {
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: var(--band-ink-muted);
+  text-underline-offset: 4px;
+}
+
+.author-socials a:hover {
+  color: currentColor;
+  text-decoration-color: currentColor;
+}
+
+.author-socials a:focus-visible,
+.author-story:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 5px;
+}
+
+.author-archive {
+  margin-top: 72px;
+}
+
+.author-archive-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 28px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.author-archive-heading h2 {
+  margin: 8px 0 0;
+  font-size: clamp(2rem, 3.4vw, 3.4rem);
+  line-height: 1;
+}
+
+.author-archive-total {
+  flex-shrink: 0;
+  padding-bottom: 3px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.author-story-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 48px 24px;
+}
+
+.author-story {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.author-story img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  transition: transform 180ms ease;
+}
+
+.author-story-tag {
+  margin-top: 18px;
+}
+
+.author-story-title {
+  margin: 8px 0 0;
+  font-size: clamp(1.4rem, 2vw, 2rem);
+  line-height: 1.06;
+}
+
+.author-story-description {
+  margin: 12px 0 0;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+.author-story-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 18px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.author-story:hover .author-story-title {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+
+.author-story:hover img {
+  transform: scale(1.015);
+}
+
+.author-empty {
+  margin: 0;
+  padding: 32px 0;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}

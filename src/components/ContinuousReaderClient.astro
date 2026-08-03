@@ -1,0 +1,9 @@
+<script>
+  import { initContinuousReader } from '../scripts/continuous-reader';
+
+  if ('IntersectionObserver' in window) {
+    document.querySelectorAll('[data-continuous-stream]').forEach((root) => {
+      if (root instanceof HTMLElement) initContinuousReader(root);
+    });
+  }
+</script>

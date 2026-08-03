@@ -1,0 +1,101 @@
+/* ==========================================================================
+   AI Snap editorial theme
+   Blackletter masthead + high-contrast display serif headlines over a
+   full-bleed monochrome hero, with translucent cards on top.
+   Paper by default, with an explicit dark theme for readers who prefer ink.
+   ========================================================================== */
+
+:root {
+  /* Paper is the default; the toggle adds the ink version without a flash. */
+  --bg: #ffffff;
+  --surface: #f4f4f4;
+  --surface-strong: #e9e9e9;
+  --surface-raised: #ffffff;
+  --border: rgba(0, 0, 0, 0.16);
+  --text: #0a0a0a;
+  --text-muted: #686868;
+  --mark: var(--text);
+  --shadow-raised: 0 20px 50px rgba(0, 0, 0, 0.16);
+  --card-bg: #ffffff;
+  --card-bg-hover: #f1f1f1;
+
+  /* Every field is black or white. Signal comes from inversion, weight and
+     rules, never from colour. */
+  --band-bg: #ffffff;
+  --band-ink: #0a0a0a;
+  --band-ink-muted: rgba(0, 0, 0, 0.66);
+  --panel-bg: #f4f4f4;
+
+  --font-body: 'Inter Variable', system-ui, -apple-system, sans-serif;
+  /* Source Serif 4 reads closer to modern newsroom typography: disciplined,
+     high-legibility serif forms with enough character for big display
+     headlines, but without the magazine-like flourish of Newsreader. */
+  --font-display: 'Source Serif 4', Georgia, serif;
+  --font-masthead: 'UnifrakturMaguntia', 'Source Serif 4', Georgia, serif;
+
+  /* Page gutter. Sections negate it to bleed a band edge to edge. */
+  --gutter: 32px;
+}
+
+:root[data-theme='dark'] {
+  --bg: #0a0a0a;
+  --surface: #151515;
+  --surface-strong: #222222;
+  --surface-raised: #111111;
+  --border: rgba(255, 255, 255, 0.16);
+  --text: #ffffff;
+  --text-muted: #a6a6a6;
+  --shadow-raised: 0 20px 50px rgba(0, 0, 0, 0.55);
+  --card-bg: #151515;
+  --card-bg-hover: #222222;
+  --band-bg: #0a0a0a;
+  --band-ink: #ffffff;
+  --band-ink-muted: rgba(255, 255, 255, 0.72);
+  --panel-bg: #151515;
+}
+
+html {
+  color-scheme: light;
+  scroll-behavior: smooth;
+  scroll-padding-top: 96px;
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+:where(h2, h3)[id] {
+  scroll-margin-top: 104px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+/* Small uppercase label used for kickers, read time, and the NEXT marker */
+.label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}

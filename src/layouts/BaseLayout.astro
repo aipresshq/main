@@ -5,390 +5,261 @@ import '@fontsource/unifrakturmaguntia';
 import '../styles/global.css';
 import Footer from '../components/Footer.astro';
 import { slugify } from '../lib/slug';
-import { topicGroups } from '../lib/topics';
+import { topicGroups, knownTopics } from '../lib/topics';
 
 export interface Props {
   title: string;
   description?: string;
   activeTab?: 'latest' | 'trending' | 'trackers' | null;
   activeTag?: string | null;
-	/**
-	 * Dateline shown in the masthead. Server-rendered fallback only (the
-	 * latest story's date, so it's still meaningful without JS) — corrected
-	 * client-side to the visitor's actual current date on load, since a
-	 * static build can never know "today" for someone loading the page days
-	 * after it was built.
-	 */
+  /**
+   * Dateline shown in the masthead. Server-rendered fallback only (the
+   * latest story's date, so it's still meaningful without JS) — corrected
+   * client-side to the visitor's actual current date on load, since a
+   * static build can never know "today" for someone loading the page days
+   * after it was built.
+   */
   editionDate?: string;
 }
 
-const {
-  title,
-  description,
-  activeTab = null,
-  activeTag = null,
-  editionDate,
-} = Astro.props;
-
-const substackUrl = import.meta.env.PUBLIC_SUBSTACK_URL || 'https://aisnap.substack.com';
+const { title, description, activeTab = null, activeTag = null, editionDate } = Astro.props;
 
 const sections = [
   { label: 'Latest', href: '/latest/', active: activeTab === 'latest' },
   { label: 'Trending', href: '/trending/', active: activeTab === 'trending' },
-  { label: 'Trackers', href: '/trackers/', active: activeTab === 'trackers' },
+  { label: 'Tutorials', href: '/tag/tutorials/', active: activeTag?.toLowerCase() === 'tutorials' },
 ];
 ---
 
 <html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<script is:inline>
-			(() => {
-				try {
-					const stored = localStorage.getItem('ai-snap-theme');
-					const system = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-					document.documentElement.dataset.theme = stored === 'dark' || stored === 'light' ? stored : system;
-				} catch {
-					document.documentElement.dataset.theme = 'light';
-				}
-			})();
-		</script>
-		{description && <meta name="description" content={description} />}
-		<title>{title}</title>
-	</head>
-	<body>
-		<div class="reading-progress" data-reading-progress aria-hidden="true"><span></span></div>
-		<div class="frame">
-			<header class="site-header" data-pagefind-ignore>
-				<div class="dateline-strip">
-					<span class="label">AI news / daily edition</span>
-					{editionDate && <span class="edition-date">{editionDate}</span>}
-				</div>
-			</header>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width" />
+    <script is:inline>
+      (() => {
+        try {
+          const stored = localStorage.getItem('ai-snap-theme');
+          const system = window.matchMedia('(prefers-color-scheme: dark)').matches
+            ? 'dark'
+            : 'light';
+          document.documentElement.dataset.theme =
+            stored === 'dark' || stored === 'light' ? stored : system;
+        } catch {
+          document.documentElement.dataset.theme = 'light';
+        }
+      })();
+    </script>
+    {description && <meta name="description" content={description} />}
+    <title>{title}</title>
+  </head>
+  <body>
+    <div class="reading-progress" data-reading-progress aria-hidden="true"><span></span></div>
+    <div class="frame">
+      <header class="site-header" data-pagefind-ignore>
+        <div class="dateline-strip">
+          <span class="label">AI news / daily edition</span>
+          {editionDate && <span class="edition-date">{editionDate}</span>}
+        </div>
+      </header>
 
-			<!-- A sibling of <header>, not nested inside it: position: sticky is bounded
+      <!-- A sibling of <header>, not nested inside it: position: sticky is bounded
 			     by its containing block, and <header> is just the thin dateline strip —
 			     nesting the bar there would leave it nowhere to stick once that short
 			     box scrolled past. As a sibling, it can stay pinned for the full scroll
 			     of the page. -->
-			<nav class="primary-bar" aria-label="Primary" data-pagefind-ignore>
-				<a href="/" class="masthead-mark" aria-label="AI Snap home">AI Snap</a>
+      <nav class="primary-bar" aria-label="Primary" data-pagefind-ignore>
+        <a href="/" class="masthead-mark" aria-label="AI Snap home">AI Snap</a>
 
-				<div class="primary-bar-nav">
-					<div class="section-links">
-						{sections.map((s) => (
-							<a href={s.href} aria-current={s.active ? 'page' : undefined}>{s.label}</a>
-						))}
-					</div>
-					<details class="topic-menu">
-						<summary>
-							<span>{activeTag ?? 'Topics'}</span>
-							<svg class="topic-menu-glyph" width="12" height="8" viewBox="0 0 12 8" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-								<path d="m1 1.5 5 5 5-5" />
-							</svg>
-						</summary>
-						<div class="topic-menu-panel">
-							<h2>Browse by topic</h2>
-							<div class="topic-menu-groups">
-								{topicGroups.map((group) => (
-									<div class="topic-menu-group">
-										<h3>{group.label}</h3>
-										<ul>
-											{group.topics.map((tag) => (
-												<li>
-													<a
-														href={`/tag/${slugify(tag)}/`}
-														aria-current={activeTag?.toLowerCase() === tag.toLowerCase() ? 'page' : undefined}
-													>
-														{tag}
-													</a>
-												</li>
-											))}
-										</ul>
-									</div>
-								))}
-							</div>
-						</div>
-					</details>
-				</div>
+        <div class="primary-bar-nav">
+          <div class="section-links">
+            {
+              sections.map((s) => (
+                <a href={s.href} aria-current={s.active ? 'page' : undefined}>
+                  {s.label}
+                </a>
+              ))
+            }
+          </div>
+          <details class="category-menu">
+            <summary>
+              <span>Categories</span>
+              <svg
+                class="category-menu-glyph"
+                width="12"
+                height="8"
+                viewBox="0 0 12 8"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                aria-hidden="true"
+              >
+                <path d="m1 1.5 5 5 5-5"></path>
+              </svg>
+            </summary>
+            <div class="category-menu-panel">
+              <div class="category-menu-panel-head">
+                <h2>Browse categories</h2>
+                <span class="category-menu-panel-count">{knownTopics.length} categories</span>
+              </div>
+              <div class="category-menu-groups">
+                {
+                  topicGroups.map((group) => (
+                    <div class="category-menu-group">
+                      <h3>{group.label}</h3>
+                      <ul>
+                        {group.topics.map((tag) => (
+                          <li>
+                            <a
+                              href={`/tag/${slugify(tag)}/`}
+                              aria-current={
+                                activeTag?.toLowerCase() === tag.toLowerCase() ? 'page' : undefined
+                              }
+                            >
+                              {tag}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))
+                }
+              </div>
+            </div>
+          </details>
+        </div>
 
-				<div class="primary-bar-actions">
-					<button class="search-trigger" type="button" data-search-trigger aria-label="Search stories">
-						<svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-							<circle cx="11" cy="11" r="8"></circle>
-							<line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-						</svg>
-						<span>Search</span>
-						<kbd class="search-trigger-key" aria-hidden="true">/</kbd>
-					</button>
+        <div class="primary-bar-actions">
+          <div class="search-box" data-search-box>
+            <svg
+              class="search-icon"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input
+              type="search"
+              id="search-input"
+              placeholder="Search stories"
+              aria-label="Search stories"
+              aria-controls="search-results"
+              aria-expanded="false"
+              aria-autocomplete="list"
+              role="combobox"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <kbd class="search-box-key" aria-hidden="true">/</kbd>
+            <div
+              class="search-results"
+              id="search-results"
+              role="listbox"
+              aria-label="Search results"
+            >
+            </div>
+          </div>
 
-					<button class="theme-toggle" type="button" data-theme-toggle aria-pressed="false" aria-label="Switch to dark mode">
-						<svg class="theme-icon theme-icon-sun" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
-							<circle cx="12" cy="12" r="3.5" />
-							<path d="M12 2.5v2M12 19.5v2M4.4 4.4l1.4 1.4M18.2 18.2l1.4 1.4M2.5 12h2M19.5 12h2M4.4 19.6l1.4-1.4M18.2 5.8l1.4-1.4" />
-						</svg>
-						<svg class="theme-icon theme-icon-moon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
-							<path d="M20 15.2A8.4 8.4 0 0 1 8.8 4a8.4 8.4 0 1 0 11.2 11.2Z" />
-						</svg>
-						<span data-theme-label>Dark</span>
-					</button>
+          <details class="saved-menu" data-saved-menu>
+            <summary class="saved-menu-trigger" aria-label="Saved stories" title="Saved stories">
+              <svg
+                width="17"
+                height="17"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M6 3.5h12a1 1 0 0 1 1 1v16l-7-4-7 4v-16a1 1 0 0 1 1-1Z"></path>
+              </svg>
+              <span class="saved-count" data-saved-count hidden>0</span>
+            </summary>
+            <div class="saved-menu-panel">
+              <div class="saved-menu-heading">
+                <h2>Saved for later</h2>
+                <span data-saved-summary>0 stories</span>
+              </div>
+              <div class="saved-list" data-saved-list>
+                <p class="saved-empty">Save a story and it will appear here.</p>
+              </div>
+            </div>
+          </details>
 
-					<!-- Native disclosure: the menu remains keyboard-friendly and needs no JavaScript. -->
-					<details class="menu">
-						<summary class="menu-trigger" aria-label="Site menu">
-							<span class="menu-trigger-label">Menu</span>
-							<span class="menu-trigger-icon" aria-hidden="true">
-								<svg class="icon-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-									<line x1="3" y1="7" x2="21" y2="7" />
-									<line x1="3" y1="12" x2="21" y2="12" />
-									<line x1="3" y1="17" x2="21" y2="17" />
-								</svg>
-								<svg class="icon-close" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-									<line x1="5" y1="5" x2="19" y2="19" />
-									<line x1="19" y1="5" x2="5" y2="19" />
-								</svg>
-							</span>
-						</summary>
-						<div class="menu-panel">
-							<nav aria-label="Site sections">
-								<ul class="menu-list">
-									{sections.map((s) => <li><a href={s.href} aria-current={s.active ? 'page' : undefined}>{s.label}</a></li>)}
-									<li><a href="/sitemap-index.xml">Sitemap</a></li>
-								</ul>
-							</nav>
-							<a class="subscribe-button menu-subscribe" href={substackUrl}>Subscribe free</a>
-						</div>
-					</details>
-				</div>
-			</nav>
+          <button
+            class="theme-toggle"
+            type="button"
+            data-theme-toggle
+            aria-pressed="false"
+            aria-label="Switch to dark mode"
+          >
+            <svg
+              class="theme-icon theme-icon-sun"
+              width="17"
+              height="17"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="3.5"></circle>
+              <path
+                d="M12 2.5v2M12 19.5v2M4.4 4.4l1.4 1.4M18.2 18.2l1.4 1.4M2.5 12h2M19.5 12h2M4.4 19.6l1.4-1.4M18.2 5.8l1.4-1.4"
+              ></path>
+            </svg>
+            <svg
+              class="theme-icon theme-icon-moon"
+              width="17"
+              height="17"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              aria-hidden="true"
+            >
+              <path d="M20 15.2A8.4 8.4 0 0 1 8.8 4a8.4 8.4 0 1 0 11.2 11.2Z"></path>
+            </svg>
+          </button>
+        </div>
+      </nav>
 
-			<!-- A native <dialog> instead of a hand-rolled overlay div: free focus
-			     trapping, Escape-to-close, and top-layer stacking. The close button
-			     is a plain form[method=dialog] submit, so it works even before the
-			     script below attaches a click handler. -->
-			<dialog class="search-dialog" data-search-dialog aria-label="Search AI Snap" data-pagefind-ignore>
-				<div class="search-dialog-bar">
-					<div class="search-dialog-field">
-						<svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-							<circle cx="11" cy="11" r="8"></circle>
-							<line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-						</svg>
-						<input type="search" id="search-input" placeholder="Search stories" aria-label="Search stories" autocomplete="off" />
-					</div>
-					<form method="dialog">
-						<button type="submit" class="search-dialog-close" aria-label="Close search">
-							<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-								<line x1="5" y1="5" x2="19" y2="19" />
-								<line x1="19" y1="5" x2="5" y2="19" />
-							</svg>
-						</button>
-					</form>
-				</div>
-				<div id="search-results"></div>
-				<p class="search-dialog-hint">Press <kbd>Esc</kbd> to close</p>
-			</dialog>
+      <slot />
 
-			<slot />
+      <Footer />
+    </div>
 
-			<Footer substackUrl={substackUrl} />
-		</div>
+    <script>
+      import { initBookmarks } from '../scripts/bookmarks';
+      import { initEditionDate } from '../scripts/edition';
+      import { initMotion } from '../scripts/motion';
+      import { initNavigation } from '../scripts/navigation';
+      import { initReadingProgress } from '../scripts/reading-progress';
+      import { initSearch } from '../scripts/search';
+      import { initSharing } from '../scripts/sharing';
+      import { initTheme } from '../scripts/theme';
 
-		<script is:inline>
-			const themeToggle = document.querySelector('[data-theme-toggle]');
-			const themeLabel = themeToggle?.querySelector('[data-theme-label]');
-
-			function syncThemeToggle() {
-				const isDark = document.documentElement.dataset.theme === 'dark';
-				if (!themeToggle) return;
-				themeToggle.setAttribute('aria-pressed', String(isDark));
-				themeToggle.setAttribute('aria-label', isDark ? 'Switch to light mode' : 'Switch to dark mode');
-				if (themeLabel) themeLabel.textContent = isDark ? 'Light' : 'Dark';
-			}
-
-			// A circular reveal, expanding from wherever the toggle was activated,
-			// via the View Transitions API. Browsers without support (and anyone
-			// who asked for reduced motion) just get the instant swap this always
-			// did — the animation is a progressive enhancement, not a dependency.
-			themeToggle?.addEventListener('click', (event) => {
-				const nextTheme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-				const applyTheme = () => {
-					document.documentElement.dataset.theme = nextTheme;
-					try {
-						localStorage.setItem('ai-snap-theme', nextTheme);
-					} catch {
-						// Private browsing can deny storage; the current page still toggles.
-					}
-					syncThemeToggle();
-				};
-
-				const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-				if (!document.startViewTransition || reduceMotion) {
-					applyTheme();
-					return;
-				}
-
-				// Keyboard activation (Enter/Space) reports clientX/Y as 0 in most
-				// browsers — fall back to the button's own centre so the reveal
-				// still originates from the toggle rather than the corner.
-				const rect = themeToggle.getBoundingClientRect();
-				const x = event.clientX || rect.left + rect.width / 2;
-				const y = event.clientY || rect.top + rect.height / 2;
-				const endRadius = Math.hypot(
-					Math.max(x, window.innerWidth - x),
-					Math.max(y, window.innerHeight - y),
-				);
-
-				const transition = document.startViewTransition(applyTheme);
-				transition.ready.then(() => {
-					document.documentElement.animate(
-						{ clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${endRadius}px at ${x}px ${y}px)`] },
-						{ duration: 500, easing: 'ease-in-out', pseudoElement: '::view-transition-new(root)' },
-					);
-				});
-			});
-			syncThemeToggle();
-
-			// Zero-JS-by-default search: nothing is fetched until the visitor types.
-			// Pagefind's raw API is dynamically imported (and initialized) once, on
-			// first interaction, rather than shipping its prebuilt UI bundle eagerly.
-			//
-			// is:inline is required: a processed script gets its dynamic import
-			// rewritten by Vite into a preload helper referencing an unresolved
-			// __VITE_PRELOAD__ marker, which throws on the first keystroke.
-			const input = document.getElementById('search-input');
-			const resultsEl = document.getElementById('search-results');
-			const searchTrigger = document.querySelector('[data-search-trigger]');
-			const searchDialog = document.querySelector('[data-search-dialog]');
-
-			function openSearch() {
-				if (!searchDialog || searchDialog.open) return;
-				searchDialog.showModal();
-				input?.focus();
-			}
-
-			searchTrigger?.addEventListener('click', openSearch);
-
-			// The form[method=dialog] close button clears nothing on its own —
-			// reset on the dialog's own close event so a reopen always starts fresh,
-			// whichever way it was closed (button, Escape, or backdrop dismissal).
-			searchDialog?.addEventListener('close', () => {
-				if (input) input.value = '';
-				if (resultsEl) resultsEl.innerHTML = '';
-			});
-
-			// input[type=search]'s own native behaviour is to clear itself on the
-			// first Escape press rather than let the dialog see it, so a visitor
-			// who'd typed anything would need to press Escape twice. Close
-			// explicitly instead of relying on that to bubble up.
-			searchDialog?.addEventListener('keydown', (event) => {
-				if (event.key === 'Escape') {
-					event.preventDefault();
-					searchDialog.close();
-				}
-			});
-
-			document.addEventListener('keydown', (event) => {
-				const isSearchShortcut = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k';
-				if (isSearchShortcut) {
-					event.preventDefault();
-					openSearch();
-					return;
-				}
-				const isTypingElsewhere = event.target instanceof HTMLElement
-					&& ['INPUT', 'TEXTAREA'].includes(event.target.tagName);
-				if (event.key === '/' && !isTypingElsewhere && !searchDialog?.open) {
-					event.preventDefault();
-					openSearch();
-				}
-			});
-
-			function escapeHtml(value) {
-				return value.replace(/[&<>"']/g, (char) => ({
-					'&': '&amp;',
-					'<': '&lt;',
-					'>': '&gt;',
-					'"': '&quot;',
-					"'": '&#39;',
-				})[char]);
-			}
-
-			let pagefindPromise;
-			function loadPagefind() {
-				if (!pagefindPromise) {
-					pagefindPromise = import('/pagefind/pagefind.js').then(async (mod) => {
-						await mod.init();
-						return mod;
-					});
-				}
-				return pagefindPromise;
-			}
-
-			async function renderResults(query) {
-				if (!resultsEl) return;
-				if (!query) {
-					resultsEl.innerHTML = '';
-					return;
-				}
-				const pagefind = await loadPagefind();
-				const search = await pagefind.search(query);
-				const entries = await Promise.all(search.results.slice(0, 10).map((result) => result.data()));
-				if (entries.length === 0) {
-					resultsEl.innerHTML = `<p class="search-empty">No stories found for "${escapeHtml(query)}".</p>`;
-					return;
-				}
-				resultsEl.innerHTML = entries
-					.map(
-						(entry) =>
-							`<a class="search-result" href="${entry.url}"><strong>${entry.meta?.title ?? entry.url}</strong><span>${entry.excerpt ?? ''}</span></a>`
-					)
-					.join('');
-			}
-
-			let debounceTimer;
-			input?.addEventListener('input', (event) => {
-				const query = event.target.value.trim();
-				clearTimeout(debounceTimer);
-				debounceTimer = setTimeout(() => renderResults(query), 200);
-			});
-
-			// The build can only ever know the date of its most recent story, not
-			// "today" for whoever is loading the page — so the dateline is
-			// corrected to the visitor's own clock as soon as JS runs.
-			const editionDateEl = document.querySelector('.edition-date');
-			if (editionDateEl) {
-				editionDateEl.textContent = new Date().toLocaleDateString('en-GB', {
-					weekday: 'long',
-					day: 'numeric',
-					month: 'long',
-					year: 'numeric',
-				});
-			}
-
-			// Reading progress: a thin hairline above the sticky categories bar,
-			// on every page. It only fills in where there's an article to read —
-			// tracking whole-document scroll keeps it decoupled from the
-			// continuous reader, so it recalculates for free as more stories load.
-			const progressBar = document.querySelector('[data-reading-progress]');
-			if (progressBar && document.querySelector('.article')) {
-				let ticking = false;
-				const updateProgress = () => {
-					ticking = false;
-					const scrollable = document.documentElement.scrollHeight - window.innerHeight;
-					const progress = scrollable > 0 ? window.scrollY / scrollable : 0;
-					progressBar.style.setProperty('--reading-progress', String(Math.min(1, Math.max(0, progress))));
-				};
-				const onScroll = () => {
-					if (ticking) return;
-					ticking = true;
-					requestAnimationFrame(updateProgress);
-				};
-				window.addEventListener('scroll', onScroll, { passive: true });
-				window.addEventListener('resize', onScroll);
-				updateProgress();
-			}
-		</script>
-	</body>
+      initBookmarks();
+      initEditionDate();
+      initMotion();
+      initNavigation();
+      initReadingProgress();
+      initSearch();
+      initSharing();
+      initTheme();
+    </script>
+  </body>
 </html>

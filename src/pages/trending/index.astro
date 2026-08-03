@@ -3,24 +3,22 @@ import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import CategoryFront from '../../components/CategoryFront.astro';
 import { formatEditionDate } from '../../lib/date';
+import { sortPostsNewestFirst } from '../../lib/post-order';
 
 const allPosts = await getCollection('posts');
-const posts = allPosts
-  .filter((p) => p.data.featured)
-  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+const posts = sortPostsNewestFirst(allPosts.filter((p) => p.data.featured));
 ---
 
 <BaseLayout
-	title="Trending | AI Snap"
-	description="Hand-picked trending AI news and analysis from AI Snap."
-	activeTab="trending"
-	editionDate={posts[0] && formatEditionDate(posts[0].data.pubDate)}
+  title="Trending | AI Snap"
+  description="Hand-picked trending AI news and analysis from AI Snap."
+  activeTab="trending"
+  editionDate={posts[0] && formatEditionDate(posts[0].data.pubDate)}
 >
-	<CategoryFront
-		title="Trending"
-		description="The stories our editors are watching most closely: launches, research, funding, and the claims worth checking next."
-		posts={posts}
-		emptyNote="No trending stories right now."
-		substackUrl={import.meta.env.PUBLIC_SUBSTACK_URL || 'https://aisnap.substack.com'}
-	/>
+  <CategoryFront
+    title="Trending"
+    description="The stories our editors are watching most closely: launches, research, funding, and the claims worth checking next."
+    posts={posts}
+    emptyNote="No trending stories right now."
+  />
 </BaseLayout>

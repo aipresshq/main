@@ -1,0 +1,107 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { formatPostDate } from '../lib/date';
+import { slugify } from '../lib/slug';
+
+export interface TopicLink {
+  label: string;
+  href: string;
+}
+
+export interface Props {
+  title: string;
+  href: string;
+  lead: CollectionEntry<'posts'>;
+  headlines: CollectionEntry<'posts'>[];
+  sidePosts: CollectionEntry<'posts'>[];
+  lowerPosts: CollectionEntry<'posts'>[];
+  topics: TopicLink[];
+}
+
+const { title, href, lead, headlines, sidePosts, lowerPosts, topics } = Astro.props;
+const headingId = `desk-showcase-${slugify(title)}`;
+---
+
+<section class="desk-showcase" aria-labelledby={headingId}>
+  <header class="desk-showcase-head home-section-heading">
+    <div>
+      <span class="label">Desk front</span>
+      <h2 class="home-section-heading-title" id={headingId}>{title}</h2>
+    </div>
+    <a class="desk-showcase-link home-section-heading-link" href={href}
+      >View this desk <span aria-hidden="true">-&gt;</span></a
+    >
+  </header>
+
+  <div class="desk-showcase-main">
+    <a class="desk-showcase-lead" href={`/posts/${lead.id}/`}>
+      <img src={lead.data.cover} alt={lead.data.coverAlt} loading="lazy" />
+      <span class="desk-showcase-lead-copy">
+        <span class="label">{lead.data.tags[0]}</span>
+        <strong>{lead.data.title}</strong>
+        <span>{lead.data.description}</span>
+      </span>
+    </a>
+
+    <section class="desk-showcase-headlines" aria-labelledby={`${headingId}-radar`}>
+      <div class="desk-showcase-subhead">
+        <span class="label">Fresh signals</span>
+        <h3 id={`${headingId}-radar`}>On the radar</h3>
+      </div>
+      <ul>
+        {
+          headlines.map((post) => (
+            <li>
+              <a href={`/posts/${post.id}/`}>
+                <span>{post.data.title}</span>
+                <time datetime={post.data.pubDate.toISOString()}>
+                  {formatPostDate(post.data.pubDate)}
+                </time>
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+
+    <aside class="desk-showcase-watch" aria-labelledby={`${headingId}-more`}>
+      <div class="desk-showcase-subhead">
+        <span class="label">Keep reading</span>
+        <h3 id={`${headingId}-more`}>More from the desk</h3>
+      </div>
+      <div class="desk-showcase-watch-grid">
+        {
+          sidePosts.map((post) => (
+            <a href={`/posts/${post.id}/`}>
+              <img src={post.data.cover} alt={post.data.coverAlt} loading="lazy" />
+              <span class="label">{post.data.tags[0]}</span>
+              <strong>{post.data.title}</strong>
+            </a>
+          ))
+        }
+      </div>
+    </aside>
+  </div>
+
+  <div class="desk-showcase-briefs" aria-label="More headlines">
+    {
+      lowerPosts.map((post) => (
+        <a href={`/posts/${post.id}/`}>
+          <span class="label">{post.data.tags[0]}</span>
+          <strong>{post.data.title}</strong>
+        </a>
+      ))
+    }
+  </div>
+
+  <nav class="desk-showcase-topics" aria-label={`${title} topics`}>
+    <span class="desk-showcase-topics-label">In focus</span>
+    {
+      topics.map((topic, index) => (
+        <a class:list={{ 'is-current': index === 0 }} href={topic.href}>
+          {topic.label}
+        </a>
+      ))
+    }
+  </nav>
+</section>

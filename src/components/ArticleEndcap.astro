@@ -1,0 +1,49 @@
+---
+import type { CollectionEntry } from 'astro:content';
+
+export interface Props {
+  author: CollectionEntry<'authors'>;
+  previousPost?: CollectionEntry<'posts'>;
+  nextPost?: CollectionEntry<'posts'>;
+}
+
+const { author, previousPost, nextPost } = Astro.props;
+---
+
+<section class="article-endcap" aria-labelledby="article-endcap-heading">
+  <div class="article-endcap-author">
+    <span class="label">About the author</span>
+    <a class="article-endcap-author-link" href={`/authors/${author.id}/`}>
+      <img src={author.data.avatar} alt="" loading="lazy" />
+      <span class="article-endcap-author-copy">
+        <h2 id="article-endcap-heading">{author.data.name}</h2>
+        <span class="article-endcap-author-role">{author.data.role}</span>
+        <p>{author.data.bio}</p>
+        <span class="article-endcap-more"
+          >View author page <span aria-hidden="true">-&gt;</span></span
+        >
+      </span>
+    </a>
+  </div>
+
+  {
+    (previousPost || nextPost) && (
+      <nav class="article-pagination" aria-label="Article navigation">
+        {previousPost && (
+          <a class="article-page-link" href={`/posts/${previousPost.id}/`}>
+            <span class="label">Previous story</span>
+            <strong>{previousPost.data.title}</strong>
+            <span aria-hidden="true">-&gt;</span>
+          </a>
+        )}
+        {nextPost && (
+          <a class="article-page-link" href={`/posts/${nextPost.id}/`}>
+            <span class="label">Next story</span>
+            <strong>{nextPost.data.title}</strong>
+            <span aria-hidden="true">-&gt;</span>
+          </a>
+        )}
+      </nav>
+    )
+  }
+</section>

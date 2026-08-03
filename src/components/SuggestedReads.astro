@@ -19,7 +19,10 @@ const headingId = `suggested-reads-${articleId ?? variant}`;
 
 {
   posts.length > 0 && (
-    <section class:list={['suggested-reads', `suggested-reads--${variant}`]} aria-labelledby={headingId}>
+    <section
+      class:list={['suggested-reads', `suggested-reads--${variant}`]}
+      aria-labelledby={headingId}
+    >
       <div class="suggested-reads-heading">
         <span class="label">Continue reading</span>
         <h2 id={headingId}>Suggested Reads</h2>

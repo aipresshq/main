@@ -3,6 +3,9 @@ dist/
 # generated types
 .astro/
 
+# local browser verification artifacts
+.playwright-mcp/
+
 # dependencies
 node_modules/
 

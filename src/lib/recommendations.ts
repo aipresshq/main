@@ -13,10 +13,11 @@ export function getSuggestedPosts(
       candidate,
       sharedTags: candidate.data.tags.filter((tag) => currentTags.has(tag)).length,
     }))
-    .sort((a, b) =>
-      b.sharedTags - a.sharedTags ||
-      b.candidate.data.pubDate.valueOf() - a.candidate.data.pubDate.valueOf() ||
-      a.candidate.id.localeCompare(b.candidate.id)
+    .sort(
+      (a, b) =>
+        b.sharedTags - a.sharedTags ||
+        b.candidate.data.pubDate.valueOf() - a.candidate.data.pubDate.valueOf() ||
+        a.candidate.id.localeCompare(b.candidate.id),
     )
     .slice(0, limit)
     .map(({ candidate }) => candidate);

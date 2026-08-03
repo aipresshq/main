@@ -1,5 +1,6 @@
 ---
 import type { CollectionEntry } from 'astro:content';
+import ContinuousReaderClient from './ContinuousReaderClient.astro';
 
 export interface Props {
   currentPost: CollectionEntry<'posts'>;
@@ -23,8 +24,14 @@ const { currentPost, nextPost } = Astro.props;
       <>
         <section class="continuous-transition" aria-label="Next story">
           <span class="label">Next Story</span>
-          <a class="continuous-next-link" href={`/posts/${nextPost.id}/`}>{nextPost.data.title}</a>
-          <div class="continuous-sentinel" data-next-fragment={`/posts/${nextPost.id}/fragment/`} aria-hidden="true"></div>
+          <a class="continuous-next-link" href={`/posts/${nextPost.id}/`}>
+            {nextPost.data.title}
+          </a>
+          <div
+            class="continuous-sentinel"
+            data-next-fragment={`/posts/${nextPost.id}/fragment/`}
+            aria-hidden="true"
+          />
         </section>
       </>
     )
@@ -33,16 +40,4 @@ const { currentPost, nextPost } = Astro.props;
   <p class="continuous-status" aria-live="polite" aria-atomic="true"></p>
 </div>
 
-{
-  nextPost && (
-    <script>
-      import { initContinuousReader } from '../scripts/continuous-reader';
-
-      if ('IntersectionObserver' in window) {
-        document.querySelectorAll('[data-continuous-stream]').forEach((root) => {
-          if (root instanceof HTMLElement) initContinuousReader(root);
-        });
-      }
-    </script>
-  )
-}
+{nextPost && <ContinuousReaderClient />}

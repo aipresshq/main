@@ -1,4 +1,5 @@
-import { defineCollection, reference, z } from 'astro:content';
+import { defineCollection, reference } from 'astro:content';
+import { z } from 'astro/zod';
 import { glob } from 'astro/loaders';
 
 const authors = defineCollection({
@@ -8,9 +9,9 @@ const authors = defineCollection({
     role: z.string(),
     bio: z.string(),
     avatar: z.string(),
-    website: z.string().url().optional(),
-    x: z.string().url().optional(),
-    linkedin: z.string().url().optional(),
+    website: z.url().optional(),
+    x: z.url().optional(),
+    linkedin: z.url().optional(),
   }),
 });
 
@@ -31,7 +32,7 @@ const posts = defineCollection({
     // §4 item 1: auto-generated header image + photo-credit-style caption.
     // Stored as a full R2 URL (not a local asset) so images never bloat the
     // git repo: see astro.config.mjs `image.remotePatterns`.
-    cover: z.string().url(),
+    cover: z.url(),
     coverAlt: z.string(),
     coverCredit: z.string().optional(),
 
@@ -43,9 +44,13 @@ const posts = defineCollection({
     // populated from primary-source facts (facts aren't copyrightable).
     factsTable: z
       .object({
-        columns: z.array(z.string()),
-        rows: z.array(z.array(z.string())),
+        columns: z.array(z.string()).min(1),
+        rows: z.array(z.array(z.string()).min(1)).min(1),
       })
+      .refine(
+        ({ columns, rows }) => rows.every((row) => row.length === columns.length),
+        'factsTable rows must contain the same number of cells as columns',
+      )
       .optional(),
 
     // §4 item 6: short attributed quote + link out to the original source:
@@ -57,7 +62,7 @@ const posts = defineCollection({
       })
       .optional(),
     sourceName: z.string(),
-    sourceUrl: z.string().url(),
+    sourceUrl: z.url(),
 
     // §4 item 7: fixed tag taxonomy: also drives §4 item 8's "Related"
     // module (3 posts auto-matched by tag) at render time.
