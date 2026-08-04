@@ -25,7 +25,7 @@ const { author, allPosts } = Astro.props as Props;
 const posts = sortPostsNewestFirst(
   allPosts.filter((post) => getAuthorId(post.data.author) === author.id),
 );
-const site = Astro.site ?? 'https://aisnap.in';
+const site = Astro.site ?? 'https://aipresshq.com';
 const authorUrl = new URL(`/authors/${author.id}/`, site).href;
 const socialLinks = [author.data.website, author.data.x, author.data.linkedin].filter(
   (url): url is string => Boolean(url),
@@ -42,7 +42,7 @@ const schema = {
 ---
 
 <BaseLayout
-  title={`${author.data.name} | AI Snap`}
+  title={`${author.data.name} | AIPressHQ`}
   description={author.data.bio}
   editionDate={posts[0] && formatEditionDate(posts[0].data.pubDate)}
 >
@@ -51,7 +51,15 @@ const schema = {
   <main class="author-page">
     <header class="author-profile">
       <div class="author-profile-portrait">
-        <img class="author-profile-avatar" src={author.data.avatar} alt="" />
+        <img
+          class="author-profile-avatar"
+          src={author.data.avatar}
+          alt=""
+          width="220"
+          height="220"
+          loading="eager"
+          decoding="async"
+        />
       </div>
       <div class="author-profile-copy">
         <span class="label author-profile-kicker">Author / editorial desk</span>

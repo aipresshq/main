@@ -6,8 +6,7 @@ import adminPanel from './admin/integration.mjs';
 
 // https://astro.build/config
 export default defineConfig({
-  // TODO: replace with the real domain once registered (see context.md line 3)
-  site: 'https://aisnap.in',
+  site: 'https://aipresshq.com',
   integrations: [
     sitemap({
       filter: (page) => !/^\/posts\/[^/]+\/fragment\/$/.test(new URL(page).pathname),

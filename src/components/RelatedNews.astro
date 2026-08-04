@@ -1,6 +1,7 @@
 ---
 import type { CollectionEntry } from 'astro:content';
 import { formatPostDate } from '../lib/date';
+import CoverImage from './CoverImage.astro';
 
 export interface Props {
   posts: CollectionEntry<'posts'>[];
@@ -28,7 +29,11 @@ const stories = posts.slice(0, 6);
       <div class="related-news-grid">
         {stories.map((post) => (
           <a class="related-news-card" href={`/posts/${post.id}/`}>
-            <img src={post.data.cover} alt={post.data.coverAlt} loading="lazy" />
+            <CoverImage
+              src={post.data.cover}
+              alt={post.data.coverAlt}
+              sizes="(max-width: 620px) 100vw, (max-width: 900px) 50vw, 25vw"
+            />
             <div class="related-news-meta">
               <span class="label">{post.data.tags[0]}</span>
               <time datetime={post.data.pubDate.toISOString()}>

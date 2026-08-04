@@ -529,7 +529,7 @@ a.byline:focus-visible {
 
 .latest-section-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(250px, 0.36fr);
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 0.32fr);
   gap: 28px;
   align-items: start;
 }

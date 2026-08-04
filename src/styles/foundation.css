@@ -1,6 +1,6 @@
 /* ==========================================================================
-   AI Snap editorial theme
-   Blackletter masthead + high-contrast display serif headlines over a
+   AIPressHQ editorial theme
+   Bold typographic wordmark + high-contrast display serif headlines over a
    full-bleed monochrome hero, with translucent cards on top.
    Paper by default, with an explicit dark theme for readers who prefer ink.
    ========================================================================== */
@@ -31,7 +31,6 @@
      high-legibility serif forms with enough character for big display
      headlines, but without the magazine-like flourish of Newsreader. */
   --font-display: 'Source Serif 4', Georgia, serif;
-  --font-masthead: 'UnifrakturMaguntia', 'Source Serif 4', Georgia, serif;
 
   /* Page gutter. Sections negate it to bleed a band edge to edge. */
   --gutter: 32px;
@@ -64,8 +63,10 @@ html[data-theme='dark'] {
   color-scheme: dark;
 }
 
+/* The document-level padding is the single anchor offset. Keeping a second
+   heading margin here would add the sticky-header clearance twice. */
 :where(h2, h3)[id] {
-  scroll-margin-top: 104px;
+  scroll-margin-top: 0;
 }
 
 * {
@@ -89,6 +90,11 @@ a {
 img {
   display: block;
   max-width: 100%;
+}
+
+.responsive-image {
+  height: auto;
+  background: var(--surface-strong);
 }
 
 /* Small uppercase label used for kickers, read time, and the NEXT marker */

@@ -1,0 +1,72 @@
+---
+export interface Props {
+  src: string;
+  alt: string;
+  loading?: 'lazy' | 'eager';
+  priority?: boolean;
+  width?: number;
+  height?: number;
+  sizes?: string;
+  class?: string;
+}
+
+const {
+  src,
+  alt,
+  loading = 'lazy',
+  priority = false,
+  width = 1600,
+  height = 900,
+  sizes = '(max-width: 780px) 100vw, 50vw',
+  class: className,
+} = Astro.props;
+
+const variants = [
+  { name: 'small', width: 680 },
+  { name: 'medium', width: 1200 },
+  { name: 'large', width: 2048 },
+  { name: '4096x4096', width: 4096 },
+];
+
+function getTwitterVariant(input: string, name: string) {
+  try {
+    const url = new URL(input);
+    if (!url.hostname.endsWith('pbs.twimg.com') || !url.pathname.includes('/media/')) {
+      return undefined;
+    }
+
+    if (url.searchParams.has('name')) {
+      url.searchParams.set('name', name);
+    } else {
+      const suffix = name === '4096x4096' ? 'orig' : name;
+      url.pathname = url.pathname.replace(/:(small|medium|large|orig)$/, `:${suffix}`);
+    }
+
+    return url.toString();
+  } catch {
+    return undefined;
+  }
+}
+
+const srcset = variants
+  .map(({ name, width: variantWidth }) => {
+    const variant = getTwitterVariant(src, name);
+    return variant ? `${variant} ${variantWidth}w` : undefined;
+  })
+  .filter((variant): variant is string => Boolean(variant))
+  .join(', ');
+const imageClass = ['responsive-image', className].filter(Boolean).join(' ');
+---
+
+<img
+  class={imageClass}
+  src={src}
+  srcset={srcset || undefined}
+  sizes={srcset ? sizes : undefined}
+  width={width}
+  height={height}
+  alt={alt}
+  loading={loading}
+  decoding="async"
+  fetchpriority={priority ? 'high' : undefined}
+/>

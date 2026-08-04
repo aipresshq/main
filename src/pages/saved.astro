@@ -1,0 +1,28 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="Saved stories | AIPressHQ"
+  description="Stories you saved for a later read on AIPressHQ."
+>
+  <section class="saved-page" aria-labelledby="saved-page-title">
+    <header class="saved-page-header">
+      <div>
+        <span class="label">Your reading list</span>
+        <h1 id="saved-page-title">Saved stories</h1>
+      </div>
+      <p>Keep the stories worth returning to close at hand. Saved stories stay in this browser.</p>
+    </header>
+
+    <div class="saved-page-rule" aria-hidden="true"></div>
+
+    <div class="saved-page-list" data-saved-page-list>
+      <p class="saved-page-empty">Loading your reading list...</p>
+    </div>
+
+    <noscript>
+      <p class="saved-page-no-script">Turn on JavaScript to use saved stories in this browser.</p>
+    </noscript>
+  </section>
+</BaseLayout>

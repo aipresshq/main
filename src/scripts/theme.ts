@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'ai-snap-theme';
+const STORAGE_KEY = 'aipresshq-theme';
 
 interface ViewTransitionLike {
   ready: Promise<void>;
@@ -14,8 +14,29 @@ function syncThemeToggle(toggle: HTMLButtonElement) {
   toggle.setAttribute('aria-label', isDark ? 'Switch to light mode' : 'Switch to dark mode');
 }
 
+function syncThemeFavicon(theme: 'light' | 'dark') {
+  const favicon = document.querySelector<HTMLLinkElement>('[data-theme-favicon]');
+  if (favicon) {
+    favicon.href =
+      theme === 'dark'
+        ? '/brand/aipresshq-favicon-dark.png?v=5'
+        : '/brand/aipresshq-favicon-light.png?v=5';
+  }
+
+  const svgFavicon = document.querySelector<HTMLLinkElement>('[data-theme-favicon-svg]');
+  if (svgFavicon) {
+    svgFavicon.href = theme === 'dark' ? '/favicon-dark.svg?v=5' : '/favicon-light.svg?v=5';
+  }
+
+  const themeColor = document.querySelector<HTMLMetaElement>('[data-theme-color]');
+  if (themeColor) {
+    themeColor.content = theme === 'dark' ? '#0a0a0a' : '#ffffff';
+  }
+}
+
 function applyTheme(nextTheme: 'light' | 'dark') {
   document.documentElement.dataset.theme = nextTheme;
+  syncThemeFavicon(nextTheme);
 
   try {
     localStorage.setItem(STORAGE_KEY, nextTheme);
@@ -28,6 +49,8 @@ function applyTheme(nextTheme: 'light' | 'dark') {
 export function initTheme() {
   if (document.documentElement.dataset.themeInitialized === 'true') return;
   document.documentElement.dataset.themeInitialized = 'true';
+
+  syncThemeFavicon(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
 
   const toggle = document.querySelector<HTMLButtonElement>('[data-theme-toggle]');
   if (!toggle) return;

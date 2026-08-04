@@ -10,12 +10,10 @@ export interface DeskColumn {
 
 export interface Props {
   columns: DeskColumn[];
-  signalPosts: CollectionEntry<'posts'>[];
 }
 
-const { columns, signalPosts } = Astro.props;
+const { columns } = Astro.props;
 const visibleColumns = columns.filter((column) => column.posts.length > 0);
-const signal = signalPosts.slice(0, 4);
 ---
 
 {
@@ -67,24 +65,6 @@ const signal = signalPosts.slice(0, 4);
             </section>
           ))}
         </div>
-
-        <aside class="desk-index-signal" aria-label="Editor's signal">
-          <div class="desk-index-signal-head">
-            <span class="label">Editor's signal</span>
-            <strong>Stories worth opening.</strong>
-          </div>
-          <ol class="desk-index-signal-list">
-            {signal.map((post, index) => (
-              <li>
-                <span class="desk-index-signal-rank">{String(index + 1).padStart(2, '0')}</span>
-                <a href={`/posts/${post.id}/`}>{post.data.title}</a>
-              </li>
-            ))}
-          </ol>
-          <a class="desk-index-signal-link" href="/trending/">
-            Browse selected stories <span aria-hidden="true">-&gt;</span>
-          </a>
-        </aside>
       </div>
     </section>
   )

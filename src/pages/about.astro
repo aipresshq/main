@@ -1,0 +1,69 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="Our method | AIPressHQ"
+  description="How AIPressHQ reports, labels, sources, and corrects its AI news coverage."
+>
+  <section class="standards-page" aria-labelledby="standards-title">
+    <header class="standards-header">
+      <span class="label">AIPressHQ / editorial standards</span>
+      <h1 id="standards-title">Useful context, clearly sourced.</h1>
+      <p>
+        AIPressHQ is built for readers who want the important development and the evidence needed to
+        understand it. We separate what a provider says from what the available evidence supports.
+      </p>
+    </header>
+
+    <div class="standards-grid">
+      <article class="standards-card">
+        <span class="label">01 / Reporting</span>
+        <h2>Start with what can be checked.</h2>
+        <p>
+          We use official documents, product interfaces, research papers, company statements, and
+          attributable reporting as the starting point. Each story links to the source that anchors
+          its central claim.
+        </p>
+      </article>
+
+      <article class="standards-card">
+        <span class="label">02 / Formats</span>
+        <h2>Label the kind of work you are reading.</h2>
+        <p>
+          News briefs orient quickly. Explainers build context. Comparisons show tradeoffs. Trackers
+          are reviewed as product details change. Analysis makes interpretation visible, and
+          tutorials focus on practical steps.
+        </p>
+      </article>
+
+      <article class="standards-card">
+        <span class="label">03 / Uncertainty</span>
+        <h2>Do not fill gaps with confidence.</h2>
+        <p>
+          Stories call out what is confirmed and what remains open. Availability, limits, pricing,
+          and model behavior can vary by account, region, plan, or date, so we tell readers where to
+          verify the current state.
+        </p>
+      </article>
+
+      <article class="standards-card">
+        <span class="label">04 / Corrections</span>
+        <h2>Keep the record legible.</h2>
+        <p>
+          If a factual error is found, we correct the relevant passage and explain the change rather
+          than silently replacing the record.
+        </p>
+      </article>
+    </div>
+
+    <section class="standards-note" aria-labelledby="standards-note-title">
+      <span class="label">A reader's check</span>
+      <h2 id="standards-note-title">Read the claim, then follow the source.</h2>
+      <p>
+        Our goal is not to make every decision for you. It is to make the next verification step
+        clear enough that you can make a better one yourself.
+      </p>
+    </section>
+  </section>
+</BaseLayout>

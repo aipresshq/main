@@ -3,6 +3,7 @@ import { getCollection, getEntry } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ArticleContent from '../../components/ArticleContent.astro';
 import ArticleLatest from '../../components/ArticleLatest.astro';
+import ArticleToc from '../../components/ArticleToc.astro';
 import ArticleEndcap from '../../components/ArticleEndcap.astro';
 import ContinuousReader from '../../components/ContinuousReader.astro';
 import SuggestedReads from '../../components/SuggestedReads.astro';
@@ -47,19 +48,19 @@ const schema = {
     {
       '@type': 'Person',
       name: author.data.name,
-      url: new URL(`/authors/${author.id}/`, Astro.site ?? 'https://aisnap.in').href,
+      url: new URL(`/authors/${author.id}/`, Astro.site ?? 'https://aipresshq.com').href,
     },
   ],
-  publisher: { '@type': 'Organization', name: 'AI Snap' },
+  publisher: { '@type': 'Organization', name: 'AIPressHQ' },
   mainEntityOfPage: {
     '@type': 'WebPage',
-    '@id': new URL(`/posts/${post.id}/`, Astro.site ?? 'https://aisnap.in').href,
+    '@id': new URL(`/posts/${post.id}/`, Astro.site ?? 'https://aipresshq.com').href,
   },
 };
 ---
 
 <BaseLayout
-  title={`${title} | AI Snap`}
+  title={`${title} | AIPressHQ`}
   description={description}
   editionDate={formatEditionDate(pubDate)}
 >
@@ -67,6 +68,7 @@ const schema = {
 
   <ContinuousReader currentPost={post} nextPost={nextPost}>
     <div class="article-layout">
+      <ArticleToc currentPost={post} />
       <ArticleContent post={post} author={author} />
       <ArticleLatest posts={latest} currentPost={post} />
     </div>

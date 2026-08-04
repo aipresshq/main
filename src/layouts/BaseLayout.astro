@@ -1,9 +1,10 @@
 ---
 import '@fontsource-variable/inter';
 import '@fontsource/source-serif-4';
-import '@fontsource/unifrakturmaguntia';
 import '../styles/global.css';
+import BrandMark from '../components/BrandMark.astro';
 import Footer from '../components/Footer.astro';
+import { storyFormats, type StoryFormat } from '../lib/formats';
 import { slugify } from '../lib/slug';
 import { topicGroups, knownTopics } from '../lib/topics';
 
@@ -12,6 +13,7 @@ export interface Props {
   description?: string;
   activeTab?: 'latest' | 'trending' | 'trackers' | null;
   activeTag?: string | null;
+  activeFormat?: StoryFormat | null;
   /**
    * Dateline shown in the masthead. Server-rendered fallback only (the
    * latest story's date, so it's still meaningful without JS) — corrected
@@ -22,7 +24,14 @@ export interface Props {
   editionDate?: string;
 }
 
-const { title, description, activeTab = null, activeTag = null, editionDate } = Astro.props;
+const {
+  title,
+  description,
+  activeTab = null,
+  activeTag = null,
+  activeFormat = null,
+  editionDate,
+} = Astro.props;
 
 const sections = [
   { label: 'Latest', href: '/latest/', active: activeTab === 'latest' },
@@ -34,20 +43,60 @@ const sections = [
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="icon" href="/favicon.ico" />
+    <link
+      rel="icon"
+      type="image/png"
+      href="/brand/aipresshq-favicon-light.png?v=5"
+      sizes="512x512"
+      data-theme-favicon
+    />
+    <link
+      rel="alternate icon"
+      type="image/svg+xml"
+      href="/favicon-light.svg?v=5"
+      sizes="any"
+      data-theme-favicon-svg
+    />
+    <link rel="alternate icon" href="/favicon.ico?v=5" sizes="any" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="theme-color" content="#ffffff" data-theme-color />
     <meta name="viewport" content="width=device-width" />
     <script is:inline>
       (() => {
+        let theme = 'light';
+
         try {
-          const stored = localStorage.getItem('ai-snap-theme');
+          const stored =
+            localStorage.getItem('aipresshq-theme') ?? localStorage.getItem('ai-snap-theme');
           const system = window.matchMedia('(prefers-color-scheme: dark)').matches
             ? 'dark'
             : 'light';
-          document.documentElement.dataset.theme =
-            stored === 'dark' || stored === 'light' ? stored : system;
+          theme = stored === 'dark' || stored === 'light' ? stored : system;
         } catch {
-          document.documentElement.dataset.theme = 'light';
+          theme = 'light';
+        }
+
+        document.documentElement.dataset.theme = theme;
+        const favicon = document.querySelector('[data-theme-favicon]');
+        if (favicon) {
+          favicon.setAttribute(
+            'href',
+            theme === 'dark'
+              ? '/brand/aipresshq-favicon-dark.png?v=5'
+              : '/brand/aipresshq-favicon-light.png?v=5',
+          );
+        }
+        const svgFavicon = document.querySelector('[data-theme-favicon-svg]');
+        if (svgFavicon) {
+          svgFavicon.setAttribute(
+            'href',
+            theme === 'dark' ? '/favicon-dark.svg?v=5' : '/favicon-light.svg?v=5',
+          );
+        }
+        const themeColor = document.querySelector('[data-theme-color]');
+        if (themeColor) {
+          themeColor.setAttribute('content', theme === 'dark' ? '#0a0a0a' : '#ffffff');
         }
       })();
     </script>
@@ -55,11 +104,12 @@ const sections = [
     <title>{title}</title>
   </head>
   <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
     <div class="reading-progress" data-reading-progress aria-hidden="true"><span></span></div>
     <div class="frame">
       <header class="site-header" data-pagefind-ignore>
         <div class="dateline-strip">
-          <span class="label">AI news / daily edition</span>
+          <span class="label">AIPressHQ / daily edition</span>
           {editionDate && <span class="edition-date">{editionDate}</span>}
         </div>
       </header>
@@ -70,7 +120,9 @@ const sections = [
 			     box scrolled past. As a sibling, it can stay pinned for the full scroll
 			     of the page. -->
       <nav class="primary-bar" aria-label="Primary" data-pagefind-ignore>
-        <a href="/" class="masthead-mark" aria-label="AI Snap home">AI Snap</a>
+        <a href="/" class="masthead-mark" aria-label="AIPressHQ home">
+          <BrandMark compact />
+        </a>
 
         <div class="primary-bar-nav">
           <div class="section-links">
@@ -125,6 +177,28 @@ const sections = [
                     </div>
                   ))
                 }
+              </div>
+              <div class="category-menu-formats">
+                <div class="category-menu-panel-head">
+                  <h2>Browse by format</h2>
+                  <span class="category-menu-panel-count">{storyFormats.length} formats</span>
+                </div>
+                <div class="category-menu-format-links">
+                  {
+                    storyFormats.map((format) => (
+                      <a
+                        href={`/format/${format.key}/`}
+                        aria-current={activeFormat === format.key ? 'page' : undefined}
+                      >
+                        <span>
+                          <strong>{format.label}</strong>
+                          <small>{format.description}</small>
+                        </span>
+                        <span aria-hidden="true">-&gt;</span>
+                      </a>
+                    ))
+                  }
+                </div>
               </div>
             </div>
           </details>
@@ -194,6 +268,9 @@ const sections = [
               <div class="saved-list" data-saved-list>
                 <p class="saved-empty">Save a story and it will appear here.</p>
               </div>
+              <a class="saved-menu-view" href="/saved/">
+                View all saved stories <span aria-hidden="true">-&gt;</span>
+              </a>
             </div>
           </details>
 
@@ -237,7 +314,9 @@ const sections = [
         </div>
       </nav>
 
-      <slot />
+      <div id="main-content" class="page-main">
+        <slot />
+      </div>
 
       <Footer />
     </div>
@@ -247,19 +326,29 @@ const sections = [
       import { initEditionDate } from '../scripts/edition';
       import { initMotion } from '../scripts/motion';
       import { initNavigation } from '../scripts/navigation';
-      import { initReadingProgress } from '../scripts/reading-progress';
       import { initSearch } from '../scripts/search';
-      import { initSharing } from '../scripts/sharing';
       import { initTheme } from '../scripts/theme';
 
       initBookmarks();
       initEditionDate();
       initMotion();
       initNavigation();
-      initReadingProgress();
       initSearch();
-      initSharing();
       initTheme();
+
+      // Article-only behavior is split into lazy chunks so archive pages do
+      // not pay for the table of contents, reading progress, or share logic.
+      if (document.querySelector('.article[data-post-id]')) {
+        void Promise.all([
+          import('../scripts/article-toc'),
+          import('../scripts/reading-progress'),
+          import('../scripts/sharing'),
+        ]).then(([toc, progress, sharing]) => {
+          toc.initArticleToc();
+          progress.initReadingProgress();
+          sharing.initSharing();
+        });
+      }
     </script>
   </body>
 </html>

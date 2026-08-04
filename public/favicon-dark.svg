@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="88" fill="#0a0a0a" />
+  <g fill="#ffffff" font-family="Arial Black, Arial, Helvetica, sans-serif" font-weight="900">
+    <text x="34" y="384" font-size="280" letter-spacing="-20">ai</text>
+    <rect x="323" y="267" width="153" height="126" rx="15" fill="none" stroke="#ffffff" stroke-width="8" />
+    <text x="399.5" y="356" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="68" letter-spacing="0">HQ</text>
+  </g>
+</svg>

@@ -3,6 +3,7 @@ import { getEntry, type CollectionEntry } from 'astro:content';
 import { formatPostDate } from '../lib/date';
 import { readMinutes } from '../lib/read-time';
 import { getAuthorId } from '../lib/author-reference';
+import CoverImage from './CoverImage.astro';
 
 export interface Props {
   /** Reverse-chronological posts: supplies the lead story and the Just In list. */
@@ -41,7 +42,11 @@ const picksWithAuthors = await Promise.all(editorPicks.map(withAuthor));
           </div>
           {picksWithAuthors.map(({ post, author }) => (
             <a class="hero-pick-card" href={`/posts/${post.id}/`}>
-              <img src={post.data.cover} alt={post.data.coverAlt} loading="lazy" />
+              <CoverImage
+                src={post.data.cover}
+                alt={post.data.coverAlt}
+                sizes="(max-width: 900px) 50vw, 25vw"
+              />
               <span class="label hero-pick-topic">{post.data.tags[0]}</span>
               <h3>{post.data.title}</h3>
               <span class="hero-pick-meta">
@@ -71,10 +76,12 @@ const picksWithAuthors = await Promise.all(editorPicks.map(withAuthor));
           <span class="label">{readMinutes(leadWithAuthor.post)} min read</span>
         </div>
         <a class="hero-lead-image" href={`/posts/${leadWithAuthor.post.id}/`}>
-          <img
+          <CoverImage
             src={leadWithAuthor.post.data.cover}
             alt={leadWithAuthor.post.data.coverAlt}
             loading="eager"
+            priority
+            sizes="(max-width: 900px) 100vw, 55vw"
           />
         </a>
       </div>

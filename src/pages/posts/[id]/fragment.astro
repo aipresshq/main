@@ -2,6 +2,7 @@
 import { getCollection, getEntry } from 'astro:content';
 import ArticleContent from '../../../components/ArticleContent.astro';
 import ArticleLatest from '../../../components/ArticleLatest.astro';
+import ArticleToc from '../../../components/ArticleToc.astro';
 import SuggestedReads from '../../../components/SuggestedReads.astro';
 import { getNextOlderPost, sortPostsNewestFirst } from '../../../lib/post-order';
 import { getSuggestedPosts } from '../../../lib/recommendations';
@@ -26,7 +27,7 @@ if (!author) {
 const suggested = getSuggestedPosts(post, allPosts, 4);
 const nextPost = getNextOlderPost(post.id, allPosts);
 const latest = sortPostsNewestFirst(allPosts.filter((entry) => entry.id !== post.id)).slice(0, 5);
-const canonicalUrl = new URL(`/posts/${post.id}/`, Astro.site ?? 'https://aisnap.in').href;
+const canonicalUrl = new URL(`/posts/${post.id}/`, Astro.site ?? 'https://aipresshq.com').href;
 ---
 
 <!doctype html>
@@ -43,12 +44,13 @@ const canonicalUrl = new URL(`/posts/${post.id}/`, Astro.site ?? 'https://aisnap
       data-continuous-article
       data-post-id={post.id}
       data-post-url={`/posts/${post.id}/`}
-      data-document-title={`${post.data.title} | AI Snap`}
+      data-document-title={`${post.data.title} | AIPressHQ`}
       data-next-fragment={nextPost ? `/posts/${nextPost.id}/fragment/` : undefined}
       data-next-url={nextPost ? `/posts/${nextPost.id}/` : undefined}
       data-next-title={nextPost?.data.title}
     >
       <div class="article-layout">
+        <ArticleToc currentPost={post} />
         <ArticleContent post={post} author={author} mode="stream" />
         <ArticleLatest posts={latest} currentPost={post} />
       </div>

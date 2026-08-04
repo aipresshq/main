@@ -14,7 +14,7 @@ const { author, previousPost, nextPost } = Astro.props;
   <div class="article-endcap-author">
     <span class="label">About the author</span>
     <a class="article-endcap-author-link" href={`/authors/${author.id}/`}>
-      <img src={author.data.avatar} alt="" loading="lazy" />
+      <img src={author.data.avatar} alt="" width="72" height="72" loading="lazy" decoding="async" />
       <span class="article-endcap-author-copy">
         <h2 id="article-endcap-heading">{author.data.name}</h2>
         <span class="article-endcap-author-role">{author.data.role}</span>

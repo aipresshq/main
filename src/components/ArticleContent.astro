@@ -1,8 +1,10 @@
 ---
 import { render, type CollectionEntry } from 'astro:content';
 import { formatPostDate } from '../lib/date';
+import { formatLabel } from '../lib/formats';
 import { readMinutes } from '../lib/read-time';
 import { slugify } from '../lib/slug';
+import CoverImage from './CoverImage.astro';
 
 export interface Props {
   post: CollectionEntry<'posts'>;
@@ -17,16 +19,17 @@ const {
   description,
   pubDate,
   updatedDate,
+  format,
   cover,
   coverAlt,
   coverCredit,
-  whyItMatters,
+  takeaways,
   factsTable,
-  quote,
-  sourceName,
-  sourceUrl,
   tags,
 } = post.data;
+const formatName = formatLabel(format);
+const topicName = tags.find((tag) => tag.toLowerCase() !== formatName.toLowerCase());
+const hasDistinctUpdate = updatedDate && updatedDate.getTime() !== pubDate.getTime();
 ---
 
 <article
@@ -38,13 +41,30 @@ const {
   data-pagefind-body={mode === 'standalone' ? true : undefined}
 >
   <header class="article-header">
-    <a class="label article-kicker" href={`/tag/${slugify(tags[0])}/`}>{tags[0]}</a>
+    <div class="article-kickers">
+      <a class="label article-kicker" href={`/format/${format}/`}>{formatName}</a>
+      {
+        topicName && (
+          <a class="label article-topic-kicker" href={`/tag/${slugify(topicName)}/`}>
+            {topicName}
+          </a>
+        )
+      }
+    </div>
     <h1 id={`article-title-${post.id}`} class="article-title">{title}</h1>
     <p class="article-standfirst">{description}</p>
 
     <div class="article-meta">
       <a class="byline article-byline" href={`/authors/${author.id}/`}>
-        <img class="byline-avatar" src={author.data.avatar} alt="" />
+        <img
+          class="byline-avatar"
+          src={author.data.avatar}
+          alt=""
+          width="60"
+          height="60"
+          loading="lazy"
+          decoding="async"
+        />
         <span class="byline-copy">
           <span class="byline-name">{author.data.name}</span>
           <span class="byline-role">{author.data.role}</span>
@@ -53,7 +73,7 @@ const {
       <div class="article-meta-details">
         <span class="label">
           <time datetime={pubDate.toISOString()}>{formatPostDate(pubDate)}</time>
-          {updatedDate && <> · Updated {formatPostDate(updatedDate)}</>}
+          {hasDistinctUpdate && <> · Updated {formatPostDate(updatedDate)}</>}
           {' · '}{readMinutes(post)} min read
         </span>
       </div>
@@ -65,6 +85,9 @@ const {
           data-bookmark-id={post.id}
           data-bookmark-title={title}
           data-bookmark-url={`/posts/${post.id}/`}
+          data-bookmark-cover={cover}
+          data-bookmark-topic={tags[0]}
+          data-bookmark-date={pubDate.toISOString()}
           aria-pressed="false"
         >
           <svg
@@ -109,22 +132,32 @@ const {
         </button>
       </div>
     </div>
+
+    <section class="article-takeaways" aria-labelledby={`takeaways-${post.id}`}>
+      <div class="article-takeaways-heading">
+        <span class="label">At a glance</span>
+        <h2 id={`takeaways-${post.id}`}>The short version</h2>
+      </div>
+      <ul>
+        {takeaways.map((takeaway) => <li>{takeaway}</li>)}
+      </ul>
+    </section>
   </header>
 
   <figure class="article-figure">
-    <img src={cover} alt={coverAlt} loading={mode === 'standalone' ? 'eager' : 'lazy'} />
-    {coverCredit && <figcaption>Photo: {coverCredit}</figcaption>}
+    <CoverImage
+      src={cover}
+      alt={coverAlt}
+      loading={mode === 'standalone' ? 'eager' : 'lazy'}
+      priority={mode === 'standalone'}
+      sizes="(max-width: 900px) 100vw, min(720px, 62vw)"
+    />
+    {coverCredit && <figcaption>{coverCredit}</figcaption>}
   </figure>
 
   <div class="article-measure">
     <div class="prose">
       <Content />
-
-      <section class="article-context" aria-labelledby={`why-it-matters-${post.id}`}>
-        <span class="label article-context-label">Editorial context</span>
-        <h2 id={`why-it-matters-${post.id}`}>Why it matters</h2>
-        <p>{whyItMatters}</p>
-      </section>
 
       {
         factsTable && (
@@ -134,7 +167,12 @@ const {
               <h3 id={`key-facts-${post.id}`}>Key facts</h3>
             </div>
             <div class="table-scroll">
-              <table>
+              <table class="article-facts-table">
+                <colgroup>
+                  {factsTable.columns.map((_, index) => (
+                    <col class={`article-facts-col article-facts-col-${index + 1}`} />
+                  ))}
+                </colgroup>
                 <thead>
                   <tr>
                     {factsTable.columns.map((col) => (
@@ -145,9 +183,9 @@ const {
                 <tbody>
                   {factsTable.rows.map((row) => (
                     <tr>
-                      {row.map((cell) => (
-                        <td>{cell}</td>
-                      ))}
+                      {row.map((cell, index) =>
+                        index === 0 ? <th scope="row">{cell}</th> : <td>{cell}</td>,
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -156,21 +194,9 @@ const {
           </aside>
         )
       }
-
-      {
-        quote && (
-          <blockquote>
-            <p>{quote.text}</p>
-            <cite>{quote.attribution}</cite>
-          </blockquote>
-        )
-      }
     </div>
 
     <footer class="article-footer">
-      <p class="article-source">
-        Source: <a href={sourceUrl} rel="noopener nofollow">{sourceName}</a>
-      </p>
       <ul class="article-tags">
         {
           tags.map((tag) => (

@@ -15,6 +15,7 @@ import {
 } from '../src/lib/post-order.ts';
 import { slugify } from '../src/lib/slug.ts';
 import { getAuthorId } from '../src/lib/author-reference.ts';
+import { storyFormats } from '../src/lib/formats.ts';
 import { topicGroups, knownTopics } from '../src/lib/topics.ts';
 
 const dist = (path) => readFileSync(new URL(`../dist/${path}`, import.meta.url), 'utf-8');
@@ -61,10 +62,15 @@ const sourcePosts = () =>
       const content = readFileSync(file, 'utf-8');
       const frontmatter = content.match(/^---\s*\n([\s\S]*?)\n---/);
       const tags = frontmatter?.[1].match(/^tags:\s*(\[[^\n]+\])\s*$/m);
-      assert.ok(tags, `${file.pathname} must declare a JSON-compatible tags array in frontmatter`);
+      assert.ok(tags, `${file.pathname} must declare an inline tags array in frontmatter`);
+      const parsedTags = tags[1]
+        .slice(1, -1)
+        .split(',')
+        .map((tag) => tag.trim().replace(/^['"]|['"]$/g, ''))
+        .filter(Boolean);
       return {
         id: decodeURIComponent(file.pathname.split('/').pop()).replace(/\.md$/, ''),
-        tags: JSON.parse(tags[1]),
+        tags: parsedTags,
       };
     });
 const sourceTopics = () =>
@@ -173,6 +179,13 @@ const controllerModules = (html) =>
 const linksTo = (html, slug) => html.includes(`/posts/${slug}/`);
 
 const checks = [];
+const primaryPostId = 'luna-max-vs-sol-medium';
+const secondaryPostId = 'gpt-6-mako-koi-tune-leak';
+const tertiaryPostId = 'mythos-6-leak';
+const quaternaryPostId = 'codex-beyond-the-laptop';
+const pricingPostId = 'luna-price-efficiency';
+const tutorialPostId = 'codex-workspace-cleanup';
+const motionPostId = 'motion-claude-launch-video';
 function check(name, fn) {
   checks.push({ name, fn });
 }
@@ -183,10 +196,29 @@ check('dist/ exists after build', () => {
   assert.ok(distExists('.'), 'dist/ directory not found — did you run `npm run build`?');
 });
 
-check('all three fixture posts built successfully', () => {
-  assert.ok(distExists('posts/welcome-to-ai-snap/index.html'));
-  assert.ok(distExists('posts/codex-usage-limit-tracker/index.html'));
-  assert.ok(distExists('posts/openai-ships-new-model/index.html'));
+check('all content posts built successfully', () => {
+  assert.ok(distExists(`posts/${primaryPostId}/index.html`));
+  assert.ok(distExists(`posts/${secondaryPostId}/index.html`));
+  assert.ok(distExists(`posts/${tertiaryPostId}/index.html`));
+  assert.ok(distExists(`posts/${quaternaryPostId}/index.html`));
+  assert.ok(distExists(`posts/${pricingPostId}/index.html`));
+  assert.ok(distExists(`posts/${tutorialPostId}/index.html`));
+  assert.ok(distExists(`posts/${motionPostId}/index.html`));
+  assert.deepEqual(
+    sourcePosts()
+      .map(({ id }) => id)
+      .sort(),
+    [
+      primaryPostId,
+      secondaryPostId,
+      tertiaryPostId,
+      quaternaryPostId,
+      pricingPostId,
+      tutorialPostId,
+      motionPostId,
+    ].sort(),
+    'the editorial fixture should contain the published stories',
+  );
 });
 
 check('public posts contain no internal fixture language', () => {
@@ -200,60 +232,97 @@ check('public posts contain no internal fixture language', () => {
   }
 });
 
-check('substantially rewritten posts disclose the final editorial update date', () => {
+check('published posts disclose an editorial update date', () => {
   for (const { id } of sourcePosts()) {
     assert.match(
       src(`src/content/posts/${id}.md`),
-      /^updatedDate:\s*2026-08-02\s*$/m,
-      `${id} must disclose the 2026-08-02 rewrite`,
+      /^updatedDate:\s*\d{4}-\d{2}-\d{2}\s*$/m,
+      `${id} must disclose an editorial update date`,
     );
   }
 });
 
-check('provider analysis posts attribute and link verified primary documentation', () => {
+check('every story carries explicit editorial format and reader context', () => {
+  const config = src('src/content.config.ts');
+  for (const field of ['format', 'takeaways']) {
+    assert.match(config, new RegExp(`\\b${field}:`), `schema is missing ${field}`);
+  }
+
+  const validFormats = new Set(storyFormats.map(({ key }) => key));
+  assert.equal(validFormats.size, 6, 'editorial format taxonomy should stay intentionally small');
+
+  for (const { id } of sourcePosts()) {
+    const frontmatter = src(`src/content/posts/${id}.md`).match(/^---\s*\n([\s\S]*?)\n---/);
+    assert.ok(frontmatter, `${id} is missing frontmatter`);
+    const fields = frontmatter[1];
+    const format = fields.match(/^format:\s*["']?([a-z]+)["']?\s*$/m)?.[1];
+    assert.ok(format && validFormats.has(format), `${id} has an unknown editorial format`);
+    assert.match(fields, /^takeaways:\s*\[/m, `${id} is missing reader takeaways`);
+    assert.ok(!/^known:\s*\[/m.test(fields), `${id} still carries confirmed-facts scaffolding`);
+    assert.ok(
+      !/^openQuestions:\s*\[/m.test(fields),
+      `${id} still carries open-questions scaffolding`,
+    );
+    assert.ok(!/^whyItMatters:/m.test(fields), `${id} still carries the removed context field`);
+    assert.ok(!/^updates:\s*$/m.test(fields), `${id} still carries update history`);
+  }
+});
+
+check('published stories link their reference covers and official reporting sources', () => {
   const expected = {
-    'chatgpt-plus-limit-tracker': {
-      sourceName: 'OpenAI Help Center',
-      sourceUrl: 'https://help.openai.com/en/articles/6950777-what-is-chatgpt-plus',
-    },
-    'claude-usage-limit-tracker': {
-      sourceName: 'Claude Help Center',
-      sourceUrl:
-        'https://support.claude.com/en/articles/11647753-how-do-usage-and-length-limits-work',
-    },
-    'claude-vs-chatgpt-vs-gemini': {
-      sourceName: 'Official provider documentation',
-      sourceUrl: 'https://help.openai.com/en/articles/9260256-chatgpt-capabilities-overview',
+    [primaryPostId]: {
+      cover: 'https://pbs.twimg.com/media/HOnDOnCasAE2_nP?format=jpg&name=4096x4096',
       inlineUrls: [
-        'https://support.claude.com/en/articles/8114491-get-started-with-claude',
-        'https://help.openai.com/en/articles/9260256-chatgpt-capabilities-overview',
-        'https://support.google.com/gemini/answer/13275745?hl=en',
+        'https://developers.openai.com/api/docs/models/gpt-5.6-terra',
+        'https://openai.com/index/gpt-5-6/',
       ],
     },
-    'codex-usage-limit-tracker': {
-      sourceName: 'OpenAI Help Center',
-      sourceUrl: 'https://help.openai.com/en/articles/11369540-using-codex-with-your-chatgpt-plan',
+    [secondaryPostId]: {
+      cover: 'https://pbs.twimg.com/media/HOviCSfXkAEWoPU.jpg:large',
+      inlineUrls: [
+        'https://developers.openai.com/api/docs/models',
+        'https://developers.openai.com/api/docs/guides/latest-model',
+        'https://openai.com/index/gpt-5-6/',
+      ],
     },
-    'copilot-pricing-tracker': {
-      sourceName: 'GitHub Docs',
-      sourceUrl: 'https://docs.github.com/en/copilot/get-started/plans',
+    [tertiaryPostId]: {
+      cover: 'https://pbs.twimg.com/media/HOzTipVX0AAuvA6.jpg:large',
+      inlineUrls: [
+        'https://www.anthropic.com/claude/mythos',
+        'https://www.anthropic.com/project/glasswing',
+        'https://www.anthropic.com/research/glasswing-initial-update?xs=1',
+      ],
     },
-    'gemini-rate-limit-tracker': {
-      sourceName: 'Google AI for Developers',
-      sourceUrl: 'https://ai.google.dev/gemini-api/docs/rate-limits',
+    [quaternaryPostId]: {
+      cover: '/images/codex-beyond-the-laptop.png',
+      inlineUrls: [
+        'https://openai.com/index/introducing-the-codex-app/',
+        'https://openai.com/supply/co-lab/work-louder/',
+        'https://openai.com/index/codex-for-knowledge-work/',
+      ],
     },
-    'meta-open-sources-vision-model': {
-      sourceName: 'Meta AI',
-      sourceUrl: 'https://ai.meta.com/blog/llama-3-2-connect-2024-vision-edge-mobile-devices/',
+    [pricingPostId]: {
+      cover: '/images/luna-price-efficiency.png',
+      inlineUrls: [
+        'https://developers.openai.com/api/docs/models/gpt-5.6-luna',
+        'https://openai.com/index/gpt-5-6/',
+        'https://developers.openai.com/api/docs/models/compare',
+      ],
     },
-    'mistral-raises-series-c': {
-      sourceName: 'Mistral AI',
-      sourceUrl:
-        'https://mistral.ai/news/mistral-ai-raises-1-7-b-to-accelerate-technological-progress-with-ai/',
+    [tutorialPostId]: {
+      cover: '/images/codex-workspace-cleanup.png',
+      inlineUrls: [
+        'https://help.openai.com/en/articles/11096431',
+        'https://openai.com/academy/codex-automations/',
+      ],
     },
-    'openai-ships-new-model': {
-      sourceName: 'OpenAI developer documentation',
-      sourceUrl: 'https://developers.openai.com/api/docs/models',
+    [motionPostId]: {
+      cover: '/images/motion-claude-launch-video.png',
+      inlineUrls: [
+        'https://motion.so/blog/how-to-turn-a-product-launch-into-a-video',
+        'https://motion.so/learn/mcp-video-generation',
+        'https://motion.so/',
+      ],
     },
   };
 
@@ -261,34 +330,43 @@ check('provider analysis posts attribute and link verified primary documentation
     const markdown = src(`src/content/posts/${id}.md`);
     const body = markdown.replace(/^---\s*\n[\s\S]*?\n---\s*\n/, '');
     assert.ok(
-      markdown.includes(`sourceName: "${attribution.sourceName}"`),
-      `${id} has the wrong source name`,
+      markdown.includes(`cover: '${attribution.cover}'`) ||
+        markdown.includes(`cover: "${attribution.cover}"`),
+      `${id} has no reference cover`,
     );
-    assert.ok(
-      markdown.includes(`sourceUrl: "${attribution.sourceUrl}"`),
-      `${id} has the wrong source URL`,
-    );
-    for (const url of attribution.inlineUrls ?? [attribution.sourceUrl]) {
+    for (const url of attribution.inlineUrls) {
       assert.ok(body.includes(`](${url})`), `${id} must link ${url} in the article copy`);
     }
   }
 });
 
-check('tracker and product comparison guides use topic-specific opening headings', () => {
-  const expectedHeadings = {
-    'chatgpt-plus-limit-tracker': 'How the limit works',
-    'claude-usage-limit-tracker': 'How the limit works',
-    'claude-vs-chatgpt-vs-gemini': 'How to compare them',
-    'codex-usage-limit-tracker': 'How the limit works',
-    'copilot-pricing-tracker': 'How plan access works',
-    'gemini-rate-limit-tracker': 'How the rate limit works',
-  };
-
-  for (const [id, heading] of Object.entries(expectedHeadings)) {
-    const markdown = src(`src/content/posts/${id}.md`);
-    assert.ok(markdown.includes(`## ${heading}`), `${id} is missing its topic-specific heading`);
-    assert.ok(!markdown.includes('## What happened'), `${id} retains the event-reporting heading`);
+check('rumor stories read as original reporting rather than source-post recaps', () => {
+  for (const id of [
+    secondaryPostId,
+    tertiaryPostId,
+    quaternaryPostId,
+    pricingPostId,
+    tutorialPostId,
+    motionPostId,
+  ]) {
+    const body = src(`src/content/posts/${id}.md`).replace(/^---\s*\n[\s\S]*?\n---\s*\n/, '');
+    assert.doesNotMatch(body, /\b(?:X post|tweet|screenshot|attached graphic|supplied graphic)\b/i);
+    assert.doesNotMatch(body, /(?:x\.com|twitter\.com)/i);
   }
+});
+
+check('the Terra story uses a grounded explainer structure', () => {
+  const markdown = src(`src/content/posts/${primaryPostId}.md`);
+  for (const heading of [
+    'Terra is the middle option',
+    'The tier matters less than the job',
+    'What Terra gives you',
+    'A fair way to test Terra',
+  ]) {
+    assert.ok(markdown.includes(`## ${heading}`), `story is missing the "${heading}" heading`);
+  }
+  assert.ok(!markdown.includes('## What happened'), 'story retains the event-reporting heading');
+  assert.ok(!markdown.includes('## Why it matters'), 'story retains the removed generic section');
 });
 
 check(
@@ -470,7 +548,7 @@ check('article fragments are canonical noindex documents with one append-safe st
     assert.match(html, /<meta name="robots" content="noindex, follow">/);
     assert.match(
       html,
-      new RegExp(`<link rel="canonical" href="https://aisnap\\.in/posts/${id}/">`),
+      new RegExp(`<link rel="canonical" href="https://aipresshq\\.com/posts/${id}/">`),
     );
     assert.equal((html.match(/data-continuous-article/g) || []).length, 1);
     assert.match(html, new RegExp(`data-post-id="${id}"`));
@@ -483,6 +561,10 @@ check('article fragments are canonical noindex documents with one append-safe st
     assert.ok(
       html.includes('class="article-sidebar"'),
       'fragment must use the shared article sidebar',
+    );
+    assert.ok(
+      html.includes('class="article-outline"'),
+      'fragment must use the shared left article outline',
     );
     assert.ok(!html.includes('class="site-header"'), 'fragment duplicated the global header');
     assert.ok(!html.includes('class="site-footer"'), 'fragment duplicated the footer');
@@ -504,25 +586,35 @@ check('sitemap publishes standalone posts without article fragments', () => {
   for (const file of postFiles) {
     const id = file.replace(/\.md$/, '');
     assert.ok(
-      sitemap.includes(`<loc>https://aisnap.in/posts/${id}/</loc>`),
+      sitemap.includes(`<loc>https://aipresshq.com/posts/${id}/</loc>`),
       `sitemap omitted standalone article /posts/${id}/`,
     );
   }
 });
 
-check('standalone articles expose an accessible next-story fallback', () => {
-  const newest = dist('posts/openai-ships-new-model/index.html');
+check('standalone articles expose reading status and stop at the oldest story', () => {
+  const newest = dist(`posts/${quaternaryPostId}/index.html`);
   assert.match(newest, /data-continuous-stream/);
-  assert.match(newest, /class="continuous-transition"/);
-  assert.match(newest, /class="continuous-next-link"[^>]*href="\/posts\//);
-  assert.match(newest, /class="continuous-sentinel"/);
-  assert.match(newest, /aria-live="polite"/);
+  assert.ok(newest.includes('class="continuous-transition"'));
+  assert.ok(newest.includes('class="continuous-next-link"'));
+  assert.ok(newest.includes('class="continuous-sentinel"'));
+  assert.match(newest, /class="continuous-status"[^>]*aria-live="polite"/);
+
+  const middle = dist(`posts/${tertiaryPostId}/index.html`);
+  assert.ok(middle.includes('class="continuous-transition"'));
+  assert.ok(middle.includes('class="continuous-next-link"'));
+  assert.ok(middle.includes('class="continuous-sentinel"'));
+
+  const oldest = dist(`posts/${secondaryPostId}/index.html`);
+  assert.ok(!oldest.includes('class="continuous-transition"'));
+  assert.ok(!oldest.includes('class="continuous-next-link"'));
+  assert.ok(!oldest.includes('class="continuous-sentinel"'));
 
   const postFiles = readdirSync(new URL('../src/content/posts/', import.meta.url));
   const built = postFiles.map((file) => dist(`posts/${file.replace(/\.md$/, '')}/index.html`));
   assert.equal(
     built.filter((html) => /class="continuous-next-link"/.test(html)).length,
-    built.length - 1,
+    sourcePosts().length - 1,
   );
 });
 
@@ -638,7 +730,7 @@ check(
       article,
       postId: 'valid-post',
       postUrl: '/posts/valid-post/',
-      documentTitle: 'Valid post - AI Snap',
+      documentTitle: 'Valid post - AIPressHQ',
     };
 
     assert.equal(validateArticleFragmentCandidates([valid]), article);
@@ -661,22 +753,22 @@ check('posts resolve validated author profiles into linked bylines and schema', 
 
   const postFiles = readdirSync(new URL('../src/content/posts/', import.meta.url));
   for (const file of postFiles) {
-    assert.match(src(`src/content/posts/${file}`), /author:\s*["']ai-snap-editorial["']/);
+    assert.match(src(`src/content/posts/${file}`), /author:\s*["']tejas-telkar["']/);
   }
 
-  const html = dist('posts/openai-ships-new-model/index.html');
-  assert.match(html, /class="byline(?:\s[^"]*)?"[^>]*href="\/authors\/ai-snap-editorial\//);
-  assert.ok(html.includes('AI Snap Editorial'));
-  assert.ok(html.includes('Editorial Desk'));
+  const html = dist(`posts/${primaryPostId}/index.html`);
+  assert.match(html, /class="byline(?:\s[^"]*)?"[^>]*href="\/authors\/tejas-telkar\//);
+  assert.ok(html.includes('Tejas Telkar'));
+  assert.ok(html.includes('Writer and editor'));
 
   const match = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
   const schema = JSON.parse(match[1]);
-  assert.equal(schema.author[0].name, 'AI Snap Editorial');
-  assert.equal(schema.author[0].url, 'https://aisnap.in/authors/ai-snap-editorial/');
+  assert.equal(schema.author[0].name, 'Tejas Telkar');
+  assert.equal(schema.author[0].url, 'https://aipresshq.com/authors/tejas-telkar/');
 });
 
 check('post listings resolve author references into display names', () => {
-  for (const component of ['src/components/Stage.astro', 'src/components/ArticleLatest.astro']) {
+  for (const component of ['src/components/Stage.astro']) {
     assert.match(src(component), /getEntry/, `${component} must resolve author references`);
   }
 
@@ -685,24 +777,15 @@ check('post listings resolve author references into display names', () => {
     home.indexOf('class="hero"'),
     home.indexOf('</section>', home.indexOf('class="hero"')),
   );
-  assert.ok(
-    hero.includes('By AI Snap Editorial'),
-    'hero byline should use the author profile name',
-  );
-  assert.ok(home.includes('class="newsroom-section'), 'homepage newsroom section is missing');
+  assert.ok(hero.includes('By Tejas Telkar'), 'hero byline should use the author profile name');
+  assert.ok(!home.includes('class="newsroom-section'), 'empty newsroom section should be hidden');
   assert.ok(!home.includes('[object Object]'), 'homepage leaked an unresolved author reference');
 
-  const article = dist('posts/openai-ships-new-model/index.html');
+  const article = dist(`posts/${primaryPostId}/index.html`);
   const latest = article.slice(
     article.indexOf('class="article-sidebar"'),
     article.indexOf('</aside>', article.indexOf('class="article-sidebar"')),
   );
-  if (latest.includes('sidebar-latest')) {
-    assert.ok(
-      latest.includes('AI Snap Editorial'),
-      'Latest rail should use the author profile name',
-    );
-  }
   assert.ok(
     !latest.includes('[object Object]'),
     'Latest rail leaked an unresolved author reference',
@@ -713,19 +796,12 @@ check('author lookups normalize string and object references before resolving', 
   const helper = src('src/lib/author-reference.ts');
   assert.match(helper, /typeof reference === ['"]string['"]/);
   assert.match(helper, /reference\.id/);
-  assert.equal(getAuthorId('ai-snap-editorial'), 'ai-snap-editorial');
-  assert.equal(
-    getAuthorId({ collection: 'authors', id: 'ai-snap-editorial' }),
-    'ai-snap-editorial',
-  );
-  assert.equal(
-    getAuthorId({ collection: 'authors', slug: 'ai-snap-editorial' }),
-    'ai-snap-editorial',
-  );
+  assert.equal(getAuthorId('tejas-telkar'), 'tejas-telkar');
+  assert.equal(getAuthorId({ collection: 'authors', id: 'tejas-telkar' }), 'tejas-telkar');
+  assert.equal(getAuthorId({ collection: 'authors', slug: 'tejas-telkar' }), 'tejas-telkar');
 
   for (const component of [
     'src/components/Stage.astro',
-    'src/components/ArticleLatest.astro',
     'src/pages/posts/[id].astro',
     'src/pages/posts/[id]/fragment.astro',
     'src/pages/authors/[author].astro',
@@ -739,11 +815,7 @@ check('author lookups normalize string and object references before resolving', 
 });
 
 check('author resolution errors identify the post and missing author slug', () => {
-  for (const file of [
-    'src/pages/posts/[id].astro',
-    'src/components/Stage.astro',
-    'src/components/ArticleLatest.astro',
-  ]) {
+  for (const file of ['src/pages/posts/[id].astro', 'src/components/Stage.astro']) {
     assert.match(
       src(file),
       /Missing author profile for post: \$\{(?:post|currentPost)\.id\} \(author: \$\{authorId\}\)/,
@@ -784,6 +856,13 @@ check('global.css defines the theme tokens and required classes, with no accent 
   }
   const header = css.match(/\.site-header\s*\{([\s\S]*?)\n\}/);
   assert.match(header[1], /border-top:\s*4px solid var\(--text\)/, 'header ink rule is missing');
+  const responsiveImage = css.match(/\.responsive-image\s*\{([\s\S]*?)\n\}/);
+  assert.ok(responsiveImage, 'shared responsive image rule is missing');
+  assert.match(
+    responsiveImage[1],
+    /height:\s*auto/,
+    'shared images must honor layout aspect ratios',
+  );
 });
 
 check('layout is full width — no max-width cap or raised frame card', () => {
@@ -851,17 +930,17 @@ check('article focus rings use theme-aware marks while dark card tags stay monoc
   );
 });
 
-check('headline and masthead use the display and blackletter faces', () => {
+check('headlines and the AIPressHQ wordmark use the intended bundled faces', () => {
   const css = sourceStyles();
   const displayVar = css.match(/--font-display:\s*([^;]+);/);
-  const mastheadVar = css.match(/--font-masthead:\s*([^;]+);/);
+  const brandBlock = css.match(/\.brand-mark\s*\{([\s\S]*?)\n\}/);
   assert.ok(displayVar, 'missing --font-display token');
-  assert.ok(mastheadVar, 'missing --font-masthead token');
+  assert.ok(brandBlock, 'missing .brand-mark rule');
   assert.match(displayVar[1], /Source Serif 4/, 'display font should be the serif face');
   assert.match(
-    mastheadVar[1],
-    /UnifrakturMaguntia/,
-    'masthead font should be the blackletter face',
+    brandBlock[1],
+    /font-family:\s*var\(--font-body\)/,
+    'wordmark should use the bundled body face',
   );
 
   // The whole point of the swap: no page should still import or reference
@@ -880,18 +959,8 @@ check('headline and masthead use the display and blackletter faces', () => {
     'BaseLayout should import the new font package',
   );
 
-  // The masthead's fallback stack must name a font we actually bundle —
-  // Playfair Display was left there once before as a stale fallback after
-  // the primary token moved off it.
-  assert.ok(
-    !mastheadVar[1].includes('Playfair'),
-    'masthead fallback should not name an unbundled font',
-  );
-  assert.match(
-    mastheadVar[1],
-    /Source Serif 4/,
-    'masthead should fall back to the bundled display font, not a generic serif directly',
-  );
+  assert.ok(!css.includes('--font-masthead'), 'the old masthead font token should be removed');
+  assert.match(brandBlock[1], /font-weight:\s*900/, 'wordmark should use a bold editorial weight');
 
   const leadBlock = css.match(/\.hero-lead-headline\s*\{([\s\S]*?)\n\}/);
   assert.ok(leadBlock, 'missing .hero-lead-headline rule block');
@@ -906,8 +975,13 @@ check(
   'homepage renders the shell: masthead, dateline, nav, and no persistent subscribe button',
   () => {
     const html = dist('index.html');
-    assert.match(html, /<title>AI Snap \| Daily AI News<\/title>/);
+    assert.match(html, /<title>AIPressHQ \| Daily AI News<\/title>/);
     assert.ok(html.includes('class="masthead-mark"'), 'masthead not rendered');
+    assert.ok(html.includes('class="brand-mark"'), 'shared AIPressHQ mark not rendered');
+    assert.ok(
+      html.includes('aria-label="AIPressHQ home"'),
+      'masthead does not expose the AIPressHQ home label',
+    );
     assert.ok(html.includes('class="edition-date"'), 'edition dateline not rendered');
     assert.ok(html.includes('class="primary-bar"'), 'primary bar not rendered');
     assert.ok(html.includes('data-theme-toggle'), 'theme toggle not rendered');
@@ -930,6 +1004,56 @@ check(
     );
   },
 );
+
+check('the approved AIPressHQ logo and favicon assets are wired across the shell', () => {
+  const html = dist('index.html');
+  const css = sourceStyles();
+  const manifest = JSON.parse(dist('site.webmanifest'));
+  const assetPaths = [
+    'brand/aipresshq-logo-light.png',
+    'brand/aipresshq-logo-dark.png',
+    'brand/aipresshq-favicon-light.png',
+    'brand/aipresshq-favicon-dark.png',
+    'favicon-light.svg',
+    'favicon-dark.svg',
+    'favicon.svg',
+    'favicon.ico',
+    'apple-touch-icon.png',
+  ];
+
+  for (const asset of assetPaths) {
+    assert.ok(distExists(asset), `missing published brand asset: ${asset}`);
+  }
+
+  assert.match(html, /data-theme-favicon/);
+  assert.match(html, /data-theme-favicon-svg/);
+  assert.match(html, /href="\/site\.webmanifest"/);
+  assert.match(html, /aipresshq-logo-light\.png\?v=3/);
+  assert.match(html, /aipresshq-logo-dark\.png\?v=3/);
+  assert.match(html, /aipresshq-favicon-dark\.png\?v=5/);
+  assert.match(html, /favicon-dark\.svg\?v=5/);
+  assert.match(css, /\.footer-wordmark \.brand-logo-dark\s*\{[\s\S]*?display:\s*block/);
+  assert.match(
+    css,
+    /html\[data-theme=['"]dark['"]\] \.footer-wordmark \.brand-logo-light\s*\{[\s\S]*?display:\s*block/,
+  );
+  assert.equal(manifest.name, 'AIPressHQ');
+  assert.deepEqual(
+    manifest.icons.map(({ src, sizes, type }) => ({ src, sizes, type })),
+    [
+      {
+        src: '/brand/aipresshq-favicon-light.png',
+        sizes: '512x512',
+        type: 'image/png',
+      },
+      {
+        src: '/brand/aipresshq-favicon-dark.png',
+        sizes: '512x512',
+        type: 'image/png',
+      },
+    ],
+  );
+});
 
 check('header search stays inline and renders a local results dropdown', () => {
   const html = dist('index.html');
@@ -958,6 +1082,12 @@ check('header search stays inline and renders a local results dropdown', () => {
     /position:\s*absolute/,
     'search results should be anchored below the field',
   );
+  assert.doesNotMatch(
+    results[1],
+    /box-shadow:\s*10px\s+10px\s+0\s+var\(--surface\)/,
+    'search results should not render the grey offset backdrop',
+  );
+  assert.match(results[1], /box-shadow:\s*0\s+16px\s+34px/);
   assert.doesNotMatch(
     css,
     /\.search-dialog\s*\{/,
@@ -1041,6 +1171,28 @@ check('primary bar separates primary sections from a native categories disclosur
     !sectionLinks.includes('/tag/openai/'),
     'category links must not be flattened into the primary section list',
   );
+});
+
+check('categories dropdown remains scrollable within the viewport', () => {
+  const css = sourceStyles();
+  const panel = css.match(/\.category-menu-panel\s*\{([\s\S]*?)\n\}/);
+  assert.ok(panel, 'category panel styles are missing');
+  assert.match(panel[1], /max-height:\s*min\(720px,\s*calc\(100svh\s*-\s*104px\)\)/);
+  assert.match(panel[1], /overflow-y:\s*auto/);
+  assert.match(panel[1], /overscroll-behavior:\s*contain/);
+
+  const fixedPanel = css.match(
+    /html\[data-navigation-ready='true'\]\s+\.category-menu-panel\s*\{([\s\S]*?)\n\}/,
+  );
+  assert.ok(fixedPanel, 'enhanced category panel styles are missing');
+  assert.match(fixedPanel[1], /position:\s*fixed/);
+  assert.match(fixedPanel[1], /height:\s*calc\(100dvh\s*-\s*var\(--category-menu-top/);
+  assert.match(fixedPanel[1], /overflow-y:\s*scroll/);
+
+  const navigation = src('src/scripts/navigation.ts');
+  assert.match(navigation, /getBoundingClientRect/);
+  assert.match(navigation, /categoryMenu\.addEventListener\(['"]toggle['"]/);
+  assert.match(navigation, /data-navigation-ready/);
 });
 
 check('homepage is a distinct front page, tied to no single nav tab', () => {
@@ -1139,20 +1291,17 @@ check(
   },
 );
 
-check('a canonical topic with zero posts still gets a page and a graceful empty state', () => {
+check('the Tutorials topic gets a page with its tutorial story', () => {
   assert.ok(
     distExists('tag/tutorials/index.html'),
     '/tag/tutorials/ was not built even though Tutorials is a canonical topic',
   );
   const html = dist('tag/tutorials/index.html');
   assert.ok(
-    html.includes('No stories tagged Tutorials yet.'),
-    'empty Tutorials category should show the standard no-content message',
+    !html.includes('No stories tagged Tutorials yet.'),
+    'Tutorials category should not show an empty state once a tutorial is published',
   );
-  assert.ok(
-    !linksTo(html, 'welcome-to-ai-snap'),
-    'empty Tutorials category should not list unrelated posts',
-  );
+  assert.ok(linksTo(html, tutorialPostId), 'Tutorials category should list the cleanup tutorial');
 });
 
 check('category pages separate featured stories from latest updates', () => {
@@ -1161,14 +1310,16 @@ check('category pages separate featured stories from latest updates', () => {
     'trending/index.html',
     'trackers/index.html',
     'tag/openai/index.html',
+    'tag/comparisons/index.html',
   ]) {
     const html = dist(path);
     const featuredStart = html.indexOf('class="category-featured"');
     const layoutStart = html.indexOf('class="category-layout"');
-    assert.ok(
-      featuredStart >= 0 && layoutStart > featuredStart,
-      `${path} is missing the featured section`,
-    );
+    if (featuredStart < 0) {
+      assert.ok(html.includes('class="category-empty"'), `${path} lacks an empty state`);
+      continue;
+    }
+    assert.ok(layoutStart > featuredStart, `${path} is missing the category feed`);
 
     const featured = html.slice(featuredStart, layoutStart);
     const lead = featured.match(/class="category-featured-lead" href="([^"]+)"/);
@@ -1191,58 +1342,92 @@ check('category pages separate featured stories from latest updates', () => {
   }
 });
 
+check('format archives and utility routes build with their reader-facing contracts', () => {
+  for (const { key, label } of storyFormats) {
+    assert.ok(distExists(`format/${key}/index.html`), `missing /format/${key}/`);
+    const html = dist(`format/${key}/index.html`);
+    assert.ok(
+      html.includes('class="category-front"') || html.includes('class="category-empty"'),
+      `/format/${key}/ lacks the archive or empty state`,
+    );
+    assert.ok(html.includes(label), `/format/${key}/ lacks its format label`);
+  }
+
+  const article = dist(`posts/${primaryPostId}/index.html`);
+  assert.ok(article.includes('class="article-takeaways"'), 'article lacks the short version block');
+  assert.ok(article.includes('class="article-facts-table"'), 'article lacks the facts table');
+  assert.ok(!article.includes('class="article-knowledge"'), 'removed evidence split still renders');
+  assert.ok(!article.includes('class="article-context"'), 'removed context block still renders');
+  assert.ok(!article.includes('class="article-source-card"'), 'removed source card still renders');
+  assert.ok(!article.includes('class="article-updates"'), 'article still renders update history');
+  assert.ok(article.includes('href="/format/explainer/"'), 'article lacks its format link');
+
+  const search = dist('search/index.html');
+  assert.ok(search.includes('data-search-page-form'), 'search page form is missing');
+  assert.ok(search.includes('data-search-page-results'), 'search page results are missing');
+  assert.ok(
+    src('src/scripts/search-page.ts').includes('loadPagefind'),
+    'search page must use Pagefind',
+  );
+  assert.ok(
+    src('src/scripts/search-page.ts').includes('ArrowDown'),
+    'search page must support keyboard navigation',
+  );
+
+  assert.ok(distExists('saved/index.html'), 'saved stories route is missing');
+  assert.ok(
+    dist('saved/index.html').includes('data-saved-page-list'),
+    'saved page list is missing',
+  );
+  assert.ok(distExists('about/index.html'), 'editorial standards route is missing');
+  assert.ok(
+    dist('about/index.html').includes('class="standards-page"'),
+    'standards page is missing',
+  );
+  assert.ok(distExists('404.html'), 'custom 404 page is missing');
+});
+
 check('homepage lead story is the most recent post', () => {
   const html = dist('index.html');
   const lead = html.match(/<h1 class="hero-lead-headline">([\s\S]*?)<\/h1>/);
   assert.ok(lead, 'no lead headline rendered');
-  // Most recent by pubDate: openai-ships-new-model (2026-07-30).
+  // Most recent by pubDate: codex-beyond-the-laptop (2026-08-04).
   assert.ok(
-    lead[1].includes('/posts/openai-ships-new-model/'),
+    lead[1].includes(`/posts/${quaternaryPostId}/`),
     'lead story should be the most recent post',
   );
   assert.match(html, /\d+ min read/, 'read time not rendered');
   assert.ok(html.includes('class="byline-name"'), 'byline not rendered');
 });
 
-check("homepage hero surfaces an Editor's Pick column and a Just In list", () => {
+check('homepage hero surfaces the current lead story', () => {
   const html = dist('index.html');
-  for (const slug of [
-    'welcome-to-ai-snap',
-    'codex-usage-limit-tracker',
-    'openai-ships-new-model',
-  ]) {
-    assert.ok(linksTo(html, slug), `missing link to /posts/${slug}/`);
-  }
+  assert.ok(linksTo(html, primaryPostId), 'current story is missing from the homepage');
   const hero = html.slice(
     html.indexOf('class="hero"'),
     html.indexOf('</section>', html.indexOf('class="hero"')),
   );
-  assert.ok(hero.includes('class="hero-picks"'), "Editor's Pick column not rendered");
-  assert.ok(hero.includes('class="hero-pick-card"'), "no Editor's Pick cards rendered");
-  assert.ok(hero.includes('class="hero-just-in"'), 'Just In column not rendered');
-  // Just In items show their own topic label, not the pager this replaced.
-  assert.ok(hero.includes('hero-just-in-topic'), 'Just In items are missing their topic label');
+  assert.ok(hero.includes('class="hero-lead"'), 'lead story is not rendered');
+  assert.ok(!hero.includes('class="hero-picks"'), "empty Editor's Pick rail should be hidden");
+  assert.ok(hero.includes('class="hero-just-in"'), 'Just In rail should show the second story');
 });
 
 check('/trending/ shows only featured posts', () => {
   const html = dist('trending/index.html');
-  assert.ok(linksTo(html, 'welcome-to-ai-snap'), 'featured post missing');
-  assert.ok(!linksTo(html, 'codex-usage-limit-tracker'), 'non-featured post leaked in');
-  assert.ok(!linksTo(html, 'openai-ships-new-model'), 'non-featured post leaked in');
+  assert.ok(html.includes('class="category-empty"'), 'empty trending archive should be explicit');
+  assert.ok(!linksTo(html, primaryPostId), 'non-featured post leaked into trending');
 });
 
 check('/trackers/ shows only tracker-type posts', () => {
   const html = dist('trackers/index.html');
-  assert.ok(linksTo(html, 'codex-usage-limit-tracker'), 'tracker post missing');
-  assert.ok(!linksTo(html, 'openai-ships-new-model'), 'non-tracker post leaked in');
-  assert.ok(!linksTo(html, 'welcome-to-ai-snap'), 'non-tracker post leaked in');
+  assert.ok(html.includes('class="category-empty"'), 'empty tracker archive should be explicit');
+  assert.ok(!linksTo(html, primaryPostId), 'non-tracker post leaked into trackers');
 });
 
 check('/tag/openai/ shows only OpenAI posts, with that topic active in the nav', () => {
   const html = dist('tag/openai/index.html');
-  assert.ok(linksTo(html, 'openai-ships-new-model'));
-  assert.ok(linksTo(html, 'codex-usage-limit-tracker'));
-  assert.ok(!linksTo(html, 'welcome-to-ai-snap'), 'wrong-tag post leaked into /tag/openai/');
+  assert.ok(!html.includes('class="category-empty"'), 'OpenAI archive should show its story');
+  assert.ok(linksTo(html, primaryPostId), 'OpenAI story is missing from its category archive');
   const navStart = html.indexOf('class="primary-bar"');
   const nav = html.slice(navStart, html.indexOf('</nav>', navStart));
   assert.match(
@@ -1252,11 +1437,8 @@ check('/tag/openai/ shows only OpenAI posts, with that topic active in the nav',
   );
 });
 
-check('homepage keeps the remaining editorial layouts', () => {
+check('homepage renders only editorial layouts with available stories', () => {
   const html = dist('index.html');
-  for (const title of ['Trackers', 'More from today']) {
-    assert.ok(html.includes(title), `missing section: ${title}`);
-  }
   assert.ok(
     !html.includes('Explainers &amp; comparisons'),
     'removed Explainers & comparisons section returned',
@@ -1265,66 +1447,25 @@ check('homepage keeps the remaining editorial layouts', () => {
     !html.includes('class="split-lead"'),
     'removed Explainers & comparisons layout returned',
   );
-  // Asymmetric band: one dominant story beside a cluster of secondaries.
-  assert.ok(html.includes('band-lead'), 'band should have a dominant lead');
-  assert.ok(html.includes('band-secondaries'), 'band should have a secondary cluster');
-  // Dense grid.
-  assert.ok(html.includes('headline-item'), 'grid section should use headline items');
-  assert.match(
-    html,
-    /class="section-link(?:\s[^"]*)?"[^>]*href="\/trackers\/"/,
-    'Trackers should link to its own page',
-  );
+  assert.ok(html.includes('class="hero"'), 'homepage hero is missing');
+  assert.ok(html.includes('class="topic-directory"'), 'topic directory should remain available');
+  assert.ok(!html.includes('class="band-lead"'), 'empty tracker band should be hidden');
+  assert.ok(!html.includes('class="headline-item"'), 'empty closing grid should be hidden');
 });
 
-check('homepage includes a full desk index and related-news grid', () => {
+check('homepage hides low-density modules without duplicating stories', () => {
   const html = dist('index.html');
-  assert.ok(html.includes('class="desk-index"'), 'missing the homepage desk index');
-  assert.equal(
-    (html.match(/class="desk-index-column"/g) || []).length,
-    3,
-    'desk index should have three topic columns',
-  );
-  assert.equal(
-    (html.match(/class="desk-index-story"/g) || []).length,
-    9,
-    'desk index should have three stories per column',
-  );
-  assert.ok(html.includes('class="desk-index-signal"'), 'missing desk index editorial signal rail');
-  assert.ok(html.includes('class="related-news"'), 'missing related-news section');
-  assert.equal(
-    (html.match(/class="related-news-card"/g) || []).length,
-    6,
-    'related-news should show six linked stories',
-  );
+  assert.ok(html.includes('class="hero"'), 'homepage hero should remain visible');
+  assert.ok(!html.includes('class="desk-index"'), 'low-density desk index should be hidden');
+  assert.ok(!html.includes('class="desk-showcase"'), 'low-density showcase should be hidden');
+  assert.ok(!html.includes('class="briefing-board"'), 'low-density briefing should be hidden');
+  assert.ok(!html.includes('class="story-timeline"'), 'low-density timeline should be hidden');
+  assert.ok(!html.includes('class="related-news"'), 'empty related-news should be hidden');
+  assert.ok(!html.includes('class="newsroom-section"'), 'low-density picks should be hidden');
 });
 
-check('homepage adds four distinct responsive editorial fronts', () => {
+check('homepage keeps responsive rules ready for denser editions', () => {
   const html = dist('index.html');
-  assert.ok(html.includes('class="desk-showcase"'), 'missing the reference-inspired desk front');
-  assert.ok(html.includes('class="desk-showcase-lead"'), 'desk front needs a dominant lead');
-  assert.equal(
-    (html.match(/class="desk-showcase-headlines"/g) || []).length,
-    1,
-    'desk front needs a radar column',
-  );
-  assert.equal(
-    (html.match(/class="desk-showcase-watch-grid"/g) || []).length,
-    1,
-    'desk front needs a secondary card rail',
-  );
-  assert.equal(
-    (html.match(/class="desk-showcase-briefs"/g) || []).length,
-    1,
-    'desk front needs a short headline row',
-  );
-  assert.equal(
-    (html.match(/class="desk-showcase-topics"/g) || []).length,
-    1,
-    'desk front needs topic navigation',
-  );
-  assert.ok(html.includes('class="briefing-board"'), 'missing numbered briefing board');
-  assert.ok(html.includes('class="story-timeline"'), 'missing chronological story timeline');
   assert.ok(html.includes('class="topic-directory"'), 'missing topic directory');
 
   const css = sourceStyles();
@@ -1338,50 +1479,14 @@ check('homepage adds four distinct responsive editorial fronts', () => {
   );
 });
 
-check(
-  'Editor’s Picks is a fourth, distinct newsroom layout: lead, cards, and a signal rail',
-  () => {
-    const html = dist('index.html');
-    const heading = html.includes('Editor&#39;s Picks') ? 'Editor&#39;s Picks' : "Editor's Picks";
-    assert.ok(html.includes(heading), 'missing the Editor’s Picks section');
-
-    const start = html.lastIndexOf('<section', html.indexOf(heading));
-    const section = html.slice(start, html.indexOf('</section>', start) + '</section>'.length);
-
-    assert.ok(section.includes('class="newsroom-section"'), 'missing the newsroom section shell');
-    assert.ok(section.includes('class="newsroom-lead"'), 'missing the lead story');
-    const cardCount = (section.match(/class="newsroom-card"/g) || []).length;
-    assert.equal(cardCount, 4, `expected exactly 4 secondary photo cards, found ${cardCount}`);
-    assert.ok(section.includes('class="newsroom-signal"'), 'missing the editorial signal rail');
-    assert.equal(
-      (section.match(/class="newsroom-signal-link"/g) || []).length,
-      1,
-      'missing the signal rail link',
-    );
-  },
-);
-
-check('Editor’s Picks draws from the featured flag, spanning post types', () => {
-  const posts = readdirSync(new URL('../src/content/posts/', import.meta.url));
-  const featuredSlugs = posts
-    .map((f) => f.replace(/\.md$/, ''))
-    .filter((slug) => src(`src/content/posts/${slug}.md`).includes('featured: true'));
-  assert.ok(
-    featuredSlugs.length >= 4,
-    'need enough featured fixtures to populate both the cards and the list',
-  );
-
+check("Editor's Picks stays hidden until a story is actually featured", () => {
   const html = dist('index.html');
-  const heading = html.includes('Editor&#39;s Picks') ? 'Editor&#39;s Picks' : "Editor's Picks";
-  const start = html.lastIndexOf('<section', html.indexOf(heading));
-  const section = html.slice(start, html.indexOf('</section>', start) + '</section>'.length);
-
-  for (const slug of featuredSlugs.slice(0, 6)) {
-    assert.ok(
-      section.includes(`/posts/${slug}/`),
-      `featured post /posts/${slug}/ missing from Editor's Picks`,
-    );
-  }
+  assert.ok(!html.includes('class="newsroom-section"'), "empty Editor's Picks should be hidden");
+  assert.equal(
+    sourcePosts().filter(({ featured }) => featured).length,
+    0,
+    'the single supplied story should not be silently promoted to featured',
+  );
 });
 
 check('.panel is a toned band that follows the explicit theme palette', () => {
@@ -1448,16 +1553,10 @@ check('sections carry no filler copy and lead with headlines', () => {
   assert.ok(!/\d+ min read/.test(band), 'band items should not carry read times');
 });
 
-check('the closing grid omits stories the stage already showed', () => {
+check('the closing grid stays hidden when the stage contains the full edition', () => {
   const html = dist('index.html');
-  const grid = html.slice(html.indexOf('More from today'));
-  // openai-ships-new-model is the lead, so repeating it a screen later would
-  // be redundant.
-  assert.ok(
-    !grid.includes('/posts/openai-ships-new-model/'),
-    'the lead story should not reappear in the closing grid',
-  );
-  assert.ok(grid.includes('/posts/mistral-raises-series-c/'), 'other stories should still list');
+  assert.ok(!html.includes('More from today'), 'empty closing grid should not render a heading');
+  assert.ok(!html.includes('class="headline-grid"'), 'empty closing grid should be hidden');
 });
 
 check('sections never depend on scroll position to become visible', () => {
@@ -1513,7 +1612,7 @@ check('sections never depend on scroll position to become visible', () => {
 });
 
 check('article page renders the fixed §4 template on the site shell', () => {
-  const html = dist('posts/openai-ships-new-model/index.html');
+  const html = dist(`posts/${primaryPostId}/index.html`);
   // Shell
   assert.ok(html.includes('class="masthead-mark"'), 'article page should use the site shell');
   assert.ok(html.includes('class="primary-bar"'), 'article page missing the primary bar');
@@ -1525,27 +1624,46 @@ check('article page renders the fixed §4 template on the site shell', () => {
   assert.ok(html.includes('class="byline-name"'), 'missing byline');
   assert.ok(html.includes('class="article-figure"'), 'missing hero figure');
   assert.ok(html.includes('class="article-sidebar"'), 'missing article sidebar');
-  assert.ok(html.includes('Photo: Unsplash'), 'missing cover credit');
-  assert.match(
-    html,
-    /Source:[\s\S]*?developers\.openai\.com/,
-    'missing attributed primary-source link',
-  );
+  assert.ok(html.includes('developers.openai.com/api/docs/models/gpt-5.6-terra'));
   assert.ok(html.includes('class="article-tags"'), 'missing tag list');
   assert.match(html, /\d+ min read/, 'missing read time');
 });
 
+check('article facts use semantic rows and a single clean topic set', () => {
+  const html = dist(`posts/${primaryPostId}/index.html`);
+  const tableStart = html.indexOf('class="article-facts-table"');
+  const tableEnd = html.indexOf('</table>', tableStart);
+  const table = html.slice(tableStart, tableEnd);
+  assert.match(table, /<th scope="col">Area<\/th>/);
+  assert.match(table, /<th scope="row">Position<\/th>/);
+  assert.match(table, /<td>Terra is the middle GPT-5\.6 tier/);
+
+  const topicStart = html.indexOf('class="article-topic-links"');
+  const topicEnd = html.indexOf('</nav>', topicStart);
+  const topics = html.slice(topicStart, topicEnd);
+  assert.equal((topics.match(/href="\/format\/explainer\/"/g) || []).length, 1);
+  assert.equal((topics.match(/href="\/tag\/ai\/"/g) || []).length, 1);
+  assert.equal((topics.match(/href="\/tag\/openai\/"/g) || []).length, 1);
+  assert.equal((topics.match(/<a /g) || []).length, 3);
+  assert.equal((html.match(/class="label article-topic-kicker"/g) || []).length, 1);
+
+  const css = sourceStyles();
+  assert.match(css, /\.article-facts-table\s*\{/);
+  assert.match(css, /\.article-facts-table th\[scope='row'\]/);
+  assert.match(css, /\.article-facts-table tbody tr:nth-child\(even\)/);
+});
+
 check('article pages expose save-for-later controls and a shared saved-story list', () => {
-  const html = dist('posts/openai-ships-new-model/index.html');
+  const html = dist(`posts/${primaryPostId}/index.html`);
   const bookmarkSource = src('src/scripts/bookmarks.ts');
 
   assert.ok(html.includes('data-bookmark-toggle'), 'article is missing the bookmark control hook');
   assert.ok(
-    html.includes('data-bookmark-id="openai-ships-new-model"'),
+    html.includes(`data-bookmark-id="${primaryPostId}"`),
     'bookmark control is missing the article identifier',
   );
   assert.ok(
-    html.includes('data-bookmark-title="How to evaluate OpenAI model claims"'),
+    html.includes('data-bookmark-title="GPT-5.6 Terra: where it fits"'),
     'bookmark control is missing the article title',
   );
   assert.ok(html.includes('class="saved-menu"'), 'header is missing the saved-story dropdown');
@@ -1569,13 +1687,14 @@ check('article pages expose save-for-later controls and a shared saved-story lis
 });
 
 check('article pages expose share controls and a complete ending handoff', () => {
-  const html = dist('posts/openai-ships-new-model/index.html');
+  const html = dist(`posts/${primaryPostId}/index.html`);
+  const terminal = dist(`posts/${secondaryPostId}/index.html`);
   const sharingSource = src('src/scripts/sharing.ts');
 
   assert.ok(html.includes('class="article-share"'), 'article is missing the share control');
   assert.ok(html.includes('data-share-story'), 'share control is missing its event hook');
   assert.ok(
-    html.includes('data-share-title="How to evaluate OpenAI model claims"'),
+    html.includes('data-share-title="GPT-5.6 Terra: where it fits"'),
     'share control is missing the article title',
   );
   assert.ok(html.includes('class="article-endcap"'), 'article is missing the ending handoff');
@@ -1585,7 +1704,11 @@ check('article pages expose share controls and a complete ending handoff', () =>
   );
   assert.ok(
     html.includes('class="article-pagination"'),
-    'article ending is missing previous or next navigation',
+    'newer article should link to the next story',
+  );
+  assert.ok(
+    terminal.includes('class="article-pagination"'),
+    'oldest article should link back to the newer story',
   );
   assert.match(
     sharingSource,
@@ -1595,26 +1718,17 @@ check('article pages expose share controls and a complete ending handoff', () =>
   assert.match(sharingSource, /navigator\.clipboard/, 'share should fall back to copying the URL');
 });
 
-check('"Why it matters" comes only from frontmatter, not duplicated in the body', () => {
-  // The section is rendered from the whyItMatters field, so a post body that
-  // also carries the heading renders it twice.
-  for (const slug of [
-    'openai-ships-new-model',
-    'codex-usage-limit-tracker',
-    'welcome-to-ai-snap',
-  ]) {
+check('removed generic article blocks stay out of the rendered story', () => {
+  for (const slug of [primaryPostId]) {
     const html = dist(`posts/${slug}/index.html`);
-    const count = html.split(/<h2 id="why-it-matters-[^"]+">Why it matters<\/h2>/).length - 1;
-    assert.equal(
-      count,
-      1,
-      `"Why it matters" appears ${count}x on /posts/${slug}/ — expected exactly 1`,
-    );
+    assert.ok(!html.includes('Why it matters'), 'generic context heading still renders');
+    assert.ok(!html.includes('class="article-knowledge"'));
+    assert.ok(!html.includes('class="article-source-card"'));
   }
 });
 
 check('article page emits NewsArticle schema with an image', () => {
-  const html = dist('posts/openai-ships-new-model/index.html');
+  const html = dist(`posts/${primaryPostId}/index.html`);
   const match = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
   assert.ok(match, 'no JSON-LD block found');
   const schema = JSON.parse(match[1]);
@@ -1627,24 +1741,15 @@ check('article page emits NewsArticle schema with an image', () => {
   assert.ok(schema.datePublished, 'schema missing datePublished');
 });
 
-check('Suggested Reads replaces Related with deterministic tag-first stories', () => {
-  const html = dist('posts/openai-ships-new-model/index.html');
+check('Suggested Reads uses the other published stories', () => {
+  const html = dist(`posts/${primaryPostId}/index.html`);
+  const suggestedLimit = Math.min(sourcePosts().length - 1, 4);
   assert.ok(!html.includes('article-related'), 'legacy Related module still rendered');
-  const start = html.indexOf('class="suggested-reads');
-  const end = html.indexOf('</section>', start);
-  const section = html.slice(start, end);
-  const urls = [...section.matchAll(/class="suggested-story" href="([^"]+)"/g)].map(
-    (match) => match[1],
+  assert.ok(
+    html.includes('class="suggested-reads'),
+    'Suggested Reads should render with a candidate',
   );
-  assert.deepEqual(urls, [
-    '/posts/codex-usage-limit-tracker/',
-    '/posts/claude-vs-chatgpt-vs-gemini/',
-    '/posts/ai-coding-agents-compared/',
-    '/posts/chatgpt-plus-limit-tracker/',
-  ]);
-  assert.ok(!section.includes('/posts/openai-ships-new-model/'));
-  assert.match(section, /aria-labelledby="suggested-reads-openai-ships-new-model"/);
-  assert.match(section, /<h2 id="suggested-reads-openai-ships-new-model">Suggested Reads<\/h2>/);
+  assert.equal((html.match(/class="suggested-story"/g) || []).length, suggestedLimit);
 });
 
 check(
@@ -1692,8 +1797,11 @@ check('article canvas is full width while prose keeps a readable measure', () =>
   const css = sourceStyles();
   const layout = css.match(/\.article-layout\s*\{([\s\S]*?)\n\}/);
   const measure = css.match(/\.article-measure\s*\{([\s\S]*?)\n\}/);
-  assert.match(layout[1], /grid-template-columns:\s*minmax\(0, 1fr\) 380px/);
-  assert.match(layout[1], /gap:\s*52px/);
+  assert.match(
+    layout[1],
+    /grid-template-columns:\s*minmax\(180px, 220px\) minmax\(0, 1fr\) minmax\(280px, 340px\)/,
+  );
+  assert.match(layout[1], /gap:\s*40px/);
   assert.ok(!/max-width/.test(layout[1]), 'article canvas should not keep the old width cap');
   assert.match(measure[1], /720px/);
 });
@@ -1704,58 +1812,103 @@ check('all standalone articles share the same hero and sidebar shell', () => {
     const id = file.replace(/\.md$/, '');
     const html = dist(`posts/${id}/index.html`);
     assert.ok(html.includes('class="article-layout"'), `${id} is missing the article layout`);
+    assert.ok(
+      html.includes('class="article-outline"'),
+      `${id} is missing the left article outline`,
+    );
     assert.ok(html.includes('class="article-figure"'), `${id} is missing the article hero`);
     assert.ok(html.includes('class="article-sidebar"'), `${id} is missing the article sidebar`);
     assert.equal(
       (html.match(/class="sidebar-section sidebar-(?:latest|trending|topic)(?:\s[^"]*)?"/g) || [])
         .length,
       2,
-      `${id} should render one topic module and one latest module`,
+      `${id} should render one topic and one latest module`,
+    );
+    assert.equal(
+      (html.match(/class="sidebar-section sidebar-latest(?:\s[^"]*)?"/g) || []).length,
+      1,
+      `${id} should render one latest module when another story is available`,
     );
   }
 });
 
-check('article sidebar keeps the outline, author card, topics, and one latest module', () => {
-  const html = dist('posts/openai-ships-new-model/index.html');
-  const start = html.indexOf('class="article-sidebar"');
-  const end = html.indexOf('</aside>', start);
-  const latest = html.slice(start, end);
-  assert.ok(start >= 0 && end > start, 'Article sidebar missing');
+check('article layout splits the outline from the discovery sidebar', () => {
+  const html = dist(`posts/${primaryPostId}/index.html`);
+  const outlineStart = html.indexOf('class="article-outline"');
+  const outlineEnd = html.indexOf('</aside>', outlineStart);
+  const sidebarStart = html.indexOf('class="article-sidebar"');
+  const sidebarEnd = html.indexOf('</aside>', sidebarStart);
+  const outline = html.slice(outlineStart, outlineEnd);
+  const sidebar = html.slice(sidebarStart, sidebarEnd);
+  assert.ok(outlineStart >= 0 && outlineEnd > outlineStart, 'Article outline missing');
+  assert.ok(sidebarStart >= 0 && sidebarEnd > sidebarStart, 'Article sidebar missing');
   assert.equal(
-    (latest.match(/class="sidebar-section sidebar-(?:latest|trending|topic)(?:\s[^"]*)?"/g) || [])
+    (sidebar.match(/class="sidebar-section sidebar-(?:latest|trending|topic)(?:\s[^"]*)?"/g) || [])
       .length,
     2,
-    'exactly one topic and one latest module should render',
+    'exactly one topic module should render for the current story',
+  );
+  assert.equal(
+    (sidebar.match(/class="sidebar-section sidebar-latest(?:\s[^"]*)?"/g) || []).length,
+    1,
+    'exactly one latest module should render with another story available',
   );
   assert.match(
-    latest,
-    /class="sidebar-section sidebar-topic(?:\s[^"]*)?"/,
-    'sidebar should use the current story topic',
-  );
-  assert.match(
-    latest,
+    outline,
     /class="article-toc(?:\s[^"]*)?"/,
-    'sidebar should expose the story outline',
+    'left rail should expose the story outline',
   );
-  assert.match(latest, /class="article-rail-author"/, 'sidebar should expose the author context');
   assert.match(
-    latest,
-    /class="sidebar-section sidebar-latest(?:\s[^"]*)?"/,
-    'sidebar should expose one latest-story module',
+    sidebar,
+    /class="sidebar-section sidebar-topic(?:\s[^"]*)?"/,
+    'right sidebar should use the current story topic',
   );
-  assert.ok(!latest.includes('sidebar-explore'), 'competing exploration module should be removed');
-  assert.ok(!latest.includes('sidebar-subscribe'), 'subscription module should be removed');
+  assert.ok(sidebar.includes('sidebar-latest'), 'latest module should show the other story');
+  assert.ok(
+    !sidebar.includes('article-rail-author'),
+    'author card should not be in the right rail',
+  );
+  assert.ok(!sidebar.includes('article-toc'), 'table of contents should not be in the right rail');
+  assert.ok(!sidebar.includes('sidebar-explore'), 'competing exploration module should be removed');
+  assert.ok(!sidebar.includes('sidebar-subscribe'), 'subscription module should be removed');
   assert.ok(
     !src('src/components/ArticleLatest.astro').includes('Math.random()'),
     'sidebar module choice should be deterministic',
   );
 });
 
-check('standalone and stream Suggested Reads both render four cards', () => {
-  const standalone = dist('posts/openai-ships-new-model/index.html');
-  const stream = dist('posts/welcome-to-ai-snap/fragment/index.html');
-  assert.equal((standalone.match(/class="suggested-story"/g) || []).length, 4);
-  assert.equal((stream.match(/class="suggested-story"/g) || []).length, 4);
+check('article outline tracks the reader without underline-only hover state', () => {
+  const html = dist(`posts/${primaryPostId}/index.html`);
+  const outlineStart = html.indexOf('class="article-outline"');
+  const outlineEnd = html.indexOf('</aside>', outlineStart);
+  const outline = html.slice(outlineStart, outlineEnd);
+  assert.match(outline, /data-article-toc/);
+  assert.match(outline, /data-toc-link/);
+  assert.match(outline, /data-toc-target="terra-is-the-middle-option"/);
+
+  const script = src('src/scripts/article-toc.ts');
+  assert.match(script, /IntersectionObserver|requestAnimationFrame/);
+  assert.match(script, /aria-current/);
+  assert.match(script, /is-current/);
+  assert.match(script, /window\.scrollTo/);
+  assert.match(script, /const activeIndex = links\.indexOf\(link\)/);
+  assert.match(script, /pushState/);
+  assert.match(script, /articleTocBound/);
+
+  const css = sourceStyles();
+  assert.match(css, /\.article-toc li\.is-current/);
+  assert.match(css, /\.article-toc a\.is-current/);
+  assert.match(css, /\.article \.prose h2\[id\][\s\S]*scroll-margin-top/);
+  const tocHover = css.match(/\.article-toc a:hover,[\s\S]*?\n\}/)?.[0] ?? '';
+  assert.doesNotMatch(tocHover, /text-decoration:\s*underline/);
+});
+
+check('standalone and stream Suggested Reads use the available candidates', () => {
+  const standalone = dist(`posts/${primaryPostId}/index.html`);
+  const stream = dist(`posts/${primaryPostId}/fragment/index.html`);
+  const suggestedLimit = Math.min(sourcePosts().length - 1, 4);
+  assert.equal((standalone.match(/class="suggested-story"/g) || []).length, suggestedLimit);
+  assert.equal((stream.match(/class="suggested-story"/g) || []).length, suggestedLimit);
   assert.match(
     src('src/pages/posts/[id]/fragment.astro'),
     /getSuggestedPosts\(post, allPosts, 4\)/,
@@ -1765,10 +1918,15 @@ check('standalone and stream Suggested Reads both render four cards', () => {
 check('article sidebar uses the approved responsive layout', () => {
   const css = sourceStyles();
   const layout = css.match(/\.article-layout\s*\{([\s\S]*?)\n\}/);
+  const outline = css.match(/\.article-outline\s*\{([\s\S]*?)\n\}/);
   const sidebar = css.match(/\.article-sidebar\s*\{([\s\S]*?)\n\}/);
-  assert.ok(layout && sidebar);
-  assert.match(layout[1], /grid-template-columns:\s*minmax\(0, 1fr\) 380px/);
-  assert.match(layout[1], /gap:\s*52px/);
+  assert.ok(layout && outline && sidebar);
+  assert.match(
+    layout[1],
+    /grid-template-columns:\s*minmax\(180px, 220px\) minmax\(0, 1fr\) minmax\(280px, 340px\)/,
+  );
+  assert.match(layout[1], /gap:\s*40px/);
+  assert.match(outline[1], /position:\s*sticky/);
   assert.match(sidebar[1], /position:\s*sticky/);
   assert.match(
     css,
@@ -1778,6 +1936,10 @@ check('article sidebar uses the approved responsive layout', () => {
   assert.match(
     css,
     /@media \(max-width: 900px\)[\s\S]*?\.article-sidebar\s*\{[\s\S]*?position:\s*static/,
+  );
+  assert.match(
+    css,
+    /@media \(max-width: 900px\)[\s\S]*?\.article-outline,\s*\.article-sidebar\s*\{[\s\S]*?position:\s*static/,
   );
   assert.match(
     css,
@@ -1792,24 +1954,56 @@ check('article sidebar uses the approved responsive layout', () => {
   assert.match(css, /\.article-sidebar-module\s*>\s*summary::after/);
 });
 
+check('article metadata cannot overlap save and share controls', () => {
+  const css = sourceStyles();
+  const details = css.match(/\.article-meta-details \.label\s*\{([\s\S]*?)\n\}/);
+  const actions = css.match(/\.article-actions\s*\{([\s\S]*?)\n\}/);
+  assert.ok(details && actions, 'article metadata rules are missing');
+  assert.match(details[1], /white-space:\s*normal/);
+  assert.match(details[1], /overflow-wrap:\s*anywhere/);
+  assert.match(actions[1], /flex-shrink:\s*0/);
+});
+
 check('author pages render profiles and every authored story newest first', () => {
-  assert.ok(distExists('authors/ai-snap-editorial/index.html'));
-  const html = dist('authors/ai-snap-editorial/index.html');
+  assert.ok(distExists('authors/tejas-telkar/index.html'));
+  const html = dist('authors/tejas-telkar/index.html');
   assert.ok(html.includes('class="author-profile"'));
-  assert.ok(html.includes('AI Snap Editorial'));
-  assert.ok(html.includes('Editorial Desk'));
-  assert.ok(html.includes('<strong>11</strong>'));
-  assert.ok(html.includes('published stories'));
+  assert.ok(html.includes('Tejas Telkar'));
+  assert.ok(html.includes('Writer and editor'));
+  assert.ok(html.includes('class="label author-story-tag">Explainers'));
+  assert.ok(html.includes(`<strong>${sourcePosts().length}</strong>`));
+  assert.ok(html.includes('Published stories'));
 
   const urls = [...html.matchAll(/class="author-story" href="([^"]+)"/g)].map((match) => match[1]);
-  assert.equal(urls.length, 11);
-  assert.equal(urls[0], '/posts/openai-ships-new-model/');
-  assert.equal(urls[10], '/posts/copilot-pricing-tracker/');
+  assert.equal(urls.length, sourcePosts().length);
+  assert.equal(urls[0], `/posts/${quaternaryPostId}/`);
+  assert.equal(urls.at(-1), `/posts/${secondaryPostId}/`);
 
   const schemas = [
     ...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g),
   ].map((match) => JSON.parse(match[1]));
   assert.ok(schemas.some((schema) => schema['@type'] === 'Person'));
+});
+
+check('author layouts preserve profile text and full lead covers', () => {
+  const css = sourceStyles();
+  assert.match(css, /\.author-profile\s*>\s*\*\s*\{[\s\S]*?min-width:\s*0/);
+  assert.match(
+    css,
+    /\.author-profile-bio\s*\{[\s\S]*?max-width:\s*100%[\s\S]*?overflow-wrap:\s*break-word/,
+  );
+  assert.match(
+    css,
+    /\.author-story-grid\s*>\s*\.author-story:first-child\s+img\s*\{[\s\S]*?aspect-ratio:\s*auto[\s\S]*?object-fit:\s*contain/,
+  );
+  assert.match(
+    css,
+    /@media \(max-width: 900px\)[\s\S]*?\.primary-bar-actions\s*\{[\s\S]*?order:\s*2[\s\S]*?\}/,
+  );
+  assert.match(
+    css,
+    /@media \(max-width: 900px\)[\s\S]*?\.primary-bar-nav\s*\{[\s\S]*?flex:\s*0 1 auto/,
+  );
 });
 
 check('footer renders editorial navigation, wordmark, columns and base line', () => {
@@ -1828,15 +2022,28 @@ check('footer renders editorial navigation, wordmark, columns and base line', ()
   assert.ok(footer.includes('class="footer-wordmark"'), 'missing wordmark');
   assert.ok(footer.includes('class="footer-columns"'), 'missing link columns');
   assert.match(footer, /All rights reserved/, 'missing copyright line');
-  // Only link pages that exist — About/Privacy/Terms aren't built yet.
+  assert.ok(footer.includes('href="/about/"'), 'footer should link editorial standards');
   assert.ok(
-    !/href="\/(about|privacy|terms|contact)\/?"/.test(footer),
+    !/href="\/(privacy|terms|contact)\/?"/.test(footer),
     'footer links a page that is not built',
   );
   const footerRule = css.match(/\.site-footer\s*\{([\s\S]*?)\n\}/);
   assert.ok(footerRule, 'footer styles are missing');
   assert.match(footerRule[1], /background:\s*var\(--text\)/);
   assert.match(footerRule[1], /color:\s*var\(--bg\)/);
+});
+
+check('footer link rail fills the editorial intro without leaving empty rows', () => {
+  const css = sourceStyles();
+  const footerIntro = css.match(/\.footer-intro\s*\{([\s\S]*?)\n\}/);
+  const footerLinks = css.match(/\.footer-cta-links\s*\{([\s\S]*?)\n\}/);
+  const footerHeadline = css.match(/\.footer-headline\s*\{([\s\S]*?)\n\}/);
+  assert.ok(footerIntro && footerLinks && footerHeadline);
+  assert.match(footerIntro[1], /align-items:\s*start/);
+  assert.match(footerLinks[1], /grid-template-rows:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(footerLinks[1], /align-self:\s*stretch/);
+  assert.match(footerHeadline[1], /max-width:\s*15ch/);
+  assert.match(css, /\.footer-cta-links\s*\{[\s\S]*?grid-template-rows:\s*none/);
 });
 
 check('inactive subscription and event promos are absent from the public site', () => {
@@ -1881,7 +2088,7 @@ check('search indexes article bodies only, not listing pages or nav chrome', () 
   // With data-pagefind-body present anywhere, Pagefind indexes only pages
   // carrying it — keeping /, /trending/ and /tag/* out of the results and
   // excerpts free of masthead/nav text.
-  const post = dist('posts/welcome-to-ai-snap/index.html');
+  const post = dist(`posts/${primaryPostId}/index.html`);
   assert.ok(
     post.includes('data-pagefind-body'),
     'article body is not marked as the Pagefind index root',
@@ -1921,9 +2128,22 @@ check('no eager Pagefind/component-ui script or stylesheet in the homepage', () 
 
 check('astro.config.mjs preserves site, sitemap, and image.remotePatterns config', () => {
   const config = src('astro.config.mjs');
-  assert.match(config, /site:\s*['"]https:\/\/aisnap\.in['"]/);
+  assert.match(config, /site:\s*['"]https:\/\/aipresshq\.com['"]/);
   assert.match(config, /sitemap\(/);
   assert.match(config, /remotePatterns/);
+});
+
+check('generated pages use the AIPressHQ public identity', () => {
+  const htmlFiles = filesUnder(new URL('../dist/', import.meta.url)).filter((file) =>
+    file.pathname.endsWith('.html'),
+  );
+
+  assert.ok(htmlFiles.length > 0, 'no generated HTML files found for brand verification');
+  for (const file of htmlFiles) {
+    const html = readFileSync(file, 'utf-8');
+    assert.ok(!html.includes('AI Snap'), `${file.pathname} still exposes the old AI Snap brand`);
+    assert.ok(!html.includes('aisnap.in'), `${file.pathname} still exposes the old site domain`);
+  }
 });
 
 check('responsive CSS: stage collapses and categories use a contained responsive grid', () => {
@@ -1964,8 +2184,12 @@ check('responsive CSS: stage collapses and categories use a contained responsive
   assert.ok(mobile, 'missing mobile header rules');
   assert.match(
     mobile[1],
-    /\.category-menu\s*\{[\s\S]*?flex:\s*1 1 100%/,
-    'Categories should drop to its own full-width row rather than crowd the tabs',
+    /\.primary-bar-nav\s*\{[\s\S]*?flex-wrap:\s*wrap/,
+    'primary bar nav should wrap as a fallback rather than overflow',
+  );
+  assert.ok(
+    !/\.category-menu\s*\{[\s\S]*?flex:\s*1 1 100%/.test(mobile[1]),
+    'Categories should stay inline with the tabs instead of stretching onto its own full-width row',
   );
 
   const narrowest = css.match(/@media \(max-width: 360px\) \{([\s\S]*?)\n\}/);
@@ -1974,11 +2198,6 @@ check('responsive CSS: stage collapses and categories use a contained responsive
     narrowest[1],
     /\.primary-bar-nav\s*\{[\s\S]*?flex-wrap:\s*wrap/,
     'primary bar nav should wrap rather than crowd tabs and Categories onto one line',
-  );
-  assert.match(
-    narrowest[1],
-    /\.section-links\s*\{[\s\S]*?flex:\s*1 1 100%/,
-    'primary sections should claim a full row when they wrap',
   );
 });
 

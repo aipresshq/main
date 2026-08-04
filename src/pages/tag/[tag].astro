@@ -5,7 +5,7 @@ import CategoryFront from '../../components/CategoryFront.astro';
 import { formatEditionDate } from '../../lib/date';
 import { sortPostsNewestFirst } from '../../lib/post-order';
 import { slugify } from '../../lib/slug';
-import { knownTopics } from '../../lib/topics';
+import { getTopicDescription, knownTopics } from '../../lib/topics';
 
 export async function getStaticPaths() {
   const allPosts = await getCollection('posts');
@@ -26,14 +26,14 @@ const posts = sortPostsNewestFirst(allPosts.filter((p) => p.data.tags.includes(t
 ---
 
 <BaseLayout
-  title={`${tag} | AI Snap`}
-  description={`Latest AI Snap coverage tagged ${tag}.`}
+  title={`${tag} | AIPressHQ`}
+  description={`Latest AIPressHQ coverage tagged ${tag}.`}
   activeTag={tag}
   editionDate={posts[0] && formatEditionDate(posts[0].data.pubDate)}
 >
   <CategoryFront
     title={tag}
-    description={`Latest AI Snap coverage tagged ${tag}, with concise reporting, practical context, and the primary sources behind each story.`}
+    description={getTopicDescription(tag)}
     posts={posts}
     emptyNote={`No stories tagged ${tag} yet.`}
   />

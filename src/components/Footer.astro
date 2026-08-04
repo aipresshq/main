@@ -1,6 +1,7 @@
 ---
 import { slugify } from '../lib/slug';
 import { topicGroups } from '../lib/topics';
+import BrandMark from './BrandMark.astro';
 
 export interface Props {}
 
@@ -21,13 +22,15 @@ const year = new Date().getFullYear();
 
 <footer class="site-footer" data-pagefind-ignore>
   <div class="footer-topline">
-    <span class="label">AI Snap / Daily AI News</span>
+    <span class="label">AIPressHQ / Daily AI News</span>
     <span class="footer-topline-note">Source-linked reporting / Human-reviewed publishing</span>
   </div>
 
   <div class="footer-intro">
     <div class="footer-intro-copy">
-      <a href="/" class="footer-wordmark" aria-label="AI Snap home">AI Snap</a>
+      <a href="/" class="footer-wordmark" aria-label="AIPressHQ home">
+        <BrandMark />
+      </a>
       <h2 class="footer-headline">Context for the fast-moving AI desk.</h2>
       <p>
         Clear reporting, practical explainers, and trackers for the products and companies shaping
@@ -75,14 +78,16 @@ const year = new Date().getFullYear();
     <section class="footer-column">
       <h3>Explore</h3>
       <ul>
-        <li><a href="/authors/ai-snap-editorial/">AI Snap Editorial</a></li>
+        <li><a href="/authors/tejas-telkar/">Tejas Telkar</a></li>
+        <li><a href="/about/">Our method</a></li>
+        <li><a href="/saved/">Saved stories</a></li>
         <li><a href="/sitemap-index.xml">Sitemap</a></li>
       </ul>
     </section>
   </div>
 
   <div class="footer-base">
-    <span>© {year} AI Snap. All rights reserved.</span>
+    <span>© {year} AIPressHQ. All rights reserved.</span>
     <span>Built for reading, not noise.</span>
   </div>
 </footer>

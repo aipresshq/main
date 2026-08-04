@@ -88,15 +88,13 @@
 }
 
 .category-featured-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.75fr);
-  gap: 36px;
+  display: block;
 }
 
 .category-featured-lead {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(240px, 0.75fr);
-  gap: 28px;
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
+  gap: 40px;
   align-items: start;
   padding-bottom: 24px;
   border-bottom: 1px solid var(--border);
@@ -231,6 +229,41 @@
   border-bottom: 1px solid var(--border);
 }
 
+.category-feed-filters {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 18px;
+}
+
+.category-format-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.category-format-filter select {
+  min-height: 32px;
+  padding: 5px 28px 5px 9px;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  font: 600 0.72rem/1 var(--font-body);
+}
+
+.category-format-filter select:focus-visible {
+  outline: 2px solid var(--mark);
+  outline-offset: 3px;
+}
+
 .category-toggle {
   display: inline-flex;
   align-items: center;
@@ -339,6 +372,34 @@
 .category-story-read {
   display: block;
   margin-top: 12px;
+}
+
+.category-load-more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-width: 220px;
+  margin-top: 22px;
+  padding: 12px 0 8px;
+  border: 0;
+  border-bottom: 2px solid var(--text);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font: 700 0.76rem/1 var(--font-body);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.category-load-more:hover,
+.category-load-more:focus-visible {
+  opacity: 0.68;
+}
+
+.category-load-more:focus-visible {
+  outline: 2px solid var(--mark);
+  outline-offset: 4px;
 }
 
 .category-story:hover h2 {
@@ -510,4 +571,16 @@
 .category-empty p {
   margin: 0;
   color: var(--text-muted);
+}
+
+.category-empty-link {
+  display: inline-flex;
+  gap: 12px;
+  margin-top: 22px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--text);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }

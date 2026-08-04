@@ -18,6 +18,10 @@
   color: var(--band-ink);
 }
 
+.author-profile > * {
+  min-width: 0;
+}
+
 .author-profile-portrait {
   align-self: start;
 }
@@ -49,8 +53,8 @@
 
 .author-profile h1 {
   margin: 12px 0 5px;
-  font-size: clamp(3rem, 6vw, 6.4rem);
-  line-height: 0.9;
+  font-size: clamp(2.8rem, 4.8vw, 5rem);
+  line-height: 0.94;
   letter-spacing: -0.035em;
 }
 
@@ -65,12 +69,14 @@
 }
 
 .author-profile-bio {
-  max-width: 60ch;
+  width: min(100%, 60ch);
+  max-width: 100%;
   margin: 18px 0 0;
   font-size: 1rem;
   line-height: 1.65;
   color: currentColor;
   opacity: 0.78;
+  overflow-wrap: break-word;
 }
 
 .author-profile-aside {
@@ -173,12 +179,14 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 48px 24px;
+  min-width: 0;
 }
 
 .author-story {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  max-width: 100%;
 }
 
 .author-story img {
@@ -194,7 +202,7 @@
 
 .author-story-title {
   margin: 8px 0 0;
-  font-size: clamp(1.4rem, 2vw, 2rem);
+  font-size: clamp(1.35rem, 1.8vw, 1.8rem);
   line-height: 1.06;
 }
 
@@ -203,6 +211,7 @@
   font-size: 0.92rem;
   line-height: 1.55;
   color: var(--text-muted);
+  overflow-wrap: break-word;
 }
 
 .author-story-meta {
@@ -216,12 +225,6 @@
   color: var(--text-muted);
 }
 
-.author-story:hover .author-story-title {
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 4px;
-}
-
 .author-story:hover img {
   transform: scale(1.015);
 }
@@ -231,4 +234,246 @@
   padding: 32px 0;
   color: var(--text-muted);
   border-bottom: 1px solid var(--border);
+}
+
+/* Saved stories are intentionally a reading list, not another content feed. */
+.saved-page {
+  margin-top: 56px;
+}
+
+.saved-page-header {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(260px, 0.6fr);
+  gap: 48px;
+  align-items: end;
+  padding-bottom: 42px;
+}
+
+.saved-page-header .label {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.saved-page-header h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(3.4rem, 7vw, 6.2rem);
+  font-weight: 500;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+}
+
+.saved-page-header p {
+  max-width: 42ch;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.saved-page-rule {
+  height: 8px;
+  margin: 0 calc(-1 * var(--gutter)) 42px;
+  background: var(--text);
+}
+
+.saved-page-list {
+  display: grid;
+  max-width: 940px;
+  margin-inline: auto;
+}
+
+.saved-page-item {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr) auto;
+  gap: 24px;
+  align-items: center;
+  padding: 22px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.saved-page-item img {
+  width: 180px;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+.saved-page-item-copy {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.saved-page-item-copy .label {
+  color: var(--mark);
+}
+
+.saved-page-item-copy a {
+  font-family: var(--font-display);
+  font-size: clamp(1.35rem, 2vw, 1.9rem);
+  line-height: 1.08;
+}
+
+.saved-page-item-copy a:hover,
+.saved-page-item-copy a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.saved-page-item-copy time {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+}
+
+.saved-page-item .saved-item-remove {
+  width: auto;
+  min-width: 78px;
+  padding: 8px 10px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.saved-page-empty,
+.saved-page-no-script {
+  margin: 0;
+  padding: 36px 0;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.saved-page-no-script {
+  max-width: 940px;
+  margin: 20px auto 0;
+}
+
+.standards-page,
+.not-found-page {
+  margin-top: 56px;
+}
+
+.standards-header {
+  max-width: 920px;
+  padding-bottom: 48px;
+  border-bottom: 2px solid var(--text);
+}
+
+.standards-header .label,
+.standards-card .label,
+.standards-note .label,
+.not-found-page > .label {
+  display: block;
+  margin-bottom: 12px;
+}
+
+.standards-header h1,
+.not-found-page h1 {
+  max-width: 15ch;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(3.4rem, 7vw, 6.2rem);
+  font-weight: 500;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+}
+
+.standards-header p {
+  max-width: 64ch;
+  margin: 24px 0 0;
+  color: var(--text-muted);
+  font-size: 1.08rem;
+  line-height: 1.65;
+}
+
+.standards-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 48px;
+  max-width: 1040px;
+  margin: 52px auto 0;
+}
+
+.standards-card {
+  padding: 26px 0 30px;
+  border-bottom: 1px solid var(--border);
+}
+
+.standards-card .label {
+  color: var(--text-muted);
+}
+
+.standards-card h2 {
+  max-width: 16ch;
+  margin: 0 0 14px;
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 2.6vw, 2.5rem);
+  font-weight: 500;
+  line-height: 1;
+}
+
+.standards-card p,
+.standards-note p {
+  max-width: 54ch;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.94rem;
+  line-height: 1.65;
+}
+
+.standards-note {
+  max-width: 1040px;
+  margin: 64px auto 0;
+  padding: 30px 32px 32px;
+  border-left: 4px solid var(--text);
+  background: var(--surface);
+}
+
+.standards-note h2 {
+  margin: 0 0 12px;
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 3vw, 2.7rem);
+  font-weight: 500;
+  line-height: 1;
+}
+
+.not-found-page {
+  max-width: 900px;
+  padding: 72px 0 120px;
+  border-top: 2px solid var(--text);
+}
+
+.not-found-page p {
+  max-width: 48ch;
+  margin: 24px 0 30px;
+  color: var(--text-muted);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.not-found-links {
+  display: grid;
+  max-width: 460px;
+}
+
+.not-found-links a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-top: 1px solid var(--border);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.not-found-links a:last-child {
+  border-bottom: 1px solid var(--border);
+}
+
+.not-found-links a:hover,
+.not-found-links a:focus-visible {
+  opacity: 0.68;
 }

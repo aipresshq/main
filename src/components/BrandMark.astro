@@ -1,0 +1,27 @@
+---
+export interface Props {
+  compact?: boolean;
+  class?: string;
+}
+
+const { compact = false, class: className } = Astro.props;
+---
+
+<span class:list={['brand-mark', className, { 'brand-mark-compact': compact }]} aria-hidden="true">
+  <img
+    class="brand-logo brand-logo-light"
+    src="/brand/aipresshq-logo-light.png?v=3"
+    width="1333"
+    height="296"
+    alt=""
+    decoding="async"
+  />
+  <img
+    class="brand-logo brand-logo-dark"
+    src="/brand/aipresshq-logo-dark.png?v=3"
+    width="1333"
+    height="296"
+    alt=""
+    decoding="async"
+  />
+</span>

@@ -1,5 +1,8 @@
 ---
 import type { CollectionEntry } from 'astro:content';
+import { formatLabel } from '../lib/formats';
+import { readMinutes } from '../lib/read-time';
+import CoverImage from './CoverImage.astro';
 
 export type Props =
   | {
@@ -31,10 +34,15 @@ const headingId = `suggested-reads-${articleId ?? variant}`;
       <div class="suggested-reads-grid">
         {posts.map((post) => (
           <a class="suggested-story" href={`/posts/${post.id}/`}>
-            <img src={post.data.cover} alt={post.data.coverAlt} loading="lazy" />
+            <CoverImage
+              src={post.data.cover}
+              alt={post.data.coverAlt}
+              sizes="(max-width: 620px) 100vw, (max-width: 900px) 50vw, 25vw"
+            />
             <span class="suggested-story-body">
-              <span class="label suggested-story-tag">{post.data.tags[0]}</span>
+              <span class="label suggested-story-tag">{formatLabel(post.data.format)}</span>
               <span class="suggested-story-title">{post.data.title}</span>
+              <span class="suggested-story-meta">{readMinutes(post)} min read</span>
             </span>
           </a>
         ))}

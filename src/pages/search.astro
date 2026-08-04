@@ -1,0 +1,69 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="Search | AIPressHQ"
+  description="Search AIPressHQ's source-linked reporting, explainers, comparisons, and trackers."
+>
+  <section class="search-page" aria-labelledby="search-page-title" data-pagefind-ignore>
+    <header class="search-page-header">
+      <div>
+        <span class="label">Find a story</span>
+        <h1 id="search-page-title">Search the edition</h1>
+      </div>
+      <p>Search across the reporting, explainers, comparisons, and trackers in AIPressHQ.</p>
+    </header>
+
+    <form class="search-page-form" data-search-page-form role="search">
+      <label for="search-page-input">Search stories</label>
+      <div class="search-page-field">
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          aria-hidden="true"
+        >
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="m21 21-4.35-4.35"></path>
+        </svg>
+        <input
+          id="search-page-input"
+          data-search-page-input
+          type="search"
+          placeholder="Try OpenAI, limits, models..."
+          autocomplete="off"
+          spellcheck="false"
+          role="combobox"
+          aria-controls="search-page-results"
+          aria-expanded="true"
+          aria-autocomplete="list"
+        />
+        <button type="submit">Search</button>
+      </div>
+    </form>
+
+    <div
+      class="search-page-results"
+      id="search-page-results"
+      data-search-page-results
+      role="listbox"
+      aria-label="Search results"
+    >
+      <div class="search-results-head" role="presentation">
+        <span>Search the edition</span>
+      </div>
+      <p class="search-status">Enter a company, product, or question to find a story.</p>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import { initSearchPage } from '../scripts/search-page';
+
+  initSearchPage();
+</script>

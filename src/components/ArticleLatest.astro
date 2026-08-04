@@ -1,8 +1,9 @@
 ---
-import { getEntry, render, type CollectionEntry } from 'astro:content';
+import type { CollectionEntry } from 'astro:content';
 import { formatPostDate } from '../lib/date';
-import { getAuthorId } from '../lib/author-reference';
+import { formatLabel } from '../lib/formats';
 import { slugify } from '../lib/slug';
+import CoverImage from './CoverImage.astro';
 
 export interface Props {
   posts: CollectionEntry<'posts'>[];
@@ -10,51 +11,13 @@ export interface Props {
 }
 
 const { posts, currentPost } = Astro.props;
-const { headings } = await render(currentPost);
-const tocHeadings = headings.filter((heading) => heading.depth === 2);
-const authorId = getAuthorId(currentPost.data.author);
-const currentAuthor = await getEntry('authors', authorId);
-if (!currentAuthor) {
-  throw new Error(`Missing author profile for post: ${currentPost.id} (author: ${authorId})`);
-}
 
-const tocId = `article-toc-${currentPost.id}`;
 const topicId = `article-topics-${currentPost.id}`;
 const latestId = `article-latest-${currentPost.id}`;
+const topicLinks = [...new Set([formatLabel(currentPost.data.format), ...currentPost.data.tags])];
 ---
 
 <aside class="article-sidebar" aria-label="Article sidebar" data-pagefind-ignore>
-  <details
-    class="article-toc article-sidebar-module"
-    data-mobile-sidebar
-    open
-    aria-labelledby={tocId}
-  >
-    <summary class="article-rail-heading">
-      <span class="label article-rail-eyebrow">Read the story</span>
-      <h2 id={tocId}>In this story</h2>
-    </summary>
-    <ol>
-      {
-        tocHeadings.map((heading) => (
-          <li>
-            <a href={`#${heading.slug}`}>{heading.text}</a>
-          </li>
-        ))
-      }
-      <li><a href={`#why-it-matters-${currentPost.id}`}>Why it matters</a></li>
-    </ol>
-  </details>
-
-  <a class="article-rail-author" href={`/authors/${currentAuthor.id}/`}>
-    <img src={currentAuthor.data.avatar} alt="" loading="lazy" />
-    <span>
-      <span class="label">Written by</span>
-      <strong>{currentAuthor.data.name}</strong>
-      <span>{currentAuthor.data.role}</span>
-    </span>
-  </a>
-
   <details
     class="sidebar-section sidebar-topic article-sidebar-module"
     data-mobile-sidebar
@@ -67,9 +30,15 @@ const latestId = `article-latest-${currentPost.id}`;
     </summary>
     <nav class="article-topic-links" id={topicId} aria-label="Story topics">
       {
-        currentPost.data.tags.map((tag) => (
-          <a href={`/tag/${slugify(tag)}/`}>
-            <span>{tag}</span>
+        topicLinks.map((topic) => (
+          <a
+            href={
+              topic === formatLabel(currentPost.data.format)
+                ? `/format/${currentPost.data.format}/`
+                : `/tag/${slugify(topic)}/`
+            }
+          >
+            <span>{topic}</span>
             <span aria-hidden="true">-&gt;</span>
           </a>
         ))
@@ -92,9 +61,9 @@ const latestId = `article-latest-${currentPost.id}`;
         <div class="latest-list">
           {posts.slice(0, 3).map((entry) => (
             <a class="latest-story" href={`/posts/${entry.id}/`}>
-              <img src={entry.data.cover} alt="" loading="lazy" />
+              <CoverImage src={entry.data.cover} alt="" sizes="(max-width: 900px) 120px, 96px" />
               <span class="latest-story-copy">
-                <span class="latest-story-tag label">{entry.data.tags[0]}</span>
+                <span class="latest-story-tag label">{formatLabel(entry.data.format)}</span>
                 <span class="latest-story-title">{entry.data.title}</span>
                 <span class="latest-story-meta">{formatPostDate(entry.data.pubDate)}</span>
               </span>

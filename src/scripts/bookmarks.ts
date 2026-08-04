@@ -6,6 +6,9 @@ interface SavedStory {
   title: string;
   url: string;
   savedAt: number;
+  cover?: string;
+  topic?: string;
+  date?: string;
 }
 
 function readSavedStories(): SavedStory[] {
@@ -21,7 +24,10 @@ function readSavedStories(): SavedStory[] {
         typeof story.id === 'string' &&
         typeof story.title === 'string' &&
         typeof story.url === 'string' &&
-        typeof story.savedAt === 'number',
+        typeof story.savedAt === 'number' &&
+        (story.cover === undefined || typeof story.cover === 'string') &&
+        (story.topic === undefined || typeof story.topic === 'string') &&
+        (story.date === undefined || typeof story.date === 'string'),
     );
   } catch {
     return volatileSavedStories;
@@ -52,43 +58,77 @@ function syncBookmarkButtons(stories: SavedStory[]) {
   });
 }
 
-function renderSavedList(stories: SavedStory[]) {
-  const list = document.querySelector<HTMLElement>('[data-saved-list]');
-  const count = document.querySelector<HTMLElement>('[data-saved-count]');
-  const summary = document.querySelector<HTMLElement>('[data-saved-summary]');
-  if (!list || !count || !summary) return;
-
-  count.textContent = String(stories.length);
-  count.hidden = stories.length === 0;
-  summary.textContent = `${stories.length} ${stories.length === 1 ? 'story' : 'stories'}`;
+function renderSavedListInto(list: HTMLElement, stories: SavedStory[], fullPage: boolean) {
   list.replaceChildren();
 
   if (stories.length === 0) {
     const empty = document.createElement('p');
-    empty.className = 'saved-empty';
-    empty.textContent = 'Save a story and it will appear here.';
+    empty.className = fullPage ? 'saved-page-empty' : 'saved-empty';
+    empty.textContent = fullPage
+      ? 'Your reading list is empty. Save a story from any article to keep it here.'
+      : 'Save a story and it will appear here.';
     list.append(empty);
     return;
   }
 
   stories.forEach((story) => {
     const item = document.createElement('div');
-    item.className = 'saved-item';
+    item.className = fullPage ? 'saved-page-item' : 'saved-item';
+
+    if (fullPage && story.cover) {
+      const image = document.createElement('img');
+      image.src = story.cover;
+      image.alt = '';
+      image.loading = 'lazy';
+      item.append(image);
+    }
+
+    const copy = document.createElement('div');
+    copy.className = fullPage ? 'saved-page-item-copy' : '';
+
+    if (fullPage && story.topic) {
+      const topic = document.createElement('span');
+      topic.className = 'label';
+      topic.textContent = story.topic;
+      copy.append(topic);
+    }
 
     const link = document.createElement('a');
     link.href = story.url;
     link.textContent = story.title;
+    copy.append(link);
+
+    if (fullPage && story.date) {
+      const date = document.createElement('time');
+      date.textContent = story.date;
+      date.dateTime = story.date;
+      copy.append(date);
+    }
 
     const remove = document.createElement('button');
     remove.type = 'button';
     remove.className = 'saved-item-remove';
     remove.dataset.bookmarkRemove = story.id;
     remove.setAttribute('aria-label', `Remove ${story.title} from saved stories`);
-    remove.textContent = '×';
+    remove.textContent = 'Remove';
 
-    item.append(link, remove);
+    item.append(copy, remove);
     list.append(item);
   });
+}
+
+function renderSavedList(stories: SavedStory[]) {
+  const count = document.querySelector<HTMLElement>('[data-saved-count]');
+  const summary = document.querySelector<HTMLElement>('[data-saved-summary]');
+  const compactList = document.querySelector<HTMLElement>('[data-saved-list]');
+  const pageList = document.querySelector<HTMLElement>('[data-saved-page-list]');
+  if (!count || !summary) return;
+
+  count.textContent = String(stories.length);
+  count.hidden = stories.length === 0;
+  summary.textContent = `${stories.length} ${stories.length === 1 ? 'story' : 'stories'}`;
+  if (compactList) renderSavedListInto(compactList, stories, false);
+  if (pageList) renderSavedListInto(pageList, stories, true);
 }
 
 function syncSavedUi() {
@@ -127,7 +167,18 @@ export function initBookmarks() {
     const isSaved = stories.some((story) => story.id === id);
     const next = isSaved
       ? stories.filter((story) => story.id !== id)
-      : [{ id, title, url, savedAt: Date.now() }, ...stories];
+      : [
+          {
+            id,
+            title,
+            url,
+            savedAt: Date.now(),
+            cover: button.dataset.bookmarkCover,
+            topic: button.dataset.bookmarkTopic,
+            date: button.dataset.bookmarkDate,
+          },
+          ...stories,
+        ];
     writeSavedStories(next);
     syncSavedUi();
   });

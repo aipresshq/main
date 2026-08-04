@@ -10,14 +10,14 @@ const posts = sortPostsNewestFirst(allPosts);
 ---
 
 <BaseLayout
-  title="Latest | AI Snap"
-  description="Every AI Snap story, newest first: launches, trackers, comparisons, and the daily digest."
+  title="Latest | AIPressHQ"
+  description="Every AIPressHQ story, newest first: launches, trackers, comparisons, and the daily digest."
   activeTab="latest"
   editionDate={posts[0] && formatEditionDate(posts[0].data.pubDate)}
 >
   <CategoryFront
     title="Latest"
-    description="Every story, newest first — the daily digest alongside trackers, comparisons, and explainers."
+    description="Every story, newest first: the daily digest alongside trackers, comparisons, and explainers."
     posts={posts}
     emptyNote="No stories published yet."
   />

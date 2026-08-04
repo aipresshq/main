@@ -13,6 +13,24 @@
   overflow: clip;
 }
 
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 120;
+  padding: 10px 14px;
+  transform: translateY(-160%);
+  background: var(--text);
+  color: var(--bg);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
 /* --------------------------------------------------------------------------
    Reading progress: a thin hairline fixed above everything else, on every
    page. It only fills in where there's an article (see the inline script in
@@ -62,7 +80,7 @@
   align-items: baseline;
   flex-wrap: wrap;
   gap: 10px;
-  padding: 9px 0;
+  padding: 12px 0 11px;
   font-size: 0.72rem;
 }
 
@@ -81,12 +99,39 @@
    single compact row with the nav and actions rather than standing alone. */
 .masthead-mark {
   flex-shrink: 0;
-  font-family: var(--font-masthead);
-  font-size: clamp(1.6rem, 2.8vw, 2.1rem);
-  font-weight: 400;
-  line-height: 1;
-  letter-spacing: -0.02em;
+  display: inline-flex;
+  align-items: center;
+  color: var(--band-ink);
   white-space: nowrap;
+}
+
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  color: currentColor;
+  font-family: var(--font-body);
+  font-size: clamp(1.55rem, 2.5vw, 2rem);
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.brand-logo {
+  display: block;
+  width: auto;
+  height: 1em;
+}
+
+.brand-logo-dark {
+  display: none;
+}
+
+html[data-theme='dark'] .brand-logo-light {
+  display: none;
+}
+
+html[data-theme='dark'] .brand-logo-dark {
+  display: block;
 }
 
 .theme-toggle {
@@ -196,7 +241,7 @@ html[data-theme='dark'] .theme-icon-moon {
   border-top-width: 3px;
   background: var(--bg);
   color: var(--text);
-  box-shadow: 10px 10px 0 var(--surface);
+  box-shadow: 0 16px 34px color-mix(in srgb, var(--text) 14%, transparent);
 }
 
 .search-box.is-open .search-results:not(:empty) {
@@ -265,8 +310,7 @@ html[data-theme='dark'] .theme-icon-moon {
 .search-result:hover strong,
 .search-result:focus-visible strong,
 .search-result.is-active strong {
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  color: var(--mark);
 }
 
 .search-result strong {
@@ -303,6 +347,142 @@ html[data-theme='dark'] .theme-icon-moon {
   color: var(--text-muted);
 }
 
+.search-recent {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.84rem;
+}
+
+.search-recent::before {
+  margin-right: 10px;
+  color: var(--text-muted);
+  content: 'Recent';
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.search-recent.is-active,
+.search-recent:hover {
+  background: var(--surface);
+  box-shadow: inset 3px 0 var(--text);
+}
+
+.search-recent:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: -2px;
+}
+
+.search-page {
+  margin-top: 56px;
+}
+
+.search-page-header {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(260px, 0.6fr);
+  gap: 48px;
+  align-items: end;
+  padding-bottom: 38px;
+}
+
+.search-page-header .label {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.search-page-header h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(3.2rem, 6.5vw, 6rem);
+  font-weight: 500;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+}
+
+.search-page-header p {
+  max-width: 42ch;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.search-page-form {
+  margin-bottom: 34px;
+}
+
+.search-page-form > label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.search-page-field {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 58px;
+  padding: 0 14px;
+  border: 1px solid var(--text);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.search-page-field input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font: 500 1rem/1 var(--font-body);
+}
+
+.search-page-field input::placeholder {
+  color: var(--text-muted);
+}
+
+.search-page-field button {
+  min-height: 38px;
+  padding: 0 16px;
+  border: 1px solid var(--text);
+  background: var(--text);
+  color: var(--bg);
+  cursor: pointer;
+  font: 700 0.7rem/1 var(--font-body);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.search-page-field button:hover,
+.search-page-field button:focus-visible {
+  background: transparent;
+  color: var(--text);
+}
+
+.search-page-field:focus-within {
+  outline: 2px solid var(--text);
+  outline-offset: 3px;
+}
+
+.search-page-results {
+  max-width: 980px;
+  border-top: 2px solid var(--text);
+}
+
+.search-page-results .search-result {
+  grid-template-columns: 36px minmax(0, 1fr);
+  padding: 20px 4px;
+}
+
 /* --------------------------------------------------------------------------
    Primary bar: a solid theme-aware band holding the masthead, primary nav,
    Categories dropdown, and header actions together in one sticky row.
@@ -317,7 +497,7 @@ html[data-theme='dark'] .theme-icon-moon {
   align-items: center;
   gap: 24px;
   margin: 0 calc(-1 * var(--gutter)) 32px;
-  padding: 0 var(--gutter);
+  padding: 6px var(--gutter);
   background: var(--band-bg);
   color: var(--band-ink);
   transition:
@@ -350,7 +530,7 @@ html[data-theme='dark'] .theme-icon-moon {
   position: relative;
   display: flex;
   align-items: center;
-  padding: 15px 18px;
+  padding: 17px 18px;
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -390,7 +570,7 @@ html[data-theme='dark'] .theme-icon-moon {
   align-items: center;
   gap: 8px;
   height: 100%;
-  padding: 15px 0;
+  padding: 17px 0;
   list-style: none;
   color: var(--band-ink-muted);
   cursor: pointer;
@@ -427,11 +607,33 @@ html[data-theme='dark'] .theme-icon-moon {
   top: 100%;
   right: 0;
   left: 0;
+  max-height: min(720px, calc(100svh - 104px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--band-ink-muted) transparent;
   padding: 40px var(--gutter) 44px;
   border-top: 1px solid var(--band-ink-muted);
   background: var(--band-bg);
   color: var(--band-ink);
   box-shadow: var(--shadow-raised);
+}
+
+/* Once navigation has initialized, escape the page shell's clipping context
+   and give the disclosure its own viewport-sized scroll surface. The
+   absolute rule above remains the no-JavaScript fallback. */
+html[data-navigation-ready='true'] .category-menu-panel {
+  position: fixed;
+  top: var(--category-menu-top, 0px);
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: calc(100dvh - var(--category-menu-top, 0px));
+  max-height: none;
+  overflow-x: hidden;
+  overflow-y: scroll;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+  touch-action: pan-y;
 }
 
 .category-menu-panel-head {
@@ -470,6 +672,65 @@ html[data-theme='dark'] .theme-icon-moon {
   gap: 0 48px;
   max-width: 1180px;
   margin: 0 auto;
+}
+
+.category-menu-formats {
+  max-width: 1180px;
+  margin: 36px auto 0;
+  padding-top: 28px;
+  border-top: 1px solid var(--band-ink-muted);
+}
+
+.category-menu-format-links {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 32px;
+}
+
+.category-menu-format-links a {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  min-width: 0;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--band-ink-muted);
+  color: var(--band-ink);
+}
+
+.category-menu-format-links a:hover,
+.category-menu-format-links a[aria-current='page'] {
+  color: var(--band-ink);
+}
+
+.category-menu-format-links a > span:first-child {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.category-menu-format-links strong {
+  font-size: 0.84rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.category-menu-format-links small {
+  max-width: 38ch;
+  color: var(--band-ink-muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.category-menu-format-links a > span:last-child {
+  flex-shrink: 0;
+  opacity: 0.65;
+  transition: transform 140ms ease;
+}
+
+.category-menu-format-links a:hover > span:last-child,
+.category-menu-format-links a:focus-visible > span:last-child {
+  transform: translateX(4px);
 }
 
 .category-menu-group h3 {
@@ -698,6 +959,25 @@ html[data-theme='dark'] .theme-icon-moon {
   font-size: 0.88rem;
 }
 
+.saved-menu-view {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--band-ink-muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.saved-menu-view:hover,
+.saved-menu-view:focus-visible {
+  opacity: 0.68;
+}
+
 /* --------------------------------------------------------------------------
    Footer: an inverted editorial closeout, kept separate from archive pages
    because it belongs to the shared site shell.
@@ -740,7 +1020,7 @@ html[data-theme='dark'] .theme-icon-moon {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(260px, 0.45fr);
   gap: 56px;
-  align-items: end;
+  align-items: start;
   padding: 46px 0 42px;
 }
 
@@ -749,16 +1029,36 @@ html[data-theme='dark'] .theme-icon-moon {
 }
 
 .footer-wordmark {
-  display: block;
+  display: inline-flex;
   width: fit-content;
   margin-bottom: 24px;
-  font-family: var(--font-masthead);
+  color: var(--bg);
+}
+
+.footer-wordmark .brand-mark {
   font-size: clamp(2.7rem, 5vw, 4.8rem);
-  line-height: 0.8;
+}
+
+/* The footer inverts the page theme: light mode gets an ink footer, while
+   dark mode gets a paper footer. Keep the supplied artwork legible on both. */
+.footer-wordmark .brand-logo-light {
+  display: none;
+}
+
+.footer-wordmark .brand-logo-dark {
+  display: block;
+}
+
+html[data-theme='dark'] .footer-wordmark .brand-logo-light {
+  display: block;
+}
+
+html[data-theme='dark'] .footer-wordmark .brand-logo-dark {
+  display: none;
 }
 
 .footer-headline {
-  max-width: 12ch;
+  max-width: 15ch;
   margin: 0;
   font-family: var(--font-display);
   font-size: clamp(2.4rem, 5vw, 5rem);
@@ -777,6 +1077,7 @@ html[data-theme='dark'] .theme-icon-moon {
 
 .footer-cta-links {
   display: grid;
+  grid-template-rows: repeat(4, minmax(0, 1fr));
   align-self: stretch;
 }
 
@@ -785,7 +1086,8 @@ html[data-theme='dark'] .theme-icon-moon {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 13px 0;
+  min-height: 64px;
+  padding: 18px 0;
   border-top: 1px solid color-mix(in srgb, var(--bg) 34%, transparent);
   color: var(--bg);
   font-size: 0.76rem;

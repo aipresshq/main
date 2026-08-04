@@ -1,0 +1,43 @@
+---
+import { render, type CollectionEntry } from 'astro:content';
+
+export interface Props {
+  currentPost: CollectionEntry<'posts'>;
+}
+
+const { currentPost } = Astro.props;
+const { headings } = await render(currentPost);
+const tocHeadings = headings.filter((heading) => heading.depth === 2);
+const tocId = `article-toc-${currentPost.id}`;
+---
+
+<aside
+  class="article-outline"
+  aria-label="Article outline"
+  data-article-toc
+  data-article-toc-for={currentPost.id}
+  data-pagefind-ignore
+>
+  <details
+    class="article-toc article-sidebar-module"
+    data-mobile-sidebar
+    open
+    aria-labelledby={tocId}
+  >
+    <summary class="article-rail-heading">
+      <span class="label article-rail-eyebrow">Read the story</span>
+      <h2 id={tocId}>In this story</h2>
+    </summary>
+    <ol>
+      {
+        tocHeadings.map((heading) => (
+          <li>
+            <a data-toc-link data-toc-target={heading.slug} href={`#${heading.slug}`}>
+              {heading.text}
+            </a>
+          </li>
+        ))
+      }
+    </ol>
+  </details>
+</aside>

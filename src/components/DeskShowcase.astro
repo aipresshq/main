@@ -2,6 +2,7 @@
 import type { CollectionEntry } from 'astro:content';
 import { formatPostDate } from '../lib/date';
 import { slugify } from '../lib/slug';
+import CoverImage from './CoverImage.astro';
 
 export interface TopicLink {
   label: string;
@@ -35,7 +36,11 @@ const headingId = `desk-showcase-${slugify(title)}`;
 
   <div class="desk-showcase-main">
     <a class="desk-showcase-lead" href={`/posts/${lead.id}/`}>
-      <img src={lead.data.cover} alt={lead.data.coverAlt} loading="lazy" />
+      <CoverImage
+        src={lead.data.cover}
+        alt={lead.data.coverAlt}
+        sizes="(max-width: 900px) 100vw, 50vw"
+      />
       <span class="desk-showcase-lead-copy">
         <span class="label">{lead.data.tags[0]}</span>
         <strong>{lead.data.title}</strong>
@@ -73,7 +78,11 @@ const headingId = `desk-showcase-${slugify(title)}`;
         {
           sidePosts.map((post) => (
             <a href={`/posts/${post.id}/`}>
-              <img src={post.data.cover} alt={post.data.coverAlt} loading="lazy" />
+              <CoverImage
+                src={post.data.cover}
+                alt={post.data.coverAlt}
+                sizes="(max-width: 900px) 50vw, 20vw"
+              />
               <span class="label">{post.data.tags[0]}</span>
               <strong>{post.data.title}</strong>
             </a>

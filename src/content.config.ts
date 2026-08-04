@@ -2,6 +2,11 @@ import { defineCollection, reference } from 'astro:content';
 import { z } from 'astro/zod';
 import { glob } from 'astro/loaders';
 
+const cover = z.string().min(1).refine(
+  (value) => value.startsWith('/') || z.url().safeParse(value).success,
+  'cover must be a root-relative asset path or an absolute URL',
+);
+
 const authors = defineCollection({
   loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/authors' }),
   schema: z.object({
@@ -29,16 +34,20 @@ const posts = defineCollection({
     pubDate: z.coerce.date(),
     updatedDate: z.coerce.date().optional(),
 
-    // §4 item 1: auto-generated header image + photo-credit-style caption.
-    // Stored as a full R2 URL (not a local asset) so images never bloat the
-    // git repo: see astro.config.mjs `image.remotePatterns`.
-    cover: z.url(),
+    // A stable editorial format makes the archive easier to scan than the
+    // older digest/evergreen/tracker publishing bucket alone.
+    format: z
+      .enum(['brief', 'explainer', 'comparison', 'tracker', 'analysis', 'tutorial'])
+      .default('brief'),
+
+    // §4 item 1: a remote editorial image or a local generated asset.
+    cover,
     coverAlt: z.string(),
     coverCredit: z.string().optional(),
 
-    // §4 item 4: the human-added "why it matters" take: the actual
-    // value-add that keeps a post outside the scaled-content-abuse definition.
-    whyItMatters: z.string(),
+    // Every story should give readers a quick, explicit answer before the
+    // longer body asks them to spend more time.
+    takeaways: z.array(z.string().min(1)).min(1).max(4),
 
     // §4 item 5: facts/comparison table with the site's own columns,
     // populated from primary-source facts (facts aren't copyrightable).
@@ -53,19 +62,7 @@ const posts = defineCollection({
       )
       .optional(),
 
-    // §4 item 6: short attributed quote + link out to the original source:
-    // never full-paragraph reproduction.
-    quote: z
-      .object({
-        text: z.string(),
-        attribution: z.string(),
-      })
-      .optional(),
-    sourceName: z.string(),
-    sourceUrl: z.url(),
-
-    // §4 item 7: fixed tag taxonomy: also drives §4 item 8's "Related"
-    // module (3 posts auto-matched by tag) at render time.
+    // Fixed tag taxonomy drives related-story matching at render time.
     tags: z.array(z.string()).min(1),
 
     // §2/§3: evergreen/tracker content is the traffic backbone, daily

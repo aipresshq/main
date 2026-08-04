@@ -13,8 +13,10 @@ interface PagefindModule {
 
 const PAGEFIND_URL = '/pagefind/pagefind.js';
 const RESULT_LIMIT = 8;
+const RECENT_SEARCHES_KEY = 'ai-snap-recent-searches';
+let pagefindPromise: Promise<PagefindModule> | undefined;
 
-function normalizeResultUrl(rawUrl: string | undefined): string | undefined {
+export function normalizeResultUrl(rawUrl: string | undefined): string | undefined {
   if (!rawUrl) return undefined;
 
   try {
@@ -26,7 +28,7 @@ function normalizeResultUrl(rawUrl: string | undefined): string | undefined {
   }
 }
 
-function appendSafeExcerpt(container: HTMLElement, excerpt: string | undefined) {
+export function appendSafeExcerpt(container: HTMLElement, excerpt: string | undefined) {
   if (!excerpt) return;
 
   const parsed = new DOMParser().parseFromString(`<div>${excerpt}</div>`, 'text/html').body
@@ -53,7 +55,7 @@ function appendSafeExcerpt(container: HTMLElement, excerpt: string | undefined) 
   });
 }
 
-function createResultsHeader(count: string): HTMLDivElement {
+export function createResultsHeader(count: string): HTMLDivElement {
   const header = document.createElement('div');
   header.className = 'search-results-head';
   header.setAttribute('role', 'presentation');
@@ -67,14 +69,14 @@ function createResultsHeader(count: string): HTMLDivElement {
   return header;
 }
 
-function createStatus(message: string): HTMLParagraphElement {
+export function createStatus(message: string): HTMLParagraphElement {
   const status = document.createElement('p');
   status.className = 'search-status';
   status.textContent = message;
   return status;
 }
 
-function createSearchResult(
+export function createSearchResult(
   entry: Awaited<ReturnType<PagefindEntry['data']>>,
   index: number,
 ): HTMLAnchorElement | undefined {
@@ -105,6 +107,63 @@ function createSearchResult(
   return link;
 }
 
+export function loadPagefind() {
+  if (!pagefindPromise) {
+    pagefindPromise = import(/* @vite-ignore */ PAGEFIND_URL).then(async (module) => {
+      const pagefind = module as unknown as PagefindModule;
+      await pagefind.init();
+      return pagefind;
+    });
+  }
+  return pagefindPromise;
+}
+
+function readRecentSearches(): string[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(RECENT_SEARCHES_KEY) ?? '[]');
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((query): query is string => typeof query === 'string').slice(0, 5);
+  } catch {
+    return [];
+  }
+}
+
+export function rememberRecentSearch(query: string) {
+  const normalized = query.trim().replace(/\s+/g, ' ');
+  if (!normalized) return;
+
+  try {
+    const next = [normalized, ...readRecentSearches().filter((item) => item !== normalized)].slice(
+      0,
+      5,
+    );
+    localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(next));
+  } catch {
+    // Recent searches are a convenience and should never block searching.
+  }
+}
+
+function renderRecentSearches(results: HTMLElement) {
+  const recent = readRecentSearches();
+  if (recent.length === 0) {
+    results.replaceChildren();
+    return;
+  }
+
+  const links = recent.map((query, index) => {
+    const link = document.createElement('a');
+    link.id = `search-result-${index}`;
+    link.className = 'search-recent';
+    link.href = `/search/?q=${encodeURIComponent(query)}`;
+    link.setAttribute('role', 'option');
+    link.setAttribute('aria-selected', 'false');
+    link.textContent = query;
+    return link;
+  });
+
+  results.replaceChildren(createResultsHeader('Recent searches'), ...links);
+}
+
 export function initSearch() {
   if (document.documentElement.dataset.searchInitialized === 'true') return;
   document.documentElement.dataset.searchInitialized = 'true';
@@ -116,10 +175,9 @@ export function initSearch() {
 
   let activeIndex = -1;
   let requestId = 0;
-  let pagefindPromise: Promise<PagefindModule> | undefined;
   let debounceTimer: number | undefined;
 
-  const getResults = () => [...results.querySelectorAll<HTMLAnchorElement>('a.search-result')];
+  const getResults = () => [...results.querySelectorAll<HTMLAnchorElement>('a[role="option"]')];
 
   const setOpen = (isOpen: boolean) => {
     searchBox.classList.toggle('is-open', isOpen);
@@ -147,18 +205,13 @@ export function initSearch() {
 
   const openSearch = () => {
     input.focus();
-    if (input.value.trim()) setOpen(true);
-  };
-
-  const loadPagefind = () => {
-    if (!pagefindPromise) {
-      pagefindPromise = import(/* @vite-ignore */ PAGEFIND_URL).then(async (module) => {
-        const pagefind = module as unknown as PagefindModule;
-        await pagefind.init();
-        return pagefind;
-      });
+    if (input.value.trim()) {
+      setOpen(true);
+      return;
     }
-    return pagefindPromise;
+
+    renderRecentSearches(results);
+    setOpen(!results.matches(':empty'));
   };
 
   const renderResults = async (query: string) => {
@@ -240,6 +293,10 @@ export function initSearch() {
     } else if (event.key === 'Enter' && activeIndex >= 0) {
       event.preventDefault();
       resultLinks[activeIndex]?.click();
+    } else if (event.key === 'Enter' && input.value.trim()) {
+      event.preventDefault();
+      rememberRecentSearch(input.value);
+      window.location.assign(`/search/?q=${encodeURIComponent(input.value.trim())}`);
     } else if (event.key === 'Escape' && searchBox.classList.contains('is-open')) {
       event.preventDefault();
       setOpen(false);
@@ -249,6 +306,11 @@ export function initSearch() {
 
   document.addEventListener('pointerdown', (event) => {
     if (event.target instanceof Node && !searchBox.contains(event.target)) setOpen(false);
+  });
+
+  results.addEventListener('click', (event) => {
+    const result = event.target instanceof Element ? event.target.closest('a.search-result') : null;
+    if (result) rememberRecentSearch(input.value);
   });
 
   document.addEventListener('keydown', (event) => {

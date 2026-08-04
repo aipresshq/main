@@ -1,6 +1,6 @@
-# AI Snap — Project Context
+# AIPressHQ Project Context
 
-**Domain:** aisnap.in (DNS lookup found no active site at time of research — a promising but not 100% conclusive signal. Verify on an actual registrar, e.g. Namecheap/GoDaddy, and register immediately if confirmed, before doing anything else below.)
+**Domain:** aipresshq.com (the selected primary publication domain.)
 **Goal:** A global, all-inclusive daily AI news site, monetized primarily through Google AdSense, built and run at near-zero infra cost with a mostly-automated pipeline and a light daily human-review step. Designed from day one to survive Google's 2026 spam/quality enforcement rather than get deindexed after an initial traffic spike.
 
 ---
