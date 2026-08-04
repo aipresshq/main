@@ -364,25 +364,6 @@
     flex-wrap: wrap;
   }
 
-  .section-links {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    flex: 1 1 100%;
-  }
-
-  .category-menu {
-    flex: 1 1 100%;
-    padding-left: 0;
-    border-left: none;
-    border-top: 1px solid var(--band-ink-muted);
-  }
-
-  .category-menu > summary {
-    height: 40px;
-    justify-content: center;
-    width: 100%;
-  }
-
   /* Three narrow right-aligned columns become one readable stack */
   .footer-columns {
     grid-template-columns: 1fr;
@@ -538,6 +519,10 @@
     left: 4px;
   }
 
+  .category-menu {
+    padding-left: 12px;
+  }
+
   .category-menu > summary {
     gap: 6px;
     padding: 0 10px;
@@ -563,10 +548,6 @@
   /* Keep the compact breakpoint aligned with the wider mobile header rules. */
   .primary-bar-nav {
     flex-wrap: wrap;
-  }
-
-  .section-links {
-    flex: 1 1 100%;
   }
 
   .section-links a {
