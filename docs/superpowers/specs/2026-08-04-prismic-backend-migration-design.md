@@ -17,6 +17,16 @@ rarely, only 1 exists today, and Prismic's free tier is single-user anyway). Ima
 Cloudflare R2 (decided in an earlier design conversation, not re-litigated here) — Prismic's
 Image field is not used; covers are stored as plain R2 URLs.
 
+**Amendment (post-approval):** brainstorming missed that `admin/` already contains a working
+local editorial panel (dev-only Astro integration registered in `astro.config.mjs`, only active
+under `astro dev` — it never runs in the production build) with its own post storage
+(`admin/posts-store.mjs`), frontmatter parsing (`admin/frontmatter.mjs`), validation
+(`admin/validate-post.mjs`), and HTTP API (`admin/api-handlers.mjs`, `admin/integration.mjs`).
+This is the site's actual "scripted/API-driven publishing" surface, not a separate script as
+originally scoped below. Decision: **repoint `admin/posts-store.mjs` at Prismic** instead of the
+local filesystem, keeping the existing admin UI/validation/workflow intact for editors.
+`admin/authors-store.mjs` is unchanged (authors stay local, per the original decision above).
+
 ## Goals
 
 - Move `posts` off git-committed markdown onto Prismic, without changing the validation
@@ -54,6 +64,13 @@ Image field is not used; covers are stored as plain R2 URLs.
 | `post_type` | Select | `digest` / `evergreen` / `tracker`, default `digest` |
 | `featured` | Boolean | |
 | `body` | Rich Text | the long-form article; replaces the markdown file body |
+| `archived` | Boolean, default `false` | soft-delete flag — see "Delete handling" below |
+
+**Delete handling:** Prismic's Migration/Write API supports create and update but has **no
+delete endpoint** (confirmed against Prismic's migration docs — deletion is dashboard-only).
+Decision: the admin panel's delete action sets `archived: true` instead of removing the
+document. The Astro loader excludes `archived: true` posts from the built site. True deletion,
+if ever needed, stays a manual action in Prismic's dashboard.
 
 ## Astro integration
 
@@ -82,15 +99,21 @@ Image field is not used; covers are stored as plain R2 URLs.
 
 ## Migration + future publishing
 
-One Node script, `scripts/prismic-publish.ts`, using Prismic's Migration API. It accepts a
-structured post object (title, description, author slug, dates, format, cover fields, takeaways,
-facts table, tags, post type, featured, body) and creates a Prismic document from it.
+**Future publishing** happens through the existing admin panel (`admin/`), repointed at Prismic
+(see amendment above) — not a new standalone script. `admin/posts-store.mjs`'s functions become:
 
-This script serves two purposes:
-1. Run once to migrate the 7 existing markdown posts (parsed from their current frontmatter +
-   body) into Prismic.
-2. Reused going forward as the entry point for scripted/API-driven publishing — new articles get
-   created by calling this script's underlying function, not by hand in Prismic's UI.
+- `listPosts()` → `client.getAllByType('post')`, mapped to the summary shape the admin UI expects
+- `readPost(id)` → `client.getByUID('post', id)`
+- `createPost(payload)` → build one `migration.createDocument(...)` and run
+  `writeClient.migrate(migration)`
+- `updatePost(id, payload)` → `writeClient.getByUID('post', id)`, then
+  `migration.updateDocument(existingDoc, ...)`, then `writeClient.migrate(migration)`
+- `deletePost(id)` → same as update, but sets `archived: true` (see Delete handling above)
+
+**One-time migration** of the 7 existing markdown posts uses a standalone script,
+`scripts/migrate-posts-to-prismic.mjs`, that parses each file's frontmatter + body (reusing
+`admin/frontmatter.mjs`'s `parseFrontmatter`) and calls the same document-creation logic used by
+`createPost` above, run once by hand against the live Prismic repository.
 
 ## Error handling
 
@@ -101,16 +124,24 @@ This script serves two purposes:
 
 ## Testing
 
-- `tests/build-check.mjs` must keep passing. Open question (not decided): whether CI has network
-  access to Prismic's API at build time, or whether the build-check needs a local
-  fixture/mock of the Prismic response instead of hitting the live API. To be resolved in the
-  implementation plan.
-- Manual verification: publish one test post via `scripts/prismic-publish.ts`, run `astro dev`,
-  confirm it renders identically to a current markdown-sourced post (cover, takeaways, facts
-  table, tags, body, read time all correct).
+- `tests/build-check.mjs` reads already-built files from `dist/` — it does not itself call
+  Prismic. The network dependency is in `npm run build` (which must complete before
+  `build-check` runs), same as it would be for any headless-CMS-backed static site. There's no
+  CI workflow in this repo today, so there's no build-time-network-access question to resolve —
+  builds happen locally or on the deploy host (e.g. Cloudflare Pages), both of which have normal
+  internet access. No mock/fixture is needed for `build-check.mjs`.
+- The pure Prismic-document-to-post-data mapping logic (the part of the loader with real
+  complexity) is unit-testable against hand-built fixture documents, without hitting the network
+  — see the implementation plan for the exact test.
+- Manual verification: publish one test post through the (repointed) admin panel, run
+  `astro dev`, confirm it renders identically to a current markdown-sourced post (cover,
+  takeaways, facts table, tags, body, read time all correct).
 
-## Open questions carried into the implementation plan
+## Credentials
 
-- CI/build-time network access to Prismic vs. a mocked fixture for `build-check.mjs`.
-- Where Prismic API credentials (repository name, write API token) are stored for local dev vs.
-  CI/deploy (environment variables, not committed).
+- Repository name is not secret (it's part of the public API URL) — hardcoded as a constant in
+  the loader and admin code, not an env var.
+- `PRISMIC_WRITE_TOKEN` is secret — stored in `.env` (already git-ignored), read via Node's
+  native `--env-file` flag. Only needed by the admin panel (dev-only) and the one-time migration
+  script; the production build's read-only loader needs no credentials at all, since the custom
+  type's documents are fetched via Prismic's public read API.
