@@ -178,6 +178,7 @@
 
   .category-menu {
     padding-left: 0;
+    margin-left: 4px;
   }
 
   .category-menu > summary {
@@ -216,7 +217,7 @@
 
   .primary-bar-nav {
     order: 3;
-    flex: 1 1 100%;
+    flex: 0 1 auto;
   }
 
   .primary-bar {
@@ -364,7 +365,6 @@
   }
 
   .primary-bar-nav {
-    flex-basis: 100%;
     flex-wrap: wrap;
   }
 
@@ -521,6 +521,10 @@
   .section-links a[aria-current='page']::after {
     right: 4px;
     left: 4px;
+  }
+
+  .category-menu {
+    margin-left: 6px;
   }
 
   .category-menu > summary {
