@@ -176,6 +176,10 @@
     left: 10px;
   }
 
+  .category-menu {
+    padding-left: 0;
+  }
+
   .category-menu > summary {
     padding: 0 14px;
     font-size: 0.72rem;
@@ -517,10 +521,6 @@
   .section-links a[aria-current='page']::after {
     right: 4px;
     left: 4px;
-  }
-
-  .category-menu {
-    padding-left: 12px;
   }
 
   .category-menu > summary {
