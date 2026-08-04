@@ -10,6 +10,7 @@ import { formatEditionDate } from '../../lib/date';
 import { getNextOlderPost, getPreviousNewerPost, sortPostsNewestFirst } from '../../lib/post-order';
 import { getSuggestedPosts } from '../../lib/recommendations';
 import { getAuthorId } from '../../lib/author-reference';
+import { toSafeJsonLd } from '../../lib/json-ld';
 
 export async function getStaticPaths() {
   const allPosts = await getCollection('posts');
@@ -62,7 +63,7 @@ const schema = {
   description={description}
   editionDate={formatEditionDate(pubDate)}
 >
-  <script is:inline type="application/ld+json" set:html={JSON.stringify(schema)} />
+  <script is:inline type="application/ld+json" set:html={toSafeJsonLd(schema)} />
 
   <ContinuousReader currentPost={post} nextPost={nextPost}>
     <div class="article-layout">

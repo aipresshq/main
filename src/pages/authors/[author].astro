@@ -5,6 +5,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import { formatEditionDate } from '../../lib/date';
 import { getAuthorId } from '../../lib/author-reference';
 import { sortPostsNewestFirst } from '../../lib/post-order';
+import { toSafeJsonLd } from '../../lib/json-ld';
 
 export async function getStaticPaths() {
   const [authors, allPosts] = await Promise.all([getCollection('authors'), getCollection('posts')]);
@@ -45,7 +46,7 @@ const schema = {
   description={author.data.bio}
   editionDate={posts[0] && formatEditionDate(posts[0].data.pubDate)}
 >
-  <script is:inline type="application/ld+json" set:html={JSON.stringify(schema)} />
+  <script is:inline type="application/ld+json" set:html={toSafeJsonLd(schema)} />
 
   <main class="author-page">
     <header class="author-profile">
