@@ -138,7 +138,13 @@ export function renderAdminPage() {
               class: 'danger',
               onclick: async () => {
                 if (!window.confirm('Delete "' + post.title + '"? This cannot be undone.')) return;
-                await api('/admin/api/posts/' + encodeURIComponent(post.id), { method: 'DELETE' });
+                const response = await api('/admin/api/posts/' + encodeURIComponent(post.id), {
+                  method: 'DELETE',
+                });
+                if (!response.ok) {
+                  setStatus('Failed to delete "' + post.title + '" (status ' + response.status + ').');
+                  return;
+                }
                 renderList();
               },
             },
@@ -179,9 +185,16 @@ export function renderAdminPage() {
       async function renderForm(postId) {
         setStatus('Loading…');
         const authors = await loadAuthors();
-        const existing = postId
-          ? (await api('/admin/api/posts/' + encodeURIComponent(postId))).json
-          : null;
+        let existing = null;
+        if (postId) {
+          const response = await api('/admin/api/posts/' + encodeURIComponent(postId));
+          if (!response.ok) {
+            await renderList();
+            setStatus('Failed to load post "' + postId + '" (status ' + response.status + ').');
+            return;
+          }
+          existing = response.json;
+        }
         setStatus('');
         app.replaceChildren();
 
@@ -338,9 +351,16 @@ export function renderAdminPage() {
 
           if (!response.ok) {
             const errors = (response.json && response.json.errors) || {};
-            Object.entries(errors).forEach(([key, message]) => {
-              if (errorNodes[key]) errorNodes[key].textContent = message;
-            });
+            if (Object.keys(errors).length > 0) {
+              Object.entries(errors).forEach(([key, message]) => {
+                if (errorNodes[key]) errorNodes[key].textContent = message;
+              });
+            } else {
+              const message =
+                (response.json && response.json.error) ||
+                'Save failed (status ' + response.status + ').';
+              setStatus(message);
+            }
             return;
           }
 
