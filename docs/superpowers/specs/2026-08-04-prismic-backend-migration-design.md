@@ -72,6 +72,22 @@ Decision: the admin panel's delete action sets `archived: true` instead of remov
 document. The Astro loader excludes `archived: true` posts from the built site. True deletion,
 if ever needed, stays a manual action in Prismic's dashboard.
 
+## Publish workflow (critical constraint)
+
+**Verified against Prismic's Migration API technical reference:** documents created or updated
+via the Migration API (`writeClient.migrate()`) — which is what the repointed admin panel and
+the one-time migration script both use — land as **drafts in a Migration Release**, not live
+content. Prismic's docs state directly that "it is impossible to programmatically publish
+changes in Prismic." A human must open the Migration Release tab in Prismic's dashboard and
+click Publish before any API-created or API-updated post becomes visible via the read API the
+Astro build queries.
+
+**Decision:** accept this as a standing manual step, not a blocker. Editors use the admin panel
+(or the migration script) to create/update/archive posts freely; nothing goes live until someone
+publishes the pending release in Prismic's dashboard — done once per batch, not once per post.
+This is called out explicitly in the admin UI (a banner reminding editors that changes are
+drafts until published) so it isn't a silent surprise.
+
 ## Astro integration
 
 **Approach: custom Content Layer loader, not per-page `@prismicio/client` calls.**
@@ -133,9 +149,11 @@ if ever needed, stays a manual action in Prismic's dashboard.
 - The pure Prismic-document-to-post-data mapping logic (the part of the loader with real
   complexity) is unit-testable against hand-built fixture documents, without hitting the network
   — see the implementation plan for the exact test.
-- Manual verification: publish one test post through the (repointed) admin panel, run
-  `astro dev`, confirm it renders identically to a current markdown-sourced post (cover,
-  takeaways, facts table, tags, body, read time all correct).
+- Manual verification: create one test post through the (repointed) admin panel, **publish the
+  resulting Migration Release in Prismic's dashboard** (see "Publish workflow" above — this step
+  is required or the post will not appear), then run `astro dev` and confirm it renders
+  identically to a current markdown-sourced post (cover, takeaways, facts table, tags, body,
+  read time all correct).
 
 ## Credentials
 
