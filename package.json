@@ -14,6 +14,7 @@
     "format:check": "prettier --check \"src/**/*.{astro,ts,css}\" \"tests/**/*.{mjs,js}\" \"*.{mjs,json}\"",
     "preview": "astro preview",
     "test": "node tests/build-check.mjs",
+    "test:admin": "node admin/frontmatter.test.mjs && node admin/authors-store.test.mjs && node admin/posts-store.test.mjs && node admin/validate-post.test.mjs && node admin/api-handlers.test.mjs && node admin/ui.test.mjs && node admin/integration.test.mjs",
     "astro": "astro"
   },
   "dependencies": {
@@ -32,6 +33,7 @@
     "prettier": "^3.9.6",
     "prettier-plugin-astro": "^0.14.1",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.65.0"
+    "typescript-eslint": "^8.65.0",
+    "yaml": "^2.8.3"
   }
 }
