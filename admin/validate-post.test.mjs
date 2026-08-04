@@ -82,6 +82,12 @@ await test('takeaways cannot exceed four entries', () => {
   assert.ok(result.errors.takeaways);
 });
 
+await test('takeaways with an empty-string element is rejected even if other elements are valid', () => {
+  const result = validatePost({ ...basePost(), takeaways: ['', 'a', 'b', 'c', 'd'] }, options);
+  assert.equal(result.valid, false);
+  assert.ok(result.errors.takeaways);
+});
+
 await test('tags must have at least one entry', () => {
   const result = validatePost({ ...basePost(), tags: [] }, options);
   assert.equal(result.valid, false);

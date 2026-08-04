@@ -47,11 +47,13 @@ export function validatePost(payload, { existingAuthorIds }) {
   }
   if (!isNonEmptyString(payload.coverAlt)) errors.coverAlt = 'Cover alt text is required.';
 
-  const takeaways = Array.isArray(payload.takeaways)
-    ? payload.takeaways.filter(isNonEmptyString)
-    : [];
-  if (takeaways.length < 1 || takeaways.length > 4) {
-    errors.takeaways = 'Provide between 1 and 4 takeaways.';
+  if (
+    !Array.isArray(payload.takeaways) ||
+    payload.takeaways.length < 1 ||
+    payload.takeaways.length > 4 ||
+    !payload.takeaways.every(isNonEmptyString)
+  ) {
+    errors.takeaways = 'Provide between 1 and 4 non-empty takeaways.';
   }
 
   if (payload.factsTable) {
