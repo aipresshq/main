@@ -121,6 +121,55 @@ await test('deletePost removes the file and returns true, false when already gon
   assert.equal(await deletePost(id), false);
 });
 
+await test('updatePost preserves unmanaged frontmatter fields (e.g. factsTable) the form does not send', async () => {
+  const factsTable = { columns: ['A', 'B'], rows: [['x', 'y']] };
+  const id = await createPost(
+    validPayload({ title: '__Admin Tool FactsTable Preservation Test__', factsTable }),
+  );
+  try {
+    const before = await readPost(id);
+    assert.deepEqual(before.factsTable, factsTable);
+
+    // Simulate the real UI: the payload it sends has no factsTable key at all.
+    const updated = await updatePost(
+      id,
+      validPayload({ title: '__Admin Tool FactsTable Preservation Test__', description: 'Edited.' }),
+    );
+    assert.equal(updated, true);
+
+    const after = await readPost(id);
+    assert.equal(after.description, 'Edited.');
+    assert.deepEqual(after.factsTable, factsTable);
+  } finally {
+    await deletePost(id);
+  }
+});
+
+await test('createPost falls back to a generated id when the title has no ASCII alphanumeric characters', async () => {
+  const id = await createPost(validPayload({ title: '人工知能の未来' }));
+  try {
+    assert.ok(id.length > 0);
+    assert.match(id, /^[a-z0-9-]+$/);
+    const created = await readPost(id);
+    assert.ok(created);
+    assert.equal(created.title, '人工知能の未来');
+  } finally {
+    await deletePost(id);
+  }
+});
+
+await test('createPost falls back to a generated id for a title made only of punctuation', async () => {
+  const id = await createPost(validPayload({ title: '★★★' }));
+  try {
+    assert.ok(id.length > 0);
+    assert.match(id, /^[a-z0-9-]+$/);
+    const created = await readPost(id);
+    assert.ok(created);
+  } finally {
+    await deletePost(id);
+  }
+});
+
 await test('readPost rejects a path-traversal id instead of resolving outside the posts directory', async () => {
   const post = await readPost('../../../etc/passwd');
   assert.equal(post, undefined);

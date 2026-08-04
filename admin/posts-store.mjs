@@ -77,7 +77,7 @@ function toFrontmatter(payload) {
 }
 
 export async function createPost(payload) {
-  const baseId = slugify(payload.title);
+  const baseId = slugify(payload.title) || `post-${Date.now()}`;
   let id = baseId;
   let suffix = 2;
   while (await postExists(id)) {
@@ -95,12 +95,17 @@ export async function createPost(payload) {
 
 export async function updatePost(id, payload) {
   if (!isSafePostId(id)) return false;
-  if (!(await postExists(id))) return false;
-  await writeFile(
-    path.join(POSTS_DIR, `${id}.md`),
-    serializeFrontmatter(toFrontmatter(payload), payload.body ?? ''),
-    'utf-8',
-  );
+  const filePath = path.join(POSTS_DIR, `${id}.md`);
+  let existingRaw;
+  try {
+    existingRaw = await readFile(filePath, 'utf-8');
+  } catch (error) {
+    if (error.code === 'ENOENT') return false;
+    throw error;
+  }
+  const { frontmatter: existingFrontmatter } = parseFrontmatter(existingRaw);
+  const merged = { ...existingFrontmatter, ...toFrontmatter(payload) };
+  await writeFile(filePath, serializeFrontmatter(merged, payload.body ?? ''), 'utf-8');
   return true;
 }
 
