@@ -1,6 +1,7 @@
 import { defineCollection, reference } from 'astro:content';
 import { z } from 'astro/zod';
 import { glob } from 'astro/loaders';
+import { prismicPostsLoader } from './loaders/prismic-posts.ts';
 
 const cover = z.string().min(1).refine(
   (value) => value.startsWith('/') || z.url().safeParse(value).success,
@@ -25,7 +26,7 @@ const authors = defineCollection({
 // mechanism the whole project is built around: don't loosen this schema to
 // let a post skip a required field.
 const posts = defineCollection({
-  loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/posts' }),
+  loader: prismicPostsLoader(),
   schema: z.object({
     title: z.string(),
     description: z.string(),
