@@ -4,7 +4,7 @@
 
 **Goal:** Move the `posts` content collection from git-committed markdown to Prismic (a headless CMS), and repoint the existing local admin panel (`admin/`) at Prismic so it stays the site's editorial tool instead of writing markdown files.
 
-**Architecture:** A custom Astro Content Layer loader (`src/loaders/prismic-posts.ts`) fetches posts from Prismic at build time and feeds Astro's existing Zod schema, unchanged. The local admin panel's storage layer (`admin/posts-store.mjs`) is repointed from filesystem reads/writes to Prismic's read/write client. A shared field-mapping module (`src/loaders/prismic-fields.ts`) translates between Prismic's field shapes (Table, Repeatable Group) and the plain JS shapes both the loader and the admin panel use, and is unit-tested without any network dependency.
+**Architecture:** A custom Astro Content Layer loader (`src/loaders/prismic-posts.ts`) fetches posts from Prismic at build time and feeds Astro's existing Zod schema, unchanged. The local admin panel's storage layer (`admin/posts-store.mjs`) is repointed from filesystem reads/writes to Prismic's read/write client. A shared field-mapping module (`src/loaders/prismic-fields.ts`) translates between Prismic's Group field shapes and the plain JS shapes both the loader and the admin panel use, and is unit-tested without any network dependency. (Prismic's Table field type is listed in `@prismicio/client`'s type definitions but is rejected by the live Custom Types Builder — facts tables use two Group fields instead, capped at 6 columns.)
 
 **Tech Stack:** Astro 7 Content Layer API, `@prismicio/client` (read + write client, migration helper), `@prismicio/migrate` (HTML→Rich Text conversion), `marked` (Markdown→HTML, for the one-time migration script only), Node's native `--env-file` flag for loading secrets.
 
@@ -18,6 +18,7 @@
 - Prismic's Migration API writes land as **drafts in a Migration Release** — there is no way to publish programmatically (confirmed against Prismic's own docs). Every task that writes to Prismic must account for this: nothing created or updated via the admin panel or the migration script is live until a human publishes the pending release in Prismic's dashboard.
 - The repository name is not secret (`PRISMIC_REPOSITORY_NAME` — hardcoded as a constant, not an env var). `PRISMIC_WRITE_TOKEN` is secret, lives in `.env` (already git-ignored), loaded via `node --env-file=.env ...` (supported by the Node version already required in `package.json`'s `engines` field). The production build's loader is read-only and needs no credentials.
 - There is no CI workflow in this repo. Build-time network access to Prismic is expected and normal, same as for any headless-CMS-backed static site — no mocking is needed anywhere in this plan.
+- The facts table (`factsTable: {columns, rows}` in the Zod schema) is represented in Prismic as two Group fields, `facts_table_columns` and `facts_table_rows` (fixed subfields `cell_1`..`cell_6`), capped at 6 columns — **not** a Table field. Prismic's live Custom Types Builder rejects the Table field type ("unrecognised 'table' fragment") even though `@prismicio/client`'s type definitions list one; this was discovered during Task 1's manual setup.
 
 ---
 
@@ -37,26 +38,29 @@ Go to prismic.io, sign up, and create a new repository. Note the repository name
 
 - [ ] **Step 2: Define the `post` custom type**
 
-In the Prismic dashboard, go to Custom Types → Create a new repeatable custom type with API ID `post`. Add these fields with these exact API IDs and types:
+In the Prismic dashboard, go to Custom Types → Create a new repeatable custom type with API ID `post`. Add these fields with these exact API IDs and types. "Text" is Prismic's plain-string field (what these docs elsewhere call "Key Text") — do not use "Title" or "Rich Text" for any field marked "Text" below, since those return a rich-text object instead of a plain string and will break the mapping code in Task 3. "Group" fields are inherently repeatable in Prismic (there is no separate "Repeatable Group" type) — add the named subfield(s) inside each one.
 
 | API ID | Field type |
 |---|---|
-| `title` | Key Text |
-| `description` | Key Text |
-| `author` | Key Text |
+| `title` | Text |
+| `description` | Text |
+| `author` | Text |
 | `pub_date` | Date |
 | `updated_date` | Date |
 | `format` | Select — options: `brief`, `explainer`, `comparison`, `tracker`, `analysis`, `tutorial` |
-| `cover` | Key Text |
-| `cover_alt` | Key Text |
-| `cover_credit` | Key Text |
-| `takeaways` | Repeatable Group, with one Key Text subfield inside it named `item` |
-| `facts_table` | Table |
-| `tags` | Repeatable Group, with one Key Text subfield inside it named `tag` |
+| `cover` | Text |
+| `cover_alt` | Text |
+| `cover_credit` | Text |
+| `takeaways` | Group, with one Text subfield inside it named `item` |
+| `facts_table_columns` | Group, with one Text subfield inside it named `column` |
+| `facts_table_rows` | Group, with six Text subfields inside it named `cell_1`, `cell_2`, `cell_3`, `cell_4`, `cell_5`, `cell_6` |
+| `tags` | Group, with one Text subfield inside it named `tag` |
 | `post_type` | Select — options: `digest`, `evergreen`, `tracker` |
 | `featured` | Boolean |
 | `archived` | Boolean |
 | `body` | Rich Text |
+
+Prismic's Table field type exists in `@prismicio/client`'s type definitions but is rejected by the live Custom Types Builder ("unrecognised 'table' fragment") — do not attempt it; the two Group fields above are the actual representation.
 
 The type already has a UID field by default (every repeatable custom type does) — that's what stores the post's slug. Save the custom type.
 
@@ -148,7 +152,9 @@ git commit -m "chore: add Prismic client dependencies"
 - Test: `src/loaders/prismic-fields.test.mjs`
 
 **Interfaces:**
-- Produces: `PRISMIC_REPOSITORY_NAME` (string constant), `PRISMIC_LOCALE` (string constant, `'en-us'`), `PRISMIC_POST_TYPE` (string constant, `'post'`), `tableFieldToFactsTable(field)`, `factsTableToTableField(factsTable)`, `groupFieldToStrings(field, key)`, `stringsToGroupField(values, key)`. These are consumed by Task 4's loader and Task 5's admin store.
+- Produces: `PRISMIC_REPOSITORY_NAME` (string constant), `PRISMIC_LOCALE` (string constant, `'en-us'`), `PRISMIC_POST_TYPE` (string constant, `'post'`), `MAX_FACTS_TABLE_COLUMNS` (number constant, `6`), `groupFieldsToFactsTable(columnsField, rowsField)`, `factsTableToGroupFields(factsTable)`, `groupFieldToStrings(field, key)`, `stringsToGroupField(values, key)`. These are consumed by Task 4's loader and Task 5's admin store.
+
+Facts tables use two Prismic Group fields, not a Table field — Prismic's live Custom Types Builder rejects the Table field type ("unrecognised 'table' fragment") even though `@prismicio/client`'s type definitions list one, discovered while doing Task 1's manual setup. `facts_table_columns` holds one `{column}` item per column; `facts_table_rows` holds one item per row with fixed subfields `cell_1`..`cell_6` (capped at 6 columns, populated in column order, extras left blank).
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -156,8 +162,8 @@ git commit -m "chore: add Prismic client dependencies"
 // src/loaders/prismic-fields.test.mjs
 import assert from 'node:assert/strict';
 import {
-  tableFieldToFactsTable,
-  factsTableToTableField,
+  groupFieldsToFactsTable,
+  factsTableToGroupFields,
   groupFieldToStrings,
   stringsToGroupField,
 } from './prismic-fields.ts';
@@ -173,43 +179,39 @@ async function test(name, fn) {
   }
 }
 
-const sampleTableField = {
-  head: [
-    {
-      cells: [
-        { type: 'header', content: [{ type: 'paragraph', text: 'Model', spans: [] }] },
-        { type: 'header', content: [{ type: 'paragraph', text: 'Price', spans: [] }] },
-      ],
-    },
-  ],
-  body: [
-    {
-      cells: [
-        { type: 'data', content: [{ type: 'paragraph', text: 'Luna Max', spans: [] }] },
-        { type: 'data', content: [{ type: 'paragraph', text: '$20/mo', spans: [] }] },
-      ],
-    },
-  ],
-};
+const sampleColumnsField = [{ column: 'Model' }, { column: 'Price' }];
+const sampleRowsField = [{ cell_1: 'Luna Max', cell_2: '$20/mo' }];
 
-await test('tableFieldToFactsTable maps head cells to columns and body cells to rows', () => {
-  const result = tableFieldToFactsTable(sampleTableField);
+await test('groupFieldsToFactsTable combines the columns and rows groups', () => {
+  const result = groupFieldsToFactsTable(sampleColumnsField, sampleRowsField);
   assert.deepEqual(result, { columns: ['Model', 'Price'], rows: [['Luna Max', '$20/mo']] });
 });
 
-await test('tableFieldToFactsTable returns undefined for a missing or empty table field', () => {
-  assert.equal(tableFieldToFactsTable(undefined), undefined);
-  assert.equal(tableFieldToFactsTable(null), undefined);
-  assert.equal(tableFieldToFactsTable({ head: [], body: [] }), undefined);
+await test('groupFieldsToFactsTable returns undefined when there are no columns', () => {
+  assert.equal(groupFieldsToFactsTable(undefined, sampleRowsField), undefined);
+  assert.equal(groupFieldsToFactsTable(null, null), undefined);
+  assert.equal(groupFieldsToFactsTable([], []), undefined);
 });
 
-await test('factsTableToTableField is the inverse of tableFieldToFactsTable', () => {
+await test('groupFieldsToFactsTable ignores unused cell_N subfields beyond the column count', () => {
+  const columns = [{ column: 'A' }];
+  const rows = [{ cell_1: 'x', cell_2: 'unused', cell_3: 'unused' }];
+  assert.deepEqual(groupFieldsToFactsTable(columns, rows), { columns: ['A'], rows: [['x']] });
+});
+
+await test('factsTableToGroupFields is the inverse of groupFieldsToFactsTable', () => {
   const factsTable = { columns: ['Model', 'Price'], rows: [['Luna Max', '$20/mo']] };
-  assert.deepEqual(tableFieldToFactsTable(factsTableToTableField(factsTable)), factsTable);
+  const { columns, rows } = factsTableToGroupFields(factsTable);
+  assert.deepEqual(groupFieldsToFactsTable(columns, rows), factsTable);
 });
 
-await test('factsTableToTableField returns undefined when there is no facts table', () => {
-  assert.equal(factsTableToTableField(undefined), undefined);
+await test('factsTableToGroupFields returns undefined when there is no facts table', () => {
+  assert.equal(factsTableToGroupFields(undefined), undefined);
+});
+
+await test('factsTableToGroupFields throws when there are more than 6 columns', () => {
+  const factsTable = { columns: ['a', 'b', 'c', 'd', 'e', 'f', 'g'], rows: [] };
+  assert.throws(() => factsTableToGroupFields(factsTable));
 });
 
 await test('groupFieldToStrings extracts one subfield from every group item', () => {
@@ -248,51 +250,44 @@ Expected: an import error — `prismic-fields.ts` doesn't exist yet.
 export const PRISMIC_REPOSITORY_NAME = 'aipresshq';
 export const PRISMIC_LOCALE = 'en-us';
 export const PRISMIC_POST_TYPE = 'post';
+export const MAX_FACTS_TABLE_COLUMNS = 6;
 
 export interface FactsTable {
   columns: string[];
   rows: string[][];
 }
 
-interface PrismicTableCell {
-  type: 'header' | 'data';
-  content: Array<{ type: string; text: string; spans: unknown[] }>;
-}
+type FactsTableColumnsField = Array<{ column: string }>;
+type FactsTableRowsField = Array<Record<string, string>>;
 
-interface PrismicTableRow {
-  cells: PrismicTableCell[];
-}
-
-export interface PrismicTableField {
-  head: PrismicTableRow[];
-  body: PrismicTableRow[];
-}
-
-function cellText(cell: PrismicTableCell): string {
-  return cell.content.map((block) => block.text).join(' ');
-}
-
-export function tableFieldToFactsTable(
-  field: PrismicTableField | null | undefined,
+export function groupFieldsToFactsTable(
+  columnsField: FactsTableColumnsField | null | undefined,
+  rowsField: FactsTableRowsField | null | undefined,
 ): FactsTable | undefined {
-  if (!field || field.head.length === 0 || field.body.length === 0) return undefined;
-  return {
-    columns: field.head[0].cells.map(cellText),
-    rows: field.body.map((row) => row.cells.map(cellText)),
-  };
+  const columns = (columnsField ?? []).map((item) => item.column);
+  if (columns.length === 0) return undefined;
+  const rows = (rowsField ?? []).map((row) =>
+    columns.map((_, index) => row[`cell_${index + 1}`] ?? ''),
+  );
+  return { columns, rows };
 }
 
-export function factsTableToTableField(
+export function factsTableToGroupFields(
   factsTable: FactsTable | null | undefined,
-): PrismicTableField | undefined {
+): { columns: FactsTableColumnsField; rows: FactsTableRowsField } | undefined {
   if (!factsTable) return undefined;
-  const toCell = (type: 'header' | 'data', text: string): PrismicTableCell => ({
-    type,
-    content: [{ type: 'paragraph', text, spans: [] }],
-  });
+  if (factsTable.columns.length > MAX_FACTS_TABLE_COLUMNS) {
+    throw new Error(`facts table supports at most ${MAX_FACTS_TABLE_COLUMNS} columns`);
+  }
   return {
-    head: [{ cells: factsTable.columns.map((column) => toCell('header', column)) }],
-    body: factsTable.rows.map((row) => ({ cells: row.map((cell) => toCell('data', cell)) })),
+    columns: factsTable.columns.map((column) => ({ column })),
+    rows: factsTable.rows.map((row) => {
+      const cells: Record<string, string> = {};
+      row.forEach((cell, index) => {
+        cells[`cell_${index + 1}`] = cell;
+      });
+      return cells;
+    }),
   };
 }
 
@@ -320,7 +315,7 @@ Expected: `All checks passed.`, exit code 0.
 
 ```bash
 git add src/loaders/prismic-fields.ts src/loaders/prismic-fields.test.mjs
-git commit -m "feat: add Prismic Table/Group field mapping helpers"
+git commit -m "feat: add Prismic Group field mapping helpers"
 ```
 
 ---
@@ -332,7 +327,7 @@ git commit -m "feat: add Prismic Table/Group field mapping helpers"
 - Modify: `src/content.config.ts`
 
 **Interfaces:**
-- Consumes: `PRISMIC_REPOSITORY_NAME`, `PRISMIC_LOCALE`, `PRISMIC_POST_TYPE`, `tableFieldToFactsTable`, `groupFieldToStrings` from Task 3's `src/loaders/prismic-fields.ts`.
+- Consumes: `PRISMIC_REPOSITORY_NAME`, `PRISMIC_LOCALE`, `PRISMIC_POST_TYPE`, `groupFieldsToFactsTable`, `groupFieldToStrings` from Task 3's `src/loaders/prismic-fields.ts`.
 - Produces: `prismicPostsLoader()`, a function returning an Astro `Loader`, consumed by `content.config.ts`'s `posts` collection.
 
 - [ ] **Step 1: Write the loader**
@@ -345,7 +340,7 @@ import {
   PRISMIC_REPOSITORY_NAME,
   PRISMIC_LOCALE,
   PRISMIC_POST_TYPE,
-  tableFieldToFactsTable,
+  groupFieldsToFactsTable,
   groupFieldToStrings,
 } from './prismic-fields.ts';
 
@@ -360,7 +355,8 @@ interface PrismicPostData {
   cover_alt: string;
   cover_credit: string | null;
   takeaways: Array<{ item: string }> | null;
-  facts_table: Parameters<typeof tableFieldToFactsTable>[0];
+  facts_table_columns: Array<{ column: string }> | null;
+  facts_table_rows: Array<Record<string, string>> | null;
   tags: Array<{ tag: string }> | null;
   post_type: string;
   featured: boolean;
@@ -396,7 +392,7 @@ export function prismicPostsLoader(): Loader {
             coverAlt: doc.data.cover_alt,
             coverCredit: doc.data.cover_credit ?? undefined,
             takeaways: groupFieldToStrings(doc.data.takeaways, 'item'),
-            factsTable: tableFieldToFactsTable(doc.data.facts_table),
+            factsTable: groupFieldsToFactsTable(doc.data.facts_table_columns, doc.data.facts_table_rows),
             tags: groupFieldToStrings(doc.data.tags, 'tag'),
             postType: doc.data.post_type,
             featured: doc.data.featured,
@@ -533,8 +529,8 @@ git commit -m "feat: add a shared Prismic client helper for the admin panel"
 - Modify: `admin/posts-store.test.mjs`
 
 **Interfaces:**
-- Consumes: `createPrismicClient`, `createPrismicWriteClient`, `PRISMIC_LOCALE`, `PRISMIC_POST_TYPE` from Task 5's `admin/prismic-client.mjs`; `factsTableToTableField`, `stringsToGroupField`, `tableFieldToFactsTable`, `groupFieldToStrings` from Task 3's `src/loaders/prismic-fields.ts`.
-- Produces: `postPayloadToPrismicData(payload)` from `admin/prismic-write-mapping.mjs` — takes a payload shaped `{title, description, author, pubDate, updatedDate?, format, cover, coverAlt, coverCredit?, takeaways, factsTable?, tags, postType, featured, body}` and returns the Prismic `data` object (snake_case field names, Group/Table shapes, Rich Text body), reused as-is by Task 8's migration script so the markdown→Rich Text conversion logic exists in exactly one place. Also produces `isSafePostId`, `listPosts`, `readPost`, `postExists`, `createPost`, `updatePost`, `deletePost` from `posts-store.mjs` — same function names/signatures `admin/api-handlers.mjs` already imports, so that file needs no changes.
+- Consumes: `createPrismicClient`, `createPrismicWriteClient`, `PRISMIC_LOCALE`, `PRISMIC_POST_TYPE` from Task 5's `admin/prismic-client.mjs`; `factsTableToGroupFields`, `stringsToGroupField`, `groupFieldsToFactsTable`, `groupFieldToStrings` from Task 3's `src/loaders/prismic-fields.ts`.
+- Produces: `postPayloadToPrismicData(payload)` from `admin/prismic-write-mapping.mjs` — takes a payload shaped `{title, description, author, pubDate, updatedDate?, format, cover, coverAlt, coverCredit?, takeaways, factsTable?, tags, postType, featured, body}` and returns the Prismic `data` object (snake_case field names, Group shapes, Rich Text body), reused as-is by Task 8's migration script so the markdown→Rich Text conversion logic exists in exactly one place. Also produces `isSafePostId`, `listPosts`, `readPost`, `postExists`, `createPost`, `updatePost`, `deletePost` from `posts-store.mjs` — same function names/signatures `admin/api-handlers.mjs` already imports, so that file needs no changes.
 
 This task changes real behavior editors will see, so read it in full before writing the test: `postExists` now means "a non-archived document exists"; `deletePost` archives instead of removing, so calling it twice on the same id returns `true` both times (it's idempotently re-archiving a document that still exists), not `false` the second time as the old filesystem version did.
 
@@ -694,7 +690,7 @@ This holds the one piece of logic Task 8's migration script also needs (payload 
 // admin/prismic-write-mapping.mjs
 import { htmlAsRichText } from '@prismicio/migrate';
 import { marked } from 'marked';
-import { factsTableToTableField, stringsToGroupField } from '../src/loaders/prismic-fields.ts';
+import { factsTableToGroupFields, stringsToGroupField } from '../src/loaders/prismic-fields.ts';
 
 export function postPayloadToPrismicData(payload) {
   const data = {
@@ -713,7 +709,11 @@ export function postPayloadToPrismicData(payload) {
   };
   if (payload.updatedDate) data.updated_date = payload.updatedDate;
   if (payload.coverCredit) data.cover_credit = payload.coverCredit;
-  if (payload.factsTable) data.facts_table = factsTableToTableField(payload.factsTable);
+  if (payload.factsTable) {
+    const { columns, rows } = factsTableToGroupFields(payload.factsTable);
+    data.facts_table_columns = columns;
+    data.facts_table_rows = rows;
+  }
   return data;
 }
 ```
@@ -725,7 +725,7 @@ export function postPayloadToPrismicData(payload) {
 import * as prismic from '@prismicio/client';
 import { createPrismicClient, createPrismicWriteClient, PRISMIC_LOCALE, PRISMIC_POST_TYPE } from './prismic-client.mjs';
 import { postPayloadToPrismicData } from './prismic-write-mapping.mjs';
-import { tableFieldToFactsTable, groupFieldToStrings } from '../src/loaders/prismic-fields.ts';
+import { groupFieldsToFactsTable, groupFieldToStrings } from '../src/loaders/prismic-fields.ts';
 
 export function isSafePostId(id) {
   return typeof id === 'string' && /^[a-z0-9-]+$/.test(id);
@@ -753,7 +753,7 @@ function fromPrismicDocument(doc) {
     coverAlt: data.cover_alt,
     coverCredit: data.cover_credit ?? undefined,
     takeaways: groupFieldToStrings(data.takeaways, 'item'),
-    factsTable: tableFieldToFactsTable(data.facts_table),
+    factsTable: groupFieldsToFactsTable(data.facts_table_columns, data.facts_table_rows),
     tags: groupFieldToStrings(data.tags, 'tag'),
     postType: data.post_type,
     featured: Boolean(data.featured),
