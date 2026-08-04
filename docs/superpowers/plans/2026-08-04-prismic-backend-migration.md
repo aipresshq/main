@@ -528,12 +528,13 @@ git commit -m "feat: add a shared Prismic client helper for the admin panel"
 ### Task 6: Repoint the admin panel's post storage at Prismic
 
 **Files:**
+- Create: `admin/prismic-write-mapping.mjs`
 - Modify: `admin/posts-store.mjs`
 - Modify: `admin/posts-store.test.mjs`
 
 **Interfaces:**
 - Consumes: `createPrismicClient`, `createPrismicWriteClient`, `PRISMIC_LOCALE`, `PRISMIC_POST_TYPE` from Task 5's `admin/prismic-client.mjs`; `factsTableToTableField`, `stringsToGroupField`, `tableFieldToFactsTable`, `groupFieldToStrings` from Task 3's `src/loaders/prismic-fields.ts`.
-- Produces: `isSafePostId`, `listPosts`, `readPost`, `postExists`, `createPost`, `updatePost`, `deletePost` — same function names/signatures `admin/api-handlers.mjs` already imports, so that file needs no changes.
+- Produces: `postPayloadToPrismicData(payload)` from `admin/prismic-write-mapping.mjs` — takes a payload shaped `{title, description, author, pubDate, updatedDate?, format, cover, coverAlt, coverCredit?, takeaways, factsTable?, tags, postType, featured, body}` and returns the Prismic `data` object (snake_case field names, Group/Table shapes, Rich Text body), reused as-is by Task 8's migration script so the markdown→Rich Text conversion logic exists in exactly one place. Also produces `isSafePostId`, `listPosts`, `readPost`, `postExists`, `createPost`, `updatePost`, `deletePost` from `posts-store.mjs` — same function names/signatures `admin/api-handlers.mjs` already imports, so that file needs no changes.
 
 This task changes real behavior editors will see, so read it in full before writing the test: `postExists` now means "a non-archived document exists"; `deletePost` archives instead of removing, so calling it twice on the same id returns `true` both times (it's idempotently re-archiving a document that still exists), not `false` the second time as the old filesystem version did.
 
@@ -685,34 +686,17 @@ if (process.exitCode === 1) {
 Run: `node --env-file=.env admin/posts-store.test.mjs`
 Expected: failures — `posts-store.mjs` still reads/writes the local filesystem, so these Prismic-shaped expectations don't hold yet.
 
-- [ ] **Step 3: Rewrite the implementation**
+- [ ] **Step 3: Write the shared write-side mapping module**
+
+This holds the one piece of logic Task 8's migration script also needs (payload → Prismic `data` object, including markdown body → Rich Text), so it lives in its own file instead of being duplicated.
 
 ```js
-// admin/posts-store.mjs
-import * as prismic from '@prismicio/client';
+// admin/prismic-write-mapping.mjs
 import { htmlAsRichText } from '@prismicio/migrate';
 import { marked } from 'marked';
-import { createPrismicClient, createPrismicWriteClient, PRISMIC_LOCALE, PRISMIC_POST_TYPE } from './prismic-client.mjs';
-import {
-  factsTableToTableField,
-  stringsToGroupField,
-  tableFieldToFactsTable,
-  groupFieldToStrings,
-} from '../src/loaders/prismic-fields.ts';
+import { factsTableToTableField, stringsToGroupField } from '../src/loaders/prismic-fields.ts';
 
-export function isSafePostId(id) {
-  return typeof id === 'string' && /^[a-z0-9-]+$/.test(id);
-}
-
-function slugify(value) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
-
-function toPrismicData(payload) {
+export function postPayloadToPrismicData(payload) {
   const data = {
     title: payload.title,
     description: payload.description,
@@ -731,6 +715,28 @@ function toPrismicData(payload) {
   if (payload.coverCredit) data.cover_credit = payload.coverCredit;
   if (payload.factsTable) data.facts_table = factsTableToTableField(payload.factsTable);
   return data;
+}
+```
+
+- [ ] **Step 4: Rewrite `admin/posts-store.mjs` to use it**
+
+```js
+// admin/posts-store.mjs
+import * as prismic from '@prismicio/client';
+import { createPrismicClient, createPrismicWriteClient, PRISMIC_LOCALE, PRISMIC_POST_TYPE } from './prismic-client.mjs';
+import { postPayloadToPrismicData } from './prismic-write-mapping.mjs';
+import { tableFieldToFactsTable, groupFieldToStrings } from '../src/loaders/prismic-fields.ts';
+
+export function isSafePostId(id) {
+  return typeof id === 'string' && /^[a-z0-9-]+$/.test(id);
+}
+
+function slugify(value) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
 function fromPrismicDocument(doc) {
@@ -812,7 +818,7 @@ export async function createPost(payload) {
       lang: PRISMIC_LOCALE,
       uid: id,
       tags: [],
-      data: { ...toPrismicData(payload), archived: false },
+      data: { ...postPayloadToPrismicData(payload), archived: false },
     },
     payload.title,
   );
@@ -830,7 +836,7 @@ export async function updatePost(id, payload) {
     if (error instanceof prismic.NotFoundError) return false;
     throw error;
   }
-  existingDoc.data = { ...existingDoc.data, ...toPrismicData(payload) };
+  existingDoc.data = { ...existingDoc.data, ...postPayloadToPrismicData(payload) };
   const migration = prismic.createMigration();
   migration.updateDocument(existingDoc, payload.title);
   await writeClient.migrate(migration);
@@ -855,12 +861,12 @@ export async function deletePost(id) {
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [ ] **Step 5: Run the test to verify it passes**
 
 Run: `node --env-file=.env admin/posts-store.test.mjs`
 Expected: `All checks passed.`, exit code 0. Each test's writes land as drafts in Prismic's Migration Release, same as any other write in this plan — the tests read them back via `getByUID`/`getAllByType` against the *draft* state (the write client and its queries can see pending release content; only the site's production read path is affected by the publish gate), so they don't require a manual publish step to pass.
 
-- [ ] **Step 5: Update the `test:admin` script's dependency on env**
+- [ ] **Step 6: Update the `test:admin` script's dependency on env**
 
 In `package.json`, change the `test:admin` script to load the env file:
 
@@ -868,15 +874,15 @@ In `package.json`, change the `test:admin` script to load the env file:
 "test:admin": "node --env-file=.env admin/frontmatter.test.mjs && node --env-file=.env admin/authors-store.test.mjs && node --env-file=.env admin/posts-store.test.mjs && node --env-file=.env admin/validate-post.test.mjs && node --env-file=.env admin/api-handlers.test.mjs && node --env-file=.env admin/ui.test.mjs && node --env-file=.env admin/integration.test.mjs",
 ```
 
-- [ ] **Step 6: Run the full admin test suite**
+- [ ] **Step 7: Run the full admin test suite**
 
 Run: `npm run test:admin`
 Expected: all suites pass. `admin/authors-store.test.mjs`, `admin/frontmatter.test.mjs`, `admin/validate-post.test.mjs` are untouched by this migration and should be unaffected; `admin/api-handlers.test.mjs`, `admin/ui.test.mjs`, and `admin/integration.test.mjs` may exercise `posts-store.mjs` indirectly — if any fail, read the failure before changing anything, since it may point at an assumption elsewhere in the admin panel that still expects filesystem-backed posts.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add admin/posts-store.mjs admin/posts-store.test.mjs package.json
+git add admin/prismic-write-mapping.mjs admin/posts-store.mjs admin/posts-store.test.mjs package.json
 git commit -m "feat: repoint the admin panel's post storage at Prismic"
 ```
 
@@ -947,7 +953,7 @@ git commit -m "feat: remind editors that admin panel changes are drafts until pu
 - Create: `scripts/migrate-posts-to-prismic.mjs`
 
 **Interfaces:**
-- Consumes: `parseFrontmatter` from `admin/frontmatter.mjs`; `createPrismicWriteClient`, `PRISMIC_LOCALE`, `PRISMIC_POST_TYPE` from `admin/prismic-client.mjs`; `factsTableToTableField`, `stringsToGroupField` from `src/loaders/prismic-fields.ts`.
+- Consumes: `parseFrontmatter` from `admin/frontmatter.mjs`; `createPrismicWriteClient`, `PRISMIC_LOCALE`, `PRISMIC_POST_TYPE` from `admin/prismic-client.mjs`; `postPayloadToPrismicData` from Task 6's `admin/prismic-write-mapping.mjs` — reused rather than reimplemented, so this task depends on Task 6 being complete.
 - Produces: a one-time executable script; no importable interface (nothing later depends on it programmatically).
 
 - [ ] **Step 1: Write the script**
@@ -957,35 +963,11 @@ git commit -m "feat: remind editors that admin panel changes are drafts until pu
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import * as prismic from '@prismicio/client';
-import { htmlAsRichText } from '@prismicio/migrate';
-import { marked } from 'marked';
 import { parseFrontmatter } from '../admin/frontmatter.mjs';
 import { createPrismicWriteClient, PRISMIC_LOCALE, PRISMIC_POST_TYPE } from '../admin/prismic-client.mjs';
-import { factsTableToTableField, stringsToGroupField } from '../src/loaders/prismic-fields.ts';
+import { postPayloadToPrismicData } from '../admin/prismic-write-mapping.mjs';
 
 const POSTS_DIR = path.join(process.cwd(), 'src/content/posts');
-
-function toPrismicData(frontmatter, body) {
-  const data = {
-    title: frontmatter.title,
-    description: frontmatter.description,
-    author: frontmatter.author,
-    pub_date: frontmatter.pubDate,
-    format: frontmatter.format,
-    cover: frontmatter.cover,
-    cover_alt: frontmatter.coverAlt,
-    takeaways: stringsToGroupField(frontmatter.takeaways, 'item'),
-    tags: stringsToGroupField(frontmatter.tags, 'tag'),
-    post_type: frontmatter.postType,
-    featured: Boolean(frontmatter.featured),
-    archived: false,
-    body: htmlAsRichText(marked.parse(body)).result,
-  };
-  if (frontmatter.updatedDate) data.updated_date = frontmatter.updatedDate;
-  if (frontmatter.coverCredit) data.cover_credit = frontmatter.coverCredit;
-  if (frontmatter.factsTable) data.facts_table = factsTableToTableField(frontmatter.factsTable);
-  return data;
-}
 
 const files = (await readdir(POSTS_DIR)).filter((file) => file.endsWith('.md'));
 const writeClient = createPrismicWriteClient();
@@ -995,13 +977,14 @@ for (const file of files) {
   const id = file.replace(/\.md$/, '');
   const raw = await readFile(path.join(POSTS_DIR, file), 'utf-8');
   const { frontmatter, body } = parseFrontmatter(raw);
+  const payload = { ...frontmatter, featured: Boolean(frontmatter.featured), body: body.trim() };
   migration.createDocument(
     {
       type: PRISMIC_POST_TYPE,
       lang: PRISMIC_LOCALE,
       uid: id,
       tags: [],
-      data: toPrismicData(frontmatter, body.trim()),
+      data: { ...postPayloadToPrismicData(payload), archived: false },
     },
     frontmatter.title,
   );
@@ -1016,7 +999,7 @@ console.log(`\nMigrated ${files.length} post(s) as drafts. Publish the pending r
 
 - [ ] **Step 2: Dry-run check before touching the real repository**
 
-Run: `node scripts/migrate-posts-to-prismic.mjs --help` — this isn't wired to a real `--help` flag, so instead just read through the script once more against the actual 7 filenames (`codex-beyond-the-laptop.md`, `codex-workspace-cleanup.md`, `gpt-6-mako-koi-tune-leak.md`, `luna-max-vs-sol-medium.md`, `luna-price-efficiency.md`, `motion-claude-launch-video.md`, `mythos-6-leak.md`) and confirm each one's frontmatter has every field `toPrismicData` reads (`title`, `description`, `author`, `pubDate`, `format`, `cover`, `coverAlt`, `takeaways`, `tags`, `postType`, `featured`; optionally `updatedDate`, `coverCredit`, `factsTable`).
+Run: `node scripts/migrate-posts-to-prismic.mjs --help` — this isn't wired to a real `--help` flag, so instead just read through the script once more against the actual 7 filenames (`codex-beyond-the-laptop.md`, `codex-workspace-cleanup.md`, `gpt-6-mako-koi-tune-leak.md`, `luna-max-vs-sol-medium.md`, `luna-price-efficiency.md`, `motion-claude-launch-video.md`, `mythos-6-leak.md`) and confirm each one's frontmatter has every field `postPayloadToPrismicData` reads (`title`, `description`, `author`, `pubDate`, `format`, `cover`, `coverAlt`, `takeaways`, `tags`, `postType`, `featured`; optionally `updatedDate`, `coverCredit`, `factsTable`).
 
 Run: `for f in src/content/posts/*.md; do node -e "import('./admin/frontmatter.mjs').then(async m => { const raw = await (await import('node:fs/promises')).readFile('$f', 'utf-8'); const { frontmatter } = m.parseFrontmatter(raw); console.log('$f', Object.keys(frontmatter)); })"; done`
 Expected: each line lists the frontmatter keys for one file — confirm none are missing the required fields listed above.
