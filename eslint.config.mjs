@@ -7,7 +7,7 @@ export default [
     ignores: ['dist/**', 'node_modules/**', '.astro/**', '.playwright-mcp/**'],
   },
   {
-    files: ['src/**/*.ts', 'tests/**/*.mjs', '*.mjs'],
+    files: ['src/**/*.ts', 'tests/**/*.mjs', 'admin/**/*.mjs', '*.mjs'],
     ...eslint.configs.recommended,
     languageOptions: {
       globals: {
