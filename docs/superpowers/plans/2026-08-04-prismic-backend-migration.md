@@ -1,0 +1,1114 @@
+# Prismic Backend Migration Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Move the `posts` content collection from git-committed markdown to Prismic (a headless CMS), and repoint the existing local admin panel (`admin/`) at Prismic so it stays the site's editorial tool instead of writing markdown files.
+
+**Architecture:** A custom Astro Content Layer loader (`src/loaders/prismic-posts.ts`) fetches posts from Prismic at build time and feeds Astro's existing Zod schema, unchanged. The local admin panel's storage layer (`admin/posts-store.mjs`) is repointed from filesystem reads/writes to Prismic's read/write client. A shared field-mapping module (`src/loaders/prismic-fields.ts`) translates between Prismic's field shapes (Table, Repeatable Group) and the plain JS shapes both the loader and the admin panel use, and is unit-tested without any network dependency.
+
+**Tech Stack:** Astro 7 Content Layer API, `@prismicio/client` (read + write client, migration helper), `@prismicio/migrate` (HTML→Rich Text conversion), `marked` (Markdown→HTML, for the one-time migration script only), Node's native `--env-file` flag for loading secrets.
+
+## Global Constraints
+
+- The `posts` collection's Zod schema in `src/content.config.ts` does not change. It is the site's validation boundary (the "anti-scaled-content-abuse" invariants); every task here feeds it the same shape it already validates today.
+- `authors` stays untouched — local markdown files, `admin/authors-store.mjs` unmodified. Only `posts` moves.
+- Cover images stay on Cloudflare R2. The Prismic `cover` field is a plain Key Text URL, never Prismic's Image field.
+- All Prismic documents use a single locale, `en-us` (the free tier includes 2 locales; this site only needs one).
+- Prismic's Migration API has **no delete endpoint**. "Deleting" a post sets an `archived: true` field instead; the Astro loader excludes archived posts from the built site.
+- Prismic's Migration API writes land as **drafts in a Migration Release** — there is no way to publish programmatically (confirmed against Prismic's own docs). Every task that writes to Prismic must account for this: nothing created or updated via the admin panel or the migration script is live until a human publishes the pending release in Prismic's dashboard.
+- The repository name is not secret (`PRISMIC_REPOSITORY_NAME` — hardcoded as a constant, not an env var). `PRISMIC_WRITE_TOKEN` is secret, lives in `.env` (already git-ignored), loaded via `node --env-file=.env ...` (supported by the Node version already required in `package.json`'s `engines` field). The production build's loader is read-only and needs no credentials.
+- There is no CI workflow in this repo. Build-time network access to Prismic is expected and normal, same as for any headless-CMS-backed static site — no mocking is needed anywhere in this plan.
+
+---
+
+### Task 1: Provision the Prismic repository and the `post` custom type
+
+**Files:**
+- Create: `scripts/verify-prismic-setup.mjs`
+
+**Interfaces:**
+- Produces: a reachable Prismic repository with a custom type named `post`, whose API ID fields exactly match the table below. Every later task depends on this existing.
+
+This is a manual setup task — signing up for a third-party service and defining a content type through its dashboard isn't something to automate.
+
+- [ ] **Step 1: Create a free Prismic account and repository**
+
+Go to prismic.io, sign up, and create a new repository. Note the repository name you're given (it becomes part of your API URL, e.g. `https://your-repo-name.prismic.io/api/v2`). If `aipresshq` isn't available, pick the closest available name and remember it — it gets used as a literal string constant in Task 3.
+
+- [ ] **Step 2: Define the `post` custom type**
+
+In the Prismic dashboard, go to Custom Types → Create a new repeatable custom type with API ID `post`. Add these fields with these exact API IDs and types:
+
+| API ID | Field type |
+|---|---|
+| `title` | Key Text |
+| `description` | Key Text |
+| `author` | Key Text |
+| `pub_date` | Date |
+| `updated_date` | Date |
+| `format` | Select — options: `brief`, `explainer`, `comparison`, `tracker`, `analysis`, `tutorial` |
+| `cover` | Key Text |
+| `cover_alt` | Key Text |
+| `cover_credit` | Key Text |
+| `takeaways` | Repeatable Group, with one Key Text subfield inside it named `item` |
+| `facts_table` | Table |
+| `tags` | Repeatable Group, with one Key Text subfield inside it named `tag` |
+| `post_type` | Select — options: `digest`, `evergreen`, `tracker` |
+| `featured` | Boolean |
+| `archived` | Boolean |
+| `body` | Rich Text |
+
+The type already has a UID field by default (every repeatable custom type does) — that's what stores the post's slug. Save the custom type.
+
+- [ ] **Step 3: Get a write API token**
+
+In the Prismic dashboard, go to Settings → API & Security → generate a permanent access token with write permission. Copy it — you'll add it to `.env` in Task 2.
+
+- [ ] **Step 4: Write and run the reachability check**
+
+```js
+// scripts/verify-prismic-setup.mjs
+import * as prismic from '@prismicio/client';
+
+const repositoryName = process.argv[2];
+if (!repositoryName) {
+  console.error('Usage: node scripts/verify-prismic-setup.mjs <repository-name>');
+  process.exit(1);
+}
+
+const client = prismic.createClient(repositoryName);
+const documents = await client.getAllByType('post', { lang: 'en-us' });
+console.log(`Reached repository "${repositoryName}". Found ${documents.length} post document(s).`);
+```
+
+Run: `node scripts/verify-prismic-setup.mjs <your-repository-name>`
+Expected: `Reached repository "<your-repository-name>". Found 0 post document(s).` — this requires `@prismicio/client` to already be installed, so do Task 2 first if this fails with a module-not-found error, then come back and run this check.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add scripts/verify-prismic-setup.mjs
+git commit -m "feat: add a script to verify Prismic repository reachability"
+```
+
+---
+
+### Task 2: Add dependencies and wire up the write token
+
+**Files:**
+- Modify: `package.json`
+- Modify: `.env.example`
+
+**Interfaces:**
+- Produces: `@prismicio/client` available to both `src/` (production build) and `admin/`/`scripts/` (dev-only); `@prismicio/migrate` and `marked` available to `admin/`/`scripts/` only; `PRISMIC_WRITE_TOKEN` documented as a required local env var.
+
+- [ ] **Step 1: Install dependencies**
+
+```bash
+npm install @prismicio/client
+npm install --save-dev @prismicio/migrate marked
+```
+
+`@prismicio/client` is a regular dependency because `src/loaders/prismic-posts.ts` runs during the production build. `@prismicio/migrate` and `marked` are dev dependencies — they're only used by `admin/` (which only runs under `astro dev`, per `admin/integration.mjs`'s `astro:server:setup` hook) and by the one-time migration script.
+
+- [ ] **Step 2: Document the write token in `.env.example`**
+
+Add to `.env.example`:
+
+```
+# Prismic — posts backend (see docs/superpowers/specs/2026-08-04-prismic-backend-migration-design.md)
+# Write API token from the Prismic dashboard (Settings > API & Security). Only needed for the
+# admin panel (astro dev) and the one-time migration script — the production build's read-only
+# loader needs no credentials.
+PRISMIC_WRITE_TOKEN=
+```
+
+- [ ] **Step 3: Set the real token locally**
+
+In your local `.env` (not committed), set `PRISMIC_WRITE_TOKEN=<the token from Task 1, Step 3>`.
+
+- [ ] **Step 4: Verify the install**
+
+Run: `node -e "import('@prismicio/client').then(() => console.log('ok'))"`
+Expected: `ok`
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add package.json package-lock.json .env.example
+git commit -m "chore: add Prismic client dependencies"
+```
+
+---
+
+### Task 3: Pure field-mapping helpers
+
+**Files:**
+- Create: `src/loaders/prismic-fields.ts`
+- Test: `src/loaders/prismic-fields.test.mjs`
+
+**Interfaces:**
+- Produces: `PRISMIC_REPOSITORY_NAME` (string constant), `PRISMIC_LOCALE` (string constant, `'en-us'`), `PRISMIC_POST_TYPE` (string constant, `'post'`), `tableFieldToFactsTable(field)`, `factsTableToTableField(factsTable)`, `groupFieldToStrings(field, key)`, `stringsToGroupField(values, key)`. These are consumed by Task 4's loader and Task 5's admin store.
+
+- [ ] **Step 1: Write the failing tests**
+
+```js
+// src/loaders/prismic-fields.test.mjs
+import assert from 'node:assert/strict';
+import {
+  tableFieldToFactsTable,
+  factsTableToTableField,
+  groupFieldToStrings,
+  stringsToGroupField,
+} from './prismic-fields.ts';
+
+async function test(name, fn) {
+  try {
+    await fn();
+    console.log(`✓ ${name}`);
+  } catch (error) {
+    console.error(`✗ ${name}`);
+    console.error(error);
+    process.exitCode = 1;
+  }
+}
+
+const sampleTableField = {
+  head: [
+    {
+      cells: [
+        { type: 'header', content: [{ type: 'paragraph', text: 'Model', spans: [] }] },
+        { type: 'header', content: [{ type: 'paragraph', text: 'Price', spans: [] }] },
+      ],
+    },
+  ],
+  body: [
+    {
+      cells: [
+        { type: 'data', content: [{ type: 'paragraph', text: 'Luna Max', spans: [] }] },
+        { type: 'data', content: [{ type: 'paragraph', text: '$20/mo', spans: [] }] },
+      ],
+    },
+  ],
+};
+
+await test('tableFieldToFactsTable maps head cells to columns and body cells to rows', () => {
+  const result = tableFieldToFactsTable(sampleTableField);
+  assert.deepEqual(result, { columns: ['Model', 'Price'], rows: [['Luna Max', '$20/mo']] });
+});
+
+await test('tableFieldToFactsTable returns undefined for a missing or empty table field', () => {
+  assert.equal(tableFieldToFactsTable(undefined), undefined);
+  assert.equal(tableFieldToFactsTable(null), undefined);
+  assert.equal(tableFieldToFactsTable({ head: [], body: [] }), undefined);
+});
+
+await test('factsTableToTableField is the inverse of tableFieldToFactsTable', () => {
+  const factsTable = { columns: ['Model', 'Price'], rows: [['Luna Max', '$20/mo']] };
+  assert.deepEqual(tableFieldToFactsTable(factsTableToTableField(factsTable)), factsTable);
+});
+
+await test('factsTableToTableField returns undefined when there is no facts table', () => {
+  assert.equal(factsTableToTableField(undefined), undefined);
+});
+
+await test('groupFieldToStrings extracts one subfield from every group item', () => {
+  const field = [{ tag: 'OpenAI' }, { tag: 'Funding' }];
+  assert.deepEqual(groupFieldToStrings(field, 'tag'), ['OpenAI', 'Funding']);
+});
+
+await test('groupFieldToStrings returns an empty array for a null or undefined field', () => {
+  assert.deepEqual(groupFieldToStrings(null, 'tag'), []);
+  assert.deepEqual(groupFieldToStrings(undefined, 'tag'), []);
+});
+
+await test('stringsToGroupField is the inverse of groupFieldToStrings', () => {
+  const values = ['OpenAI', 'Funding'];
+  assert.deepEqual(groupFieldToStrings(stringsToGroupField(values, 'tag'), 'tag'), values);
+});
+
+if (process.exitCode === 1) {
+  console.log('\nSome checks failed.');
+} else {
+  console.log('\nAll checks passed.');
+}
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `node src/loaders/prismic-fields.test.mjs`
+Expected: an import error — `prismic-fields.ts` doesn't exist yet.
+
+- [ ] **Step 3: Write the implementation**
+
+```ts
+// src/loaders/prismic-fields.ts
+
+// Update this if the repository name chosen in Task 1 differs.
+export const PRISMIC_REPOSITORY_NAME = 'aipresshq';
+export const PRISMIC_LOCALE = 'en-us';
+export const PRISMIC_POST_TYPE = 'post';
+
+export interface FactsTable {
+  columns: string[];
+  rows: string[][];
+}
+
+interface PrismicTableCell {
+  type: 'header' | 'data';
+  content: Array<{ type: string; text: string; spans: unknown[] }>;
+}
+
+interface PrismicTableRow {
+  cells: PrismicTableCell[];
+}
+
+export interface PrismicTableField {
+  head: PrismicTableRow[];
+  body: PrismicTableRow[];
+}
+
+function cellText(cell: PrismicTableCell): string {
+  return cell.content.map((block) => block.text).join(' ');
+}
+
+export function tableFieldToFactsTable(
+  field: PrismicTableField | null | undefined,
+): FactsTable | undefined {
+  if (!field || field.head.length === 0 || field.body.length === 0) return undefined;
+  return {
+    columns: field.head[0].cells.map(cellText),
+    rows: field.body.map((row) => row.cells.map(cellText)),
+  };
+}
+
+export function factsTableToTableField(
+  factsTable: FactsTable | null | undefined,
+): PrismicTableField | undefined {
+  if (!factsTable) return undefined;
+  const toCell = (type: 'header' | 'data', text: string): PrismicTableCell => ({
+    type,
+    content: [{ type: 'paragraph', text, spans: [] }],
+  });
+  return {
+    head: [{ cells: factsTable.columns.map((column) => toCell('header', column)) }],
+    body: factsTable.rows.map((row) => ({ cells: row.map((cell) => toCell('data', cell)) })),
+  };
+}
+
+export function groupFieldToStrings<K extends string>(
+  field: Array<Record<K, string>> | null | undefined,
+  key: K,
+): string[] {
+  return (field ?? []).map((item) => item[key]);
+}
+
+export function stringsToGroupField<K extends string>(
+  values: string[],
+  key: K,
+): Array<Record<K, string>> {
+  return values.map((value) => ({ [key]: value }) as Record<K, string>);
+}
+```
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `node src/loaders/prismic-fields.test.mjs`
+Expected: `All checks passed.`, exit code 0.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/loaders/prismic-fields.ts src/loaders/prismic-fields.test.mjs
+git commit -m "feat: add Prismic Table/Group field mapping helpers"
+```
+
+---
+
+### Task 4: Astro Content Layer loader
+
+**Files:**
+- Create: `src/loaders/prismic-posts.ts`
+- Modify: `src/content.config.ts`
+
+**Interfaces:**
+- Consumes: `PRISMIC_REPOSITORY_NAME`, `PRISMIC_LOCALE`, `PRISMIC_POST_TYPE`, `tableFieldToFactsTable`, `groupFieldToStrings` from Task 3's `src/loaders/prismic-fields.ts`.
+- Produces: `prismicPostsLoader()`, a function returning an Astro `Loader`, consumed by `content.config.ts`'s `posts` collection.
+
+- [ ] **Step 1: Write the loader**
+
+```ts
+// src/loaders/prismic-posts.ts
+import type { Loader } from 'astro/loaders';
+import * as prismic from '@prismicio/client';
+import {
+  PRISMIC_REPOSITORY_NAME,
+  PRISMIC_LOCALE,
+  PRISMIC_POST_TYPE,
+  tableFieldToFactsTable,
+  groupFieldToStrings,
+} from './prismic-fields.ts';
+
+interface PrismicPostData {
+  title: string;
+  description: string;
+  author: string;
+  pub_date: string;
+  updated_date: string | null;
+  format: string;
+  cover: string;
+  cover_alt: string;
+  cover_credit: string | null;
+  takeaways: Array<{ item: string }> | null;
+  facts_table: Parameters<typeof tableFieldToFactsTable>[0];
+  tags: Array<{ tag: string }> | null;
+  post_type: string;
+  featured: boolean;
+  archived: boolean;
+  body: prismic.RichTextField;
+}
+
+export function prismicPostsLoader(): Loader {
+  return {
+    name: 'prismic-posts-loader',
+    load: async ({ store, logger, parseData, generateDigest }) => {
+      const client = prismic.createClient(PRISMIC_REPOSITORY_NAME);
+      const documents = await client.getAllByType<
+        prismic.PrismicDocument<PrismicPostData, typeof PRISMIC_POST_TYPE>
+      >(PRISMIC_POST_TYPE, { lang: PRISMIC_LOCALE });
+
+      logger.info(`Fetched ${documents.length} post document(s) from Prismic`);
+      store.clear();
+
+      for (const doc of documents) {
+        if (doc.data.archived) continue;
+
+        const validData = await parseData({
+          id: doc.uid as string,
+          data: {
+            title: doc.data.title,
+            description: doc.data.description,
+            author: doc.data.author,
+            pubDate: doc.data.pub_date,
+            updatedDate: doc.data.updated_date ?? undefined,
+            format: doc.data.format,
+            cover: doc.data.cover,
+            coverAlt: doc.data.cover_alt,
+            coverCredit: doc.data.cover_credit ?? undefined,
+            takeaways: groupFieldToStrings(doc.data.takeaways, 'item'),
+            factsTable: tableFieldToFactsTable(doc.data.facts_table),
+            tags: groupFieldToStrings(doc.data.tags, 'tag'),
+            postType: doc.data.post_type,
+            featured: doc.data.featured,
+          },
+        });
+
+        store.set({
+          id: doc.uid as string,
+          data: validData,
+          body: prismic.asText(doc.data.body) ?? '',
+          rendered: { html: prismic.asHTML(doc.data.body) ?? '' },
+          digest: generateDigest(doc.data),
+        });
+      }
+    },
+  };
+}
+```
+
+- [ ] **Step 2: Verify against the empty repository with a fake store**
+
+This checks the loader's logic (query + archived-filtering + zero-document handling) without needing Astro's full build pipeline.
+
+```bash
+node --env-file=.env -e "
+import('./src/loaders/prismic-posts.ts').then(async ({ prismicPostsLoader }) => {
+  const sets = [];
+  const fakeContext = {
+    store: { clear() {}, set(entry) { sets.push(entry); } },
+    logger: { info: console.log },
+    parseData: async ({ data }) => data,
+    generateDigest: () => 'digest',
+  };
+  await prismicPostsLoader().load(fakeContext);
+  console.log('store.set called', sets.length, 'time(s)');
+});
+"
+```
+
+Expected: `Fetched 0 post document(s) from Prismic` followed by `store.set called 0 time(s)` — matches the empty repository from Task 1.
+
+- [ ] **Step 3: Wire the loader into the collection**
+
+In `src/content.config.ts`, replace the `glob`-based loader for `posts`:
+
+```ts
+import { prismicPostsLoader } from './loaders/prismic-posts.ts';
+```
+
+and change:
+
+```ts
+const posts = defineCollection({
+  loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/posts' }),
+  schema: z.object({
+```
+
+to:
+
+```ts
+const posts = defineCollection({
+  loader: prismicPostsLoader(),
+  schema: z.object({
+```
+
+Leave the rest of the `z.object({...})` schema exactly as it is.
+
+- [ ] **Step 4: Verify the build tolerates an empty collection**
+
+Run: `npm run build`
+Expected: the build either succeeds with zero posts, or fails in a page/component that assumes at least one post exists (e.g. a homepage "featured" section). If it fails, note which file — that's expected until Task 9 populates real content via migration, not a bug in this task. Do not attempt to fix unrelated pages here; move on to Task 5.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/loaders/prismic-posts.ts src/content.config.ts
+git commit -m "feat: load the posts collection from Prismic instead of local markdown"
+```
+
+---
+
+### Task 5: Prismic client helper for the admin panel
+
+**Files:**
+- Create: `admin/prismic-client.mjs`
+
+**Interfaces:**
+- Consumes: `PRISMIC_REPOSITORY_NAME`, `PRISMIC_LOCALE`, `PRISMIC_POST_TYPE` from `src/loaders/prismic-fields.ts`.
+- Produces: `createPrismicClient()` (read-only), `createPrismicWriteClient()` (requires `PRISMIC_WRITE_TOKEN`), re-exported `PRISMIC_LOCALE`, `PRISMIC_POST_TYPE`. Consumed by Task 6's `admin/posts-store.mjs` and Task 8's migration script.
+
+- [ ] **Step 1: Write the helper**
+
+```js
+// admin/prismic-client.mjs
+import * as prismic from '@prismicio/client';
+import { PRISMIC_REPOSITORY_NAME, PRISMIC_LOCALE, PRISMIC_POST_TYPE } from '../src/loaders/prismic-fields.ts';
+
+export { PRISMIC_LOCALE, PRISMIC_POST_TYPE };
+
+export function createPrismicClient() {
+  return prismic.createClient(PRISMIC_REPOSITORY_NAME);
+}
+
+export function createPrismicWriteClient() {
+  const writeToken = process.env.PRISMIC_WRITE_TOKEN;
+  if (!writeToken) {
+    throw new Error(
+      'PRISMIC_WRITE_TOKEN is not set. Run with `node --env-file=.env ...` after setting it in .env.',
+    );
+  }
+  return prismic.createWriteClient(PRISMIC_REPOSITORY_NAME, { writeToken });
+}
+```
+
+- [ ] **Step 2: Verify it loads and fails clearly without a token**
+
+Run: `node -e "import('./admin/prismic-client.mjs').then(m => { try { m.createPrismicWriteClient() } catch (e) { console.log(e.message) } })"`
+Expected (assuming `PRISMIC_WRITE_TOKEN` isn't set in your shell's ambient environment): `PRISMIC_WRITE_TOKEN is not set. Run with...`
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add admin/prismic-client.mjs
+git commit -m "feat: add a shared Prismic client helper for the admin panel"
+```
+
+---
+
+### Task 6: Repoint the admin panel's post storage at Prismic
+
+**Files:**
+- Modify: `admin/posts-store.mjs`
+- Modify: `admin/posts-store.test.mjs`
+
+**Interfaces:**
+- Consumes: `createPrismicClient`, `createPrismicWriteClient`, `PRISMIC_LOCALE`, `PRISMIC_POST_TYPE` from Task 5's `admin/prismic-client.mjs`; `factsTableToTableField`, `stringsToGroupField`, `tableFieldToFactsTable`, `groupFieldToStrings` from Task 3's `src/loaders/prismic-fields.ts`.
+- Produces: `isSafePostId`, `listPosts`, `readPost`, `postExists`, `createPost`, `updatePost`, `deletePost` — same function names/signatures `admin/api-handlers.mjs` already imports, so that file needs no changes.
+
+This task changes real behavior editors will see, so read it in full before writing the test: `postExists` now means "a non-archived document exists"; `deletePost` archives instead of removing, so calling it twice on the same id returns `true` both times (it's idempotently re-archiving a document that still exists), not `false` the second time as the old filesystem version did.
+
+- [ ] **Step 1: Write the failing tests**
+
+```js
+// admin/posts-store.test.mjs
+import assert from 'node:assert/strict';
+import { listPosts, readPost, postExists, createPost, updatePost, deletePost, isSafePostId } from './posts-store.mjs';
+
+async function test(name, fn) {
+  try {
+    await fn();
+    console.log(`✓ ${name}`);
+  } catch (error) {
+    console.error(`✗ ${name}`);
+    console.error(error);
+    process.exitCode = 1;
+  }
+}
+
+const validPayload = (overrides) => ({
+  title: '__Admin Tool Test Post__',
+  description: 'Temporary post created by the admin tool test suite.',
+  author: 'tejas-telkar',
+  pubDate: '2026-01-01',
+  format: 'brief',
+  cover: '/images/test.png',
+  coverAlt: 'Test image',
+  takeaways: ['A temporary takeaway.'],
+  tags: ['AI'],
+  postType: 'digest',
+  featured: false,
+  body: 'Temporary body content.',
+  ...overrides,
+});
+
+await test('createPost creates a document and returns a generated id', async () => {
+  const id = await createPost(validPayload());
+  try {
+    assert.ok(id.startsWith('admin-tool-test-post'));
+    const created = await readPost(id);
+    assert.equal(created.title, '__Admin Tool Test Post__');
+    assert.equal(created.body, 'Temporary body content.');
+  } finally {
+    await deletePost(id);
+  }
+});
+
+await test('createPost avoids id collisions by appending a numeric suffix', async () => {
+  const payload = validPayload({ title: '__Admin Tool Collision Test__' });
+  const firstId = await createPost(payload);
+  try {
+    const secondId = await createPost(payload);
+    try {
+      assert.notEqual(firstId, secondId);
+      assert.ok(secondId.startsWith(firstId));
+    } finally {
+      await deletePost(secondId);
+    }
+  } finally {
+    await deletePost(firstId);
+  }
+});
+
+await test('updatePost overwrites an existing document and returns true', async () => {
+  const id = await createPost(
+    validPayload({ title: '__Admin Tool Update Test__', description: 'Original description.' }),
+  );
+  try {
+    const updated = await updatePost(
+      id,
+      validPayload({
+        title: '__Admin Tool Update Test__',
+        description: 'Updated description.',
+        body: 'Updated body.',
+      }),
+    );
+    assert.equal(updated, true);
+    const result = await readPost(id);
+    assert.equal(result.description, 'Updated description.');
+    assert.equal(result.body, 'Updated body.');
+  } finally {
+    await deletePost(id);
+  }
+});
+
+await test('updatePost returns false for an unknown id', async () => {
+  const updated = await updatePost('this-post-does-not-exist', validPayload());
+  assert.equal(updated, false);
+});
+
+await test('updatePost preserves an unmanaged field (factsTable) the form does not send', async () => {
+  const factsTable = { columns: ['A', 'B'], rows: [['x', 'y']] };
+  const id = await createPost(
+    validPayload({ title: '__Admin Tool FactsTable Preservation Test__', factsTable }),
+  );
+  try {
+    const before = await readPost(id);
+    assert.deepEqual(before.factsTable, factsTable);
+
+    const updated = await updatePost(
+      id,
+      validPayload({ title: '__Admin Tool FactsTable Preservation Test__', description: 'Edited.' }),
+    );
+    assert.equal(updated, true);
+
+    const after = await readPost(id);
+    assert.equal(after.description, 'Edited.');
+    assert.deepEqual(after.factsTable, factsTable);
+  } finally {
+    await deletePost(id);
+  }
+});
+
+await test('deletePost archives the document: listPosts excludes it, but the document still exists', async () => {
+  const id = await createPost(validPayload({ title: '__Admin Tool Delete Test__' }));
+  assert.equal(await deletePost(id), true);
+  assert.equal(await postExists(id), false);
+  const posts = await listPosts();
+  assert.ok(!posts.some((post) => post.id === id));
+  // Idempotent: archiving an already-archived document still succeeds.
+  assert.equal(await deletePost(id), true);
+});
+
+await test('deletePost returns false for an id that never existed', async () => {
+  assert.equal(await deletePost('this-post-does-not-exist'), false);
+});
+
+test('isSafePostId rejects a path-traversal-shaped string', () => {
+  assert.equal(isSafePostId('../../../etc/passwd'), false);
+});
+
+test('isSafePostId rejects any id containing a slash or dot', () => {
+  assert.equal(isSafePostId('foo/bar'), false);
+  assert.equal(isSafePostId('foo.bar'), false);
+  assert.equal(isSafePostId('..'), false);
+});
+
+if (process.exitCode === 1) {
+  console.log('\nSome checks failed.');
+} else {
+  console.log('\nAll checks passed.');
+}
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `node --env-file=.env admin/posts-store.test.mjs`
+Expected: failures — `posts-store.mjs` still reads/writes the local filesystem, so these Prismic-shaped expectations don't hold yet.
+
+- [ ] **Step 3: Rewrite the implementation**
+
+```js
+// admin/posts-store.mjs
+import * as prismic from '@prismicio/client';
+import { htmlAsRichText } from '@prismicio/migrate';
+import { marked } from 'marked';
+import { createPrismicClient, createPrismicWriteClient, PRISMIC_LOCALE, PRISMIC_POST_TYPE } from './prismic-client.mjs';
+import {
+  factsTableToTableField,
+  stringsToGroupField,
+  tableFieldToFactsTable,
+  groupFieldToStrings,
+} from '../src/loaders/prismic-fields.ts';
+
+export function isSafePostId(id) {
+  return typeof id === 'string' && /^[a-z0-9-]+$/.test(id);
+}
+
+function slugify(value) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function toPrismicData(payload) {
+  const data = {
+    title: payload.title,
+    description: payload.description,
+    author: payload.author,
+    pub_date: payload.pubDate,
+    format: payload.format,
+    cover: payload.cover,
+    cover_alt: payload.coverAlt,
+    takeaways: stringsToGroupField(payload.takeaways, 'item'),
+    tags: stringsToGroupField(payload.tags, 'tag'),
+    post_type: payload.postType,
+    featured: payload.featured,
+    body: htmlAsRichText(marked.parse(payload.body ?? '')).result,
+  };
+  if (payload.updatedDate) data.updated_date = payload.updatedDate;
+  if (payload.coverCredit) data.cover_credit = payload.coverCredit;
+  if (payload.factsTable) data.facts_table = factsTableToTableField(payload.factsTable);
+  return data;
+}
+
+function fromPrismicDocument(doc) {
+  const data = doc.data;
+  return {
+    id: doc.uid,
+    title: data.title,
+    description: data.description,
+    author: data.author,
+    pubDate: data.pub_date,
+    updatedDate: data.updated_date ?? undefined,
+    format: data.format,
+    cover: data.cover,
+    coverAlt: data.cover_alt,
+    coverCredit: data.cover_credit ?? undefined,
+    takeaways: groupFieldToStrings(data.takeaways, 'item'),
+    factsTable: tableFieldToFactsTable(data.facts_table),
+    tags: groupFieldToStrings(data.tags, 'tag'),
+    postType: data.post_type,
+    featured: Boolean(data.featured),
+    body: prismic.asText(data.body) ?? '',
+  };
+}
+
+export async function listPosts() {
+  const client = createPrismicClient();
+  const documents = await client.getAllByType(PRISMIC_POST_TYPE, { lang: PRISMIC_LOCALE });
+  return documents
+    .filter((doc) => !doc.data.archived)
+    .map((doc) => ({
+      id: doc.uid,
+      title: doc.data.title,
+      pubDate: doc.data.pub_date,
+      format: doc.data.format,
+      postType: doc.data.post_type,
+      featured: Boolean(doc.data.featured),
+    }))
+    .sort((a, b) => String(b.pubDate).localeCompare(String(a.pubDate)));
+}
+
+export async function readPost(id) {
+  if (!isSafePostId(id)) return undefined;
+  const client = createPrismicClient();
+  try {
+    const doc = await client.getByUID(PRISMIC_POST_TYPE, id, { lang: PRISMIC_LOCALE });
+    return fromPrismicDocument(doc);
+  } catch (error) {
+    if (error instanceof prismic.NotFoundError) return undefined;
+    throw error;
+  }
+}
+
+export async function postExists(id) {
+  if (!isSafePostId(id)) return false;
+  const client = createPrismicClient();
+  try {
+    const doc = await client.getByUID(PRISMIC_POST_TYPE, id, { lang: PRISMIC_LOCALE });
+    return !doc.data.archived;
+  } catch (error) {
+    if (error instanceof prismic.NotFoundError) return false;
+    throw error;
+  }
+}
+
+export async function createPost(payload) {
+  const baseId = slugify(payload.title) || `post-${Date.now()}`;
+  let id = baseId;
+  let suffix = 2;
+  while (await postExists(id)) {
+    id = `${baseId}-${suffix}`;
+    suffix += 1;
+  }
+
+  const writeClient = createPrismicWriteClient();
+  const migration = prismic.createMigration();
+  migration.createDocument(
+    {
+      type: PRISMIC_POST_TYPE,
+      lang: PRISMIC_LOCALE,
+      uid: id,
+      tags: [],
+      data: { ...toPrismicData(payload), archived: false },
+    },
+    payload.title,
+  );
+  await writeClient.migrate(migration);
+  return id;
+}
+
+export async function updatePost(id, payload) {
+  if (!isSafePostId(id)) return false;
+  const writeClient = createPrismicWriteClient();
+  let existingDoc;
+  try {
+    existingDoc = await writeClient.getByUID(PRISMIC_POST_TYPE, id, { lang: PRISMIC_LOCALE });
+  } catch (error) {
+    if (error instanceof prismic.NotFoundError) return false;
+    throw error;
+  }
+  existingDoc.data = { ...existingDoc.data, ...toPrismicData(payload) };
+  const migration = prismic.createMigration();
+  migration.updateDocument(existingDoc, payload.title);
+  await writeClient.migrate(migration);
+  return true;
+}
+
+export async function deletePost(id) {
+  if (!isSafePostId(id)) return false;
+  const writeClient = createPrismicWriteClient();
+  let existingDoc;
+  try {
+    existingDoc = await writeClient.getByUID(PRISMIC_POST_TYPE, id, { lang: PRISMIC_LOCALE });
+  } catch (error) {
+    if (error instanceof prismic.NotFoundError) return false;
+    throw error;
+  }
+  existingDoc.data = { ...existingDoc.data, archived: true };
+  const migration = prismic.createMigration();
+  migration.updateDocument(existingDoc);
+  await writeClient.migrate(migration);
+  return true;
+}
+```
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `node --env-file=.env admin/posts-store.test.mjs`
+Expected: `All checks passed.`, exit code 0. Each test's writes land as drafts in Prismic's Migration Release, same as any other write in this plan — the tests read them back via `getByUID`/`getAllByType` against the *draft* state (the write client and its queries can see pending release content; only the site's production read path is affected by the publish gate), so they don't require a manual publish step to pass.
+
+- [ ] **Step 5: Update the `test:admin` script's dependency on env**
+
+In `package.json`, change the `test:admin` script to load the env file:
+
+```json
+"test:admin": "node --env-file=.env admin/frontmatter.test.mjs && node --env-file=.env admin/authors-store.test.mjs && node --env-file=.env admin/posts-store.test.mjs && node --env-file=.env admin/validate-post.test.mjs && node --env-file=.env admin/api-handlers.test.mjs && node --env-file=.env admin/ui.test.mjs && node --env-file=.env admin/integration.test.mjs",
+```
+
+- [ ] **Step 6: Run the full admin test suite**
+
+Run: `npm run test:admin`
+Expected: all suites pass. `admin/authors-store.test.mjs`, `admin/frontmatter.test.mjs`, `admin/validate-post.test.mjs` are untouched by this migration and should be unaffected; `admin/api-handlers.test.mjs`, `admin/ui.test.mjs`, and `admin/integration.test.mjs` may exercise `posts-store.mjs` indirectly — if any fail, read the failure before changing anything, since it may point at an assumption elsewhere in the admin panel that still expects filesystem-backed posts.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add admin/posts-store.mjs admin/posts-store.test.mjs package.json
+git commit -m "feat: repoint the admin panel's post storage at Prismic"
+```
+
+---
+
+### Task 7: Publish-workflow reminder in the admin UI
+
+**Files:**
+- Modify: `admin/ui.mjs`
+
+**Interfaces:**
+- Consumes: nothing new.
+- Produces: no interface change — this is a UI-only addition, safe to do independently of the other tasks.
+
+- [ ] **Step 1: Write the failing test**
+
+`admin/ui.test.mjs` checks for specific substrings in the rendered HTML rather than a full snapshot, so add one more substring check. In `admin/ui.test.mjs`, insert this test after the existing `'renderAdminPage includes the app mount point and inline script'` test (line 26) and before the trailing `if (process.exitCode === 1) { ... }` summary block:
+
+```js
+await test('renderAdminPage warns that changes are drafts until published', () => {
+  assert.ok(html.includes('Nothing goes live until you publish'));
+});
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `node admin/ui.test.mjs`
+Expected: the new assertion fails — the banner text doesn't exist yet.
+
+- [ ] **Step 3: Add the banner**
+
+In `admin/ui.mjs`, add a CSS rule to the `<style>` block, right after the `.empty` rule at line 66:
+
+```css
+.prismic-banner { background: #fff4e5; border: 1px solid #b3261e; border-radius: 4px; padding: 10px 14px; margin: 16px 24px 0; font-size: 0.85rem; }
+```
+
+Then add the banner markup between the closing `</header>` tag and the `<main id="app"></main>` line:
+
+```html
+    <p class="prismic-banner">
+      Changes here are saved as drafts in Prismic. Nothing goes live until you publish the
+      pending release in your Prismic dashboard.
+    </p>
+```
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `node admin/ui.test.mjs`
+Expected: `All checks passed.`, exit code 0.
+
+- [ ] **Step 4: Manual check**
+
+Run: `npm run dev` (or `astro dev --background` per this project's convention), open `/admin`, confirm the banner renders and reads clearly.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add admin/ui.mjs admin/ui.test.mjs
+git commit -m "feat: remind editors that admin panel changes are drafts until published in Prismic"
+```
+
+---
+
+### Task 8: One-time migration script for the 7 existing posts
+
+**Files:**
+- Create: `scripts/migrate-posts-to-prismic.mjs`
+
+**Interfaces:**
+- Consumes: `parseFrontmatter` from `admin/frontmatter.mjs`; `createPrismicWriteClient`, `PRISMIC_LOCALE`, `PRISMIC_POST_TYPE` from `admin/prismic-client.mjs`; `factsTableToTableField`, `stringsToGroupField` from `src/loaders/prismic-fields.ts`.
+- Produces: a one-time executable script; no importable interface (nothing later depends on it programmatically).
+
+- [ ] **Step 1: Write the script**
+
+```js
+// scripts/migrate-posts-to-prismic.mjs
+import { readdir, readFile } from 'node:fs/promises';
+import path from 'node:path';
+import * as prismic from '@prismicio/client';
+import { htmlAsRichText } from '@prismicio/migrate';
+import { marked } from 'marked';
+import { parseFrontmatter } from '../admin/frontmatter.mjs';
+import { createPrismicWriteClient, PRISMIC_LOCALE, PRISMIC_POST_TYPE } from '../admin/prismic-client.mjs';
+import { factsTableToTableField, stringsToGroupField } from '../src/loaders/prismic-fields.ts';
+
+const POSTS_DIR = path.join(process.cwd(), 'src/content/posts');
+
+function toPrismicData(frontmatter, body) {
+  const data = {
+    title: frontmatter.title,
+    description: frontmatter.description,
+    author: frontmatter.author,
+    pub_date: frontmatter.pubDate,
+    format: frontmatter.format,
+    cover: frontmatter.cover,
+    cover_alt: frontmatter.coverAlt,
+    takeaways: stringsToGroupField(frontmatter.takeaways, 'item'),
+    tags: stringsToGroupField(frontmatter.tags, 'tag'),
+    post_type: frontmatter.postType,
+    featured: Boolean(frontmatter.featured),
+    archived: false,
+    body: htmlAsRichText(marked.parse(body)).result,
+  };
+  if (frontmatter.updatedDate) data.updated_date = frontmatter.updatedDate;
+  if (frontmatter.coverCredit) data.cover_credit = frontmatter.coverCredit;
+  if (frontmatter.factsTable) data.facts_table = factsTableToTableField(frontmatter.factsTable);
+  return data;
+}
+
+const files = (await readdir(POSTS_DIR)).filter((file) => file.endsWith('.md'));
+const writeClient = createPrismicWriteClient();
+const migration = prismic.createMigration();
+
+for (const file of files) {
+  const id = file.replace(/\.md$/, '');
+  const raw = await readFile(path.join(POSTS_DIR, file), 'utf-8');
+  const { frontmatter, body } = parseFrontmatter(raw);
+  migration.createDocument(
+    {
+      type: PRISMIC_POST_TYPE,
+      lang: PRISMIC_LOCALE,
+      uid: id,
+      tags: [],
+      data: toPrismicData(frontmatter, body.trim()),
+    },
+    frontmatter.title,
+  );
+  console.log(`Queued "${id}" for migration.`);
+}
+
+await writeClient.migrate(migration, {
+  reporter: (event) => console.log(event),
+});
+console.log(`\nMigrated ${files.length} post(s) as drafts. Publish the pending release in the Prismic dashboard to make them live.`);
+```
+
+- [ ] **Step 2: Dry-run check before touching the real repository**
+
+Run: `node scripts/migrate-posts-to-prismic.mjs --help` — this isn't wired to a real `--help` flag, so instead just read through the script once more against the actual 7 filenames (`codex-beyond-the-laptop.md`, `codex-workspace-cleanup.md`, `gpt-6-mako-koi-tune-leak.md`, `luna-max-vs-sol-medium.md`, `luna-price-efficiency.md`, `motion-claude-launch-video.md`, `mythos-6-leak.md`) and confirm each one's frontmatter has every field `toPrismicData` reads (`title`, `description`, `author`, `pubDate`, `format`, `cover`, `coverAlt`, `takeaways`, `tags`, `postType`, `featured`; optionally `updatedDate`, `coverCredit`, `factsTable`).
+
+Run: `for f in src/content/posts/*.md; do node -e "import('./admin/frontmatter.mjs').then(async m => { const raw = await (await import('node:fs/promises')).readFile('$f', 'utf-8'); const { frontmatter } = m.parseFrontmatter(raw); console.log('$f', Object.keys(frontmatter)); })"; done`
+Expected: each line lists the frontmatter keys for one file — confirm none are missing the required fields listed above.
+
+- [ ] **Step 3: Run the migration against the real repository**
+
+Run: `node --env-file=.env scripts/migrate-posts-to-prismic.mjs`
+Expected: 7 `Queued "<id>" for migration.` lines, then a `documents:created` event with `created: 7`, then the final summary line.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add scripts/migrate-posts-to-prismic.mjs
+git commit -m "feat: add a one-time script to migrate existing posts into Prismic"
+```
+
+---
+
+### Task 9: Publish and verify end-to-end
+
+**Files:** none (verification only)
+
+**Interfaces:** none — this task confirms Tasks 1–8 work together correctly before Task 10's cleanup.
+
+- [ ] **Step 1: Publish the migration release**
+
+In the Prismic dashboard, open the Migration Release tab (per the "Publish workflow" constraint — nothing from Task 8 is live yet) and publish it. This is the one unavoidable manual step this whole plan works around, not a bug.
+
+- [ ] **Step 2: Verify the site builds with real content**
+
+Run: `npm run build`
+Expected: success, with the loader logging `Fetched 7 post document(s) from Prismic`.
+
+- [ ] **Step 3: Run the existing build-check test**
+
+Run: `npm test`
+Expected: `tests/build-check.mjs` passes against the freshly built `dist/`.
+
+- [ ] **Step 4: Spot-check rendering parity**
+
+Run: `npm run preview` (or `astro dev --background`), open a migrated post (e.g. `/posts/luna-price-efficiency/`), and confirm: cover image renders, takeaways list matches the original post, facts table (if present) renders with the same columns/rows, tags render, byline/author is correct, and the read-time estimate is a sane number (not zero, not absurdly large — this exercises `prismic.asText()` feeding `readMinutes()` from `src/lib/read-time.ts`).
+
+- [ ] **Step 5: Verify the repointed admin panel end-to-end**
+
+Run `astro dev --background`, open `/admin`, create a new test post through the form, publish the resulting release in Prismic's dashboard, then refresh `/admin` and confirm the new post appears in the list. Delete it through the admin UI, and confirm it disappears from the admin list immediately (no extra publish needed for it to disappear from `listPosts`, since that reads live via the write-capable query path already exercised in Task 6's tests) — then clean it up by leaving it archived (no further action needed).
+
+- [ ] **Step 6: Run the full test suite one more time**
+
+Run: `npm test && npm run test:admin`
+Expected: both pass.
+
+---
+
+### Task 10: Remove the migrated markdown files
+
+**Files:**
+- Delete: `src/content/posts/codex-beyond-the-laptop.md`
+- Delete: `src/content/posts/codex-workspace-cleanup.md`
+- Delete: `src/content/posts/gpt-6-mako-koi-tune-leak.md`
+- Delete: `src/content/posts/luna-max-vs-sol-medium.md`
+- Delete: `src/content/posts/luna-price-efficiency.md`
+- Delete: `src/content/posts/motion-claude-launch-video.md`
+- Delete: `src/content/posts/mythos-6-leak.md`
+
+**Interfaces:** none — nothing reads from this directory anymore after Task 4.
+
+Only do this after Task 9 passes in full — these files are the source of truth until the migration is confirmed working end-to-end.
+
+- [ ] **Step 1: Delete the files**
+
+```bash
+git rm src/content/posts/codex-beyond-the-laptop.md \
+  src/content/posts/codex-workspace-cleanup.md \
+  src/content/posts/gpt-6-mako-koi-tune-leak.md \
+  src/content/posts/luna-max-vs-sol-medium.md \
+  src/content/posts/luna-price-efficiency.md \
+  src/content/posts/motion-claude-launch-video.md \
+  src/content/posts/mythos-6-leak.md
+```
+
+- [ ] **Step 2: Verify nothing else references the directory**
+
+Run: `grep -rn "content/posts" src/ admin/ scripts/ tests/`
+Expected: no remaining references to reading from that directory (the `src/content/posts/` directory itself can stay empty and git-ignored-by-emptiness, or you can leave a `.gitkeep` if you'd rather keep the directory present for clarity).
+
+- [ ] **Step 3: Full verification one more time**
+
+Run: `npm run build && npm test && npm run test:admin`
+Expected: all pass — confirms the build genuinely no longer depends on the local files.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git commit -m "chore: remove markdown posts now that Prismic is the source of truth"
+```
