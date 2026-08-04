@@ -7,7 +7,7 @@ updatedDate: 2026-08-04
 format: 'tutorial'
 cover: '/images/codex-workspace-cleanup.png'
 coverAlt: 'Laptop showing an abstract file cleanup workspace beside a tray of sorted documents'
-coverCredit: 'Illustration: AIPressHQ'
+coverCredit: 'Illustration: aiPressHQ'
 takeaways:
   [
     'Clean a directory you own instead of guessing which internal Codex files are safe to remove.',

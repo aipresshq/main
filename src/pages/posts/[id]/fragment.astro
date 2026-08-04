@@ -44,7 +44,7 @@ const canonicalUrl = new URL(`/posts/${post.id}/`, Astro.site ?? 'https://aipres
       data-continuous-article
       data-post-id={post.id}
       data-post-url={`/posts/${post.id}/`}
-      data-document-title={`${post.data.title} | AIPressHQ`}
+      data-document-title={`${post.data.title} | aiPressHQ`}
       data-next-fragment={nextPost ? `/posts/${nextPost.id}/fragment/` : undefined}
       data-next-url={nextPost ? `/posts/${nextPost.id}/` : undefined}
       data-next-title={nextPost?.data.title}

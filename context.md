@@ -1,4 +1,4 @@
-# AIPressHQ Project Context
+# aiPressHQ Project Context
 
 **Domain:** aipresshq.com (the selected primary publication domain.)
 **Goal:** A global, all-inclusive daily AI news site, monetized primarily through Google AdSense, built and run at near-zero infra cost with a mostly-automated pipeline and a light daily human-review step. Designed from day one to survive Google's 2026 spam/quality enforcement rather than get deindexed after an initial traffic spike.

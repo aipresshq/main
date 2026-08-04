@@ -7,7 +7,7 @@ updatedDate: 2026-08-04
 format: 'tutorial'
 cover: '/images/motion-claude-launch-video.png'
 coverAlt: 'Product page flowing into a storyboard of launch video frames on a dark studio monitor'
-coverCredit: 'Illustration: AIPressHQ'
+coverCredit: 'Illustration: aiPressHQ'
 takeaways:
   [
     'Start with a product page, a defined audience, and one outcome instead of asking for a generic marketing video.',

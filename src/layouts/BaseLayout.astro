@@ -67,8 +67,7 @@ const sections = [
         let theme = 'light';
 
         try {
-          const stored =
-            localStorage.getItem('aipresshq-theme') ?? localStorage.getItem('ai-snap-theme');
+          const stored = localStorage.getItem('aipresshq-theme');
           const system = window.matchMedia('(prefers-color-scheme: dark)').matches
             ? 'dark'
             : 'light';
@@ -109,7 +108,7 @@ const sections = [
     <div class="frame">
       <header class="site-header" data-pagefind-ignore>
         <div class="dateline-strip">
-          <span class="label">AIPressHQ / daily edition</span>
+          <span class="label">aiPressHQ / daily edition</span>
           {editionDate && <span class="edition-date">{editionDate}</span>}
         </div>
       </header>
@@ -120,7 +119,7 @@ const sections = [
 			     box scrolled past. As a sibling, it can stay pinned for the full scroll
 			     of the page. -->
       <nav class="primary-bar" aria-label="Primary" data-pagefind-ignore>
-        <a href="/" class="masthead-mark" aria-label="AIPressHQ home">
+        <a href="/" class="masthead-mark" aria-label="aiPressHQ home">
           <BrandMark compact />
         </a>
 

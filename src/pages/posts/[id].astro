@@ -51,7 +51,7 @@ const schema = {
       url: new URL(`/authors/${author.id}/`, Astro.site ?? 'https://aipresshq.com').href,
     },
   ],
-  publisher: { '@type': 'Organization', name: 'AIPressHQ' },
+  publisher: { '@type': 'Organization', name: 'aiPressHQ' },
   mainEntityOfPage: {
     '@type': 'WebPage',
     '@id': new URL(`/posts/${post.id}/`, Astro.site ?? 'https://aipresshq.com').href,
@@ -60,7 +60,7 @@ const schema = {
 ---
 
 <BaseLayout
-  title={`${title} | AIPressHQ`}
+  title={`${title} | aiPressHQ`}
   description={description}
   editionDate={formatEditionDate(pubDate)}
 >

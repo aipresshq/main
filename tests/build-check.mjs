@@ -730,7 +730,7 @@ check(
       article,
       postId: 'valid-post',
       postUrl: '/posts/valid-post/',
-      documentTitle: 'Valid post - AIPressHQ',
+      documentTitle: 'Valid post - aiPressHQ',
     };
 
     assert.equal(validateArticleFragmentCandidates([valid]), article);
@@ -930,7 +930,7 @@ check('article focus rings use theme-aware marks while dark card tags stay monoc
   );
 });
 
-check('headlines and the AIPressHQ wordmark use the intended bundled faces', () => {
+check('headlines and the aiPressHQ wordmark use the intended bundled faces', () => {
   const css = sourceStyles();
   const displayVar = css.match(/--font-display:\s*([^;]+);/);
   const brandBlock = css.match(/\.brand-mark\s*\{([\s\S]*?)\n\}/);
@@ -975,12 +975,12 @@ check(
   'homepage renders the shell: masthead, dateline, nav, and no persistent subscribe button',
   () => {
     const html = dist('index.html');
-    assert.match(html, /<title>AIPressHQ \| Daily AI News<\/title>/);
+    assert.match(html, /<title>aiPressHQ \| Daily AI News<\/title>/);
     assert.ok(html.includes('class="masthead-mark"'), 'masthead not rendered');
-    assert.ok(html.includes('class="brand-mark"'), 'shared AIPressHQ mark not rendered');
+    assert.ok(html.includes('class="brand-mark"'), 'shared aiPressHQ mark not rendered');
     assert.ok(
-      html.includes('aria-label="AIPressHQ home"'),
-      'masthead does not expose the AIPressHQ home label',
+      html.includes('aria-label="aiPressHQ home"'),
+      'masthead does not expose the aiPressHQ home label',
     );
     assert.ok(html.includes('class="edition-date"'), 'edition dateline not rendered');
     assert.ok(html.includes('class="primary-bar"'), 'primary bar not rendered');
@@ -1005,7 +1005,7 @@ check(
   },
 );
 
-check('the approved AIPressHQ logo and favicon assets are wired across the shell', () => {
+check('the approved aiPressHQ logo and favicon assets are wired across the shell', () => {
   const html = dist('index.html');
   const css = sourceStyles();
   const manifest = JSON.parse(dist('site.webmanifest'));
@@ -1037,7 +1037,7 @@ check('the approved AIPressHQ logo and favicon assets are wired across the shell
     css,
     /html\[data-theme=['"]dark['"]\] \.footer-wordmark \.brand-logo-light\s*\{[\s\S]*?display:\s*block/,
   );
-  assert.equal(manifest.name, 'AIPressHQ');
+  assert.equal(manifest.name, 'aiPressHQ');
   assert.deepEqual(
     manifest.icons.map(({ src, sizes, type }) => ({ src, sizes, type })),
     [
@@ -2133,16 +2133,18 @@ check('astro.config.mjs preserves site, sitemap, and image.remotePatterns config
   assert.match(config, /remotePatterns/);
 });
 
-check('generated pages use the AIPressHQ public identity', () => {
+check('generated pages use the aiPressHQ public identity', () => {
   const htmlFiles = filesUnder(new URL('../dist/', import.meta.url)).filter((file) =>
     file.pathname.endsWith('.html'),
   );
+  const legacyPublicBrand = ['AI', 'Snap'].join(' ');
+  const legacyPublicDomain = ['aisnap', 'in'].join('.');
 
   assert.ok(htmlFiles.length > 0, 'no generated HTML files found for brand verification');
   for (const file of htmlFiles) {
     const html = readFileSync(file, 'utf-8');
-    assert.ok(!html.includes('AI Snap'), `${file.pathname} still exposes the old AI Snap brand`);
-    assert.ok(!html.includes('aisnap.in'), `${file.pathname} still exposes the old site domain`);
+    assert.ok(!html.includes(legacyPublicBrand), `${file.pathname} still exposes the old brand`);
+    assert.ok(!html.includes(legacyPublicDomain), `${file.pathname} still exposes the old site domain`);
   }
 });
 

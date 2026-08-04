@@ -1,8 +1,8 @@
-# AIPressHQ Rebrand Implementation Plan
+# aiPressHQ Rebrand Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Rebrand the active Astro site from AI Snap to AIPressHQ, use `https://aipresshq.com` as the canonical domain, and introduce one responsive monochrome wordmark shared by the header and footer.
+**Goal:** Rebrand the active Astro site from AI Snap to aiPressHQ, use `https://aipresshq.com` as the canonical domain, and introduce one responsive monochrome wordmark shared by the header and footer.
 
 **Architecture:** Add a focused `BrandMark.astro` component for the visible identity, then keep brand configuration in the existing Astro shell and page metadata rather than introducing a new global state layer. Update the theme bootstrap and runtime writer together so old theme preferences migrate safely. Use the current CSS token system for the wordmark and preserve all existing routes and editorial behavior.
 
@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- The visible identity is a compact, bold `AIPressHQ` wordmark.
+- The visible identity is a compact, bold `aiPressHQ` wordmark.
 - The canonical site URL is `https://aipresshq.com`.
 - The wordmark uses the existing monochrome theme tokens and no unrelated accent color.
 - Existing navigation, search, bookmarks, category menus, and responsive breakpoints remain behaviorally unchanged.
@@ -26,7 +26,7 @@
 - Modify `src/layouts/BaseLayout.astro`: shared brand labels, masthead component, canonical theme bootstrap fallback, and site title context.
 - Modify `src/components/Footer.astro`: footer brand copy and shared wordmark usage.
 - Modify `src/scripts/theme.ts`: new persistence key and one-time legacy key migration behavior.
-- Modify `public/favicon.svg`: monochrome AIPressHQ favicon treatment.
+- Modify `public/favicon.svg`: monochrome aiPressHQ favicon treatment.
 - Modify active pages and components: replace runtime AI Snap copy in titles, descriptions, labels, and schema fallbacks.
 - Modify `astro.config.mjs`, `package.json`, and `package-lock.json`: canonical domain and project package identity.
 - Modify `tests/build-check.mjs`: update canonical and brand assertions and add shared-mark checks.
@@ -43,13 +43,13 @@
 - Consumes: rendered Astro output, source files, and `astro.config.mjs`.
 - Produces: failing checks that protect the new domain, brand, shared component, and compatibility key.
 
-- [ ] **Step 1: Replace old domain and title expectations with AIPressHQ expectations**
+- [ ] **Step 1: Replace old domain and title expectations with aiPressHQ expectations**
 
-Update the canonical URL assertions to match `https://aipresshq.com`, update the home title expectation to `AIPressHQ | Daily AI News`, update the schema author URL expectation to the new host, and update the Astro config expectation.
+Update the canonical URL assertions to match `https://aipresshq.com`, update the home title expectation to `aiPressHQ | Daily AI News`, update the schema author URL expectation to the new host, and update the Astro config expectation.
 
 - [ ] **Step 2: Add shared wordmark assertions**
 
-Add checks that the generated homepage contains `class="brand-mark"`, that the footer also contains the shared mark, and that the rendered masthead link uses `aria-label="AIPressHQ home"`.
+Add checks that the generated homepage contains `class="brand-mark"`, that the footer also contains the shared mark, and that the rendered masthead link uses `aria-label="aiPressHQ home"`.
 
 - [ ] **Step 3: Add stale active-brand assertions**
 
@@ -63,7 +63,7 @@ Expected: FAIL because the current output still contains the old brand, domain, 
 
 ---
 
-### Task 2: Build the Reusable AIPressHQ Wordmark
+### Task 2: Build the Reusable aiPressHQ Wordmark
 
 **Files:**
 - Create: `src/components/BrandMark.astro`
@@ -104,12 +104,12 @@ const { compact = false, class: className } = Astro.props;
 Import `BrandMark` in `BaseLayout.astro` and `Footer.astro`. Replace the header text link with:
 
 ```astro
-<a href="/" class="masthead-mark" aria-label="AIPressHQ home">
+<a href="/" class="masthead-mark" aria-label="aiPressHQ home">
   <BrandMark compact />
 </a>
 ```
 
-Use the same component in the footer with `aria-label="AIPressHQ home"` and without the compact prop.
+Use the same component in the footer with `aria-label="aiPressHQ home"` and without the compact prop.
 
 - [ ] **Step 3: Style the wordmark as a distinct editorial lockup**
 
@@ -138,7 +138,7 @@ Expected: PASS with the new component typed and both shell consumers rendered.
 
 **Interfaces:**
 - Consumes: the existing `data-theme` bootstrap and `initTheme()` runtime initializer.
-- Produces: compatible AIPressHQ theme preference behavior and a monochrome favicon.
+- Produces: compatible aiPressHQ theme preference behavior and a monochrome favicon.
 
 - [ ] **Step 1: Change the inline theme bootstrap to prefer the new key**
 
@@ -185,7 +185,7 @@ Expected: PASS, with the inline bootstrap still safe when localStorage or matchM
 
 **Interfaces:**
 - Consumes: `Astro.site`, page titles, descriptions, JSON-LD, and existing editorial copy.
-- Produces: consistent AIPressHQ runtime identity and canonical URL generation.
+- Produces: consistent aiPressHQ runtime identity and canonical URL generation.
 
 - [ ] **Step 1: Set the canonical site URL and package name**
 
@@ -193,15 +193,15 @@ Change Astro `site` to `https://aipresshq.com` and remove the obsolete domain-re
 
 - [ ] **Step 2: Update shared active copy**
 
-Change the dateline label to `AIPressHQ / daily edition`, footer labels and copyright to `AIPressHQ`, the category label to `AIPressHQ / category`, and the latest editorial links aria label to `AIPressHQ editorial links`.
+Change the dateline label to `aiPressHQ / daily edition`, footer labels and copyright to `aiPressHQ`, the category label to `aiPressHQ / category`, and the latest editorial links aria label to `aiPressHQ editorial links`.
 
 - [ ] **Step 3: Update page titles and descriptions**
 
-Replace the active `AI Snap` suffix and descriptions in the home, latest, trending, search, saved, about, 404, tag, format, tracker, and author pages with `AIPressHQ`. Keep generic editorial descriptions intact apart from the brand name.
+Replace the active `AI Snap` suffix and descriptions in the home, latest, trending, search, saved, about, 404, tag, format, tracker, and author pages with `aiPressHQ`. Keep generic editorial descriptions intact apart from the brand name.
 
 - [ ] **Step 4: Update article canonical fallbacks and schema**
 
-Change both article fallback URLs from `https://aisnap.in` to `https://aipresshq.com`, change article fragment document titles to use `AIPressHQ`, and set the JSON-LD publisher name to `AIPressHQ`.
+Change both article fallback URLs from `https://aisnap.in` to `https://aipresshq.com`, change article fragment document titles to use `aiPressHQ`, and set the JSON-LD publisher name to `aiPressHQ`.
 
 - [ ] **Step 5: Search active runtime sources for stale names**
 
@@ -246,7 +246,7 @@ Check `dist/index.html` and one generated article page for:
 
 ```text
 AI Press HQ is not present as a stale runtime brand.
-AIPressHQ is present in the title, masthead label, footer, and schema where applicable.
+aiPressHQ is present in the title, masthead label, footer, and schema where applicable.
 https://aipresshq.com is present in canonical and sitemap output.
 class="brand-mark" is present in both shared wordmark consumers.
 ```

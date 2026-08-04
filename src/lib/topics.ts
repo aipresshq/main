@@ -55,6 +55,6 @@ export const topicDescriptions: Record<string, string> = {
 export function getTopicDescription(topic: string) {
   return (
     topicDescriptions[topic] ??
-    `AIPressHQ reporting on ${topic}, with practical context and the sources behind each story.`
+    `aiPressHQ reporting on ${topic}, with practical context and the sources behind each story.`
   );
 }

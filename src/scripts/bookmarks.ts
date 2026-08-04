@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'ai-snap-saved-stories';
+const STORAGE_KEY = 'aipresshq-saved-stories';
 let volatileSavedStories: SavedStory[] = [];
 
 interface SavedStory {
@@ -42,7 +42,7 @@ function writeSavedStories(stories: SavedStory[]) {
     // page's state in memory even when it cannot be persisted.
     volatileSavedStories = stories;
   }
-  window.dispatchEvent(new CustomEvent('ai-snap:bookmarks-changed'));
+  window.dispatchEvent(new CustomEvent('aipresshq:bookmarks-changed'));
 }
 
 function syncBookmarkButtons(stories: SavedStory[]) {
@@ -184,7 +184,7 @@ export function initBookmarks() {
   });
 
   window.addEventListener('storage', syncSavedUi);
-  window.addEventListener('ai-snap:bookmarks-changed', syncSavedUi);
+  window.addEventListener('aipresshq:bookmarks-changed', syncSavedUi);
 
   const observer = new MutationObserver(() => syncBookmarkButtons(readSavedStories()));
   observer.observe(document.body, { childList: true, subtree: true });

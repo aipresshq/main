@@ -7,7 +7,7 @@ updatedDate: 2026-08-04
 format: 'analysis'
 cover: '/images/luna-price-efficiency.png'
 coverAlt: 'Abstract efficiency chart falling across a dark AI hardware workstation'
-coverCredit: 'Illustration: AIPressHQ'
+coverCredit: 'Illustration: aiPressHQ'
 takeaways:
   [
     'OpenAI now lists GPT-5.6 Luna at $0.20 per million input tokens and $1.20 per million output tokens.',

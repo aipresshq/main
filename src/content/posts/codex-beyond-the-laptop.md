@@ -7,7 +7,7 @@ updatedDate: 2026-08-04
 format: 'analysis'
 cover: '/images/codex-beyond-the-laptop.png'
 coverAlt: 'Laptop and compact control surface for supervising AI coding agents'
-coverCredit: 'Illustration: AIPressHQ'
+coverCredit: 'Illustration: aiPressHQ'
 takeaways:
   [
     'Codex is becoming a way to run and supervise long-running agent work, not just ask for code.',

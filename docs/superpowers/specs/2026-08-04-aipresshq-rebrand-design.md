@@ -1,8 +1,8 @@
-# AIPressHQ Rebrand Design
+# aiPressHQ Rebrand Design
 
 ## Goal
 
-Rebrand the active site from AI Snap to AIPressHQ and use `https://aipresshq.com` as the canonical site URL. The visible identity should be a compact, bold `AIPressHQ` wordmark that feels like a serious editorial publication while remaining distinct from the supplied reference mark.
+Rebrand the active site from AI Snap to aiPressHQ and use `https://aipresshq.com` as the canonical site URL. The visible identity should be a compact, bold `aiPressHQ` wordmark that feels like a serious editorial publication while remaining distinct from the supplied reference mark.
 
 ## Scope
 
@@ -55,6 +55,6 @@ The existing `AI Snap` event names in historical documents are not runtime brand
 
 - Search active source files for stale `AI Snap`, `ai-snap`, and `aisnap.in` runtime references.
 - Confirm the header and footer contain the shared `BrandMark` component.
-- Confirm generated canonical URLs, sitemap entries, JSON-LD publisher data, and page titles use `aipresshq.com` and AIPressHQ.
+- Confirm generated canonical URLs, sitemap entries, JSON-LD publisher data, and page titles use `aipresshq.com` and aiPressHQ.
 - Run `npm run check`, `npm run lint`, `npm run format:check`, `npm run build`, `npm test`, and `git diff --check`.
 - Verify the wordmark remains readable at the existing desktop and mobile breakpoints in both themes.

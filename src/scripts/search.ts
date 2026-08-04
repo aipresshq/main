@@ -13,7 +13,7 @@ interface PagefindModule {
 
 const PAGEFIND_URL = '/pagefind/pagefind.js';
 const RESULT_LIMIT = 8;
-const RECENT_SEARCHES_KEY = 'ai-snap-recent-searches';
+const RECENT_SEARCHES_KEY = 'aipresshq-recent-searches';
 let pagefindPromise: Promise<PagefindModule> | undefined;
 
 export function normalizeResultUrl(rawUrl: string | undefined): string | undefined {

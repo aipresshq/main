@@ -1,6 +1,6 @@
 {
-  "name": "AIPressHQ",
-  "short_name": "AIPressHQ",
+  "name": "aiPressHQ",
+  "short_name": "aiPressHQ",
   "description": "Daily AI news, explainers, and usage trackers.",
   "start_url": "/",
   "scope": "/",
