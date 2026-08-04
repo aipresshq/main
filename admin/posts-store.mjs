@@ -8,7 +8,7 @@ function toId(filename) {
   return filename.replace(/\.md$/, '');
 }
 
-function isSafePostId(id) {
+export function isSafePostId(id) {
   return typeof id === 'string' && /^[a-z0-9-]+$/.test(id);
 }
 

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { listPosts, readPost, postExists, createPost, updatePost, deletePost } from './posts-store.mjs';
+import { listPosts, readPost, postExists, createPost, updatePost, deletePost, isSafePostId } from './posts-store.mjs';
 
 async function test(name, fn) {
   try {
@@ -134,6 +134,31 @@ await test('updatePost rejects a path-traversal id', async () => {
 await test('deletePost rejects a path-traversal id', async () => {
   const deleted = await deletePost('../../../etc/passwd');
   assert.equal(deleted, false);
+});
+
+test('isSafePostId rejects a path-traversal string', () => {
+  assert.equal(isSafePostId('../../../etc/passwd'), false);
+});
+
+test('isSafePostId rejects any id containing a slash or dot', () => {
+  assert.equal(isSafePostId('foo/bar'), false);
+  assert.equal(isSafePostId('foo.bar'), false);
+  assert.equal(isSafePostId('..'), false);
+});
+
+test('isSafePostId accepts every real post id currently on disk', () => {
+  const realIds = [
+    'codex-beyond-the-laptop',
+    'codex-workspace-cleanup',
+    'gpt-6-mako-koi-tune-leak',
+    'luna-max-vs-sol-medium',
+    'luna-price-efficiency',
+    'motion-claude-launch-video',
+    'mythos-6-leak',
+  ];
+  for (const id of realIds) {
+    assert.equal(isSafePostId(id), true, `expected "${id}" to be accepted`);
+  }
 });
 
 if (process.exitCode === 1) {
