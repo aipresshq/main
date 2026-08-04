@@ -62,13 +62,25 @@ local filesystem, keeping the existing admin UI/validation/workflow intact for e
 | `cover` | Key Text | R2 URL or root-relative path — not Prismic's Image field |
 | `cover_alt` | Key Text | |
 | `cover_credit` | Key Text | optional |
-| `takeaways` | Repeatable Group, 1 Key Text subfield | count (1–4) enforced by the Zod schema post-fetch, not by Prismic |
-| `facts_table` | Table field | optional; Prismic's native Table field (confirmed to exist) |
-| `tags` | Repeatable Group, 1 Key Text subfield | min 1 enforced by Zod post-fetch |
+| `takeaways` | Group, 1 Key Text subfield (`item`) | count (1–4) enforced by the Zod schema post-fetch, not by Prismic |
+| `facts_table_columns` | Group, 1 Key Text subfield (`column`) | optional; see "Facts table representation" below |
+| `facts_table_rows` | Group, 6 Key Text subfields (`cell_1`..`cell_6`) | optional; see "Facts table representation" below |
+| `tags` | Group, 1 Key Text subfield (`tag`) | min 1 enforced by Zod post-fetch |
 | `post_type` | Select | `digest` / `evergreen` / `tracker`, default `digest` |
 | `featured` | Boolean | |
 | `body` | Rich Text | the long-form article; replaces the markdown file body |
 | `archived` | Boolean, default `false` | soft-delete flag — see "Delete handling" below |
+
+**Facts table representation (amendment during Task 1 execution):** the design originally called
+for Prismic's native Table field. `@prismicio/client`'s type definitions list a `Table` field
+type, but the live Custom Types Builder rejected it with an "unrecognised 'table' fragment"
+error when actually attempted — it isn't usable on this account regardless of what the client
+library's types suggest. Decision: represent the facts table as two Group fields instead —
+`facts_table_columns` (one item per column) and `facts_table_rows` (one item per row, with fixed
+subfields `cell_1` through `cell_6` used in column order, extras left blank). This caps facts
+tables at 6 columns, which comfortably covers every existing post (all 7 use exactly 3 columns
+today). The mapping helpers in `src/loaders/prismic-fields.ts` work with this Group-pair shape,
+not a Table field.
 
 **Delete handling:** Prismic's Migration/Write API supports create and update but has **no
 delete endpoint** (confirmed against Prismic's migration docs — deletion is dashboard-only).
