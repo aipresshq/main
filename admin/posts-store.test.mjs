@@ -121,6 +121,21 @@ await test('deletePost removes the file and returns true, false when already gon
   assert.equal(await deletePost(id), false);
 });
 
+await test('readPost rejects a path-traversal id instead of resolving outside the posts directory', async () => {
+  const post = await readPost('../../../etc/passwd');
+  assert.equal(post, undefined);
+});
+
+await test('updatePost rejects a path-traversal id', async () => {
+  const updated = await updatePost('../../../etc/passwd', validPayload());
+  assert.equal(updated, false);
+});
+
+await test('deletePost rejects a path-traversal id', async () => {
+  const deleted = await deletePost('../../../etc/passwd');
+  assert.equal(deleted, false);
+});
+
 if (process.exitCode === 1) {
   console.log('\nSome checks failed.');
 } else {

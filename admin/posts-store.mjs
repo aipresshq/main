@@ -8,6 +8,10 @@ function toId(filename) {
   return filename.replace(/\.md$/, '');
 }
 
+function isSafePostId(id) {
+  return typeof id === 'string' && /^[a-z0-9-]+$/.test(id);
+}
+
 export async function listPosts() {
   const files = (await readdir(POSTS_DIR)).filter((file) => file.endsWith('.md'));
   const posts = [];
@@ -27,6 +31,7 @@ export async function listPosts() {
 }
 
 export async function readPost(id) {
+  if (!isSafePostId(id)) return undefined;
   const filePath = path.join(POSTS_DIR, `${id}.md`);
   let raw;
   try {
@@ -89,6 +94,7 @@ export async function createPost(payload) {
 }
 
 export async function updatePost(id, payload) {
+  if (!isSafePostId(id)) return false;
   if (!(await postExists(id))) return false;
   await writeFile(
     path.join(POSTS_DIR, `${id}.md`),
@@ -99,6 +105,7 @@ export async function updatePost(id, payload) {
 }
 
 export async function deletePost(id) {
+  if (!isSafePostId(id)) return false;
   if (!(await postExists(id))) return false;
   await unlink(path.join(POSTS_DIR, `${id}.md`));
   return true;
