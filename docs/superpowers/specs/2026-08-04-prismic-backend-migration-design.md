@@ -43,6 +43,10 @@ local filesystem, keeping the existing admin UI/validation/workflow intact for e
 - Migrating `authors` into Prismic.
 - Changing the image/asset pipeline (R2 stays as-is).
 - Building a full editorial UI/workflow beyond what Prismic's own dashboard provides.
+- Wiring up the `context.md` §7 automation pipeline (GitHub Actions → Groq drafts → Telegram
+  approval). That pipeline isn't built yet and currently assumes a "commit markdown to git"
+  publish step; when it is built, its publish step should call the repointed admin API instead
+  (plus the same manual Prismic-release-publish click). Out of scope here.
 
 ## Content model — Prismic custom type `post`
 
