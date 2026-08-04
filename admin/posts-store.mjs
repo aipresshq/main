@@ -1,6 +1,6 @@
-import { readdir, readFile } from 'node:fs/promises';
+import { readdir, readFile, writeFile, unlink } from 'node:fs/promises';
 import path from 'node:path';
-import { parseFrontmatter } from './frontmatter.mjs';
+import { parseFrontmatter, serializeFrontmatter } from './frontmatter.mjs';
 
 const POSTS_DIR = path.join(process.cwd(), 'src/content/posts');
 
@@ -41,4 +41,65 @@ export async function readPost(id) {
 
 export async function postExists(id) {
   return (await readPost(id)) !== undefined;
+}
+
+function slugify(value) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function toFrontmatter(payload) {
+  const frontmatter = {
+    title: payload.title,
+    description: payload.description,
+    author: payload.author,
+    pubDate: payload.pubDate,
+    format: payload.format,
+    cover: payload.cover,
+    coverAlt: payload.coverAlt,
+    takeaways: payload.takeaways,
+    tags: payload.tags,
+    postType: payload.postType,
+    featured: payload.featured,
+  };
+  if (payload.updatedDate) frontmatter.updatedDate = payload.updatedDate;
+  if (payload.coverCredit) frontmatter.coverCredit = payload.coverCredit;
+  if (payload.factsTable) frontmatter.factsTable = payload.factsTable;
+  return frontmatter;
+}
+
+export async function createPost(payload) {
+  const baseId = slugify(payload.title);
+  let id = baseId;
+  let suffix = 2;
+  while (await postExists(id)) {
+    id = `${baseId}-${suffix}`;
+    suffix += 1;
+  }
+
+  await writeFile(
+    path.join(POSTS_DIR, `${id}.md`),
+    serializeFrontmatter(toFrontmatter(payload), payload.body ?? ''),
+    'utf-8',
+  );
+  return id;
+}
+
+export async function updatePost(id, payload) {
+  if (!(await postExists(id))) return false;
+  await writeFile(
+    path.join(POSTS_DIR, `${id}.md`),
+    serializeFrontmatter(toFrontmatter(payload), payload.body ?? ''),
+    'utf-8',
+  );
+  return true;
+}
+
+export async function deletePost(id) {
+  if (!(await postExists(id))) return false;
+  await unlink(path.join(POSTS_DIR, `${id}.md`));
+  return true;
 }
