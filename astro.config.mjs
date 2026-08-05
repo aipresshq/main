@@ -15,8 +15,11 @@ export default defineConfig({
     adminPanel(),
   ],
   image: {
-    // Allows Astro's build-time image optimizer to fetch and process covers stored in
-    // Cloudflare R2 (see PUBLIC_R2_PUBLIC_URL in .env) instead of committing images to the repo.
+    // Permits any https source for cover URLs — including Cloudflare R2 (see
+    // PUBLIC_R2_PUBLIC_URL in .env) — instead of committing images to the repo. Covers are
+    // currently rendered as plain <img> tags (src/components/CoverImage.astro), not through
+    // Astro's <Image>/getImage optimizer, so this pattern isn't yet exercised by a build-time
+    // fetch/transform step — it's here for whenever that's added.
     remotePatterns: [{ protocol: 'https' }],
   },
 });
