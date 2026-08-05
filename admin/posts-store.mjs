@@ -87,19 +87,33 @@ export async function createPost(payload) {
   }
 
   const writeClient = createPrismicWriteClient();
-  const migration = prismic.createMigration();
-  migration.createDocument(
-    {
-      type: PRISMIC_POST_TYPE,
-      lang: PRISMIC_LOCALE,
-      uid: id,
-      tags: [],
-      data: { ...postPayloadToPrismicData(payload), archived: false },
-    },
-    payload.title,
-  );
-  await writeClient.migrate(migration);
-  return id;
+  const data = { ...postPayloadToPrismicData(payload), archived: false };
+
+  // postExists (above) can only see already-published documents — per the confirmed platform
+  // constraint, it's blind to drafts sitting in the pending Migration Release. If a draft with
+  // this exact UID is already pending (e.g. someone re-submits the same title before it's
+  // published), the loop above won't have caught it, and the Migration API rejects the create
+  // with InvalidDataError instead of silently succeeding. Retry with the next numeric suffix in
+  // that case, so a collision against an invisible draft still transparently produces a usable
+  // id rather than surfacing as an unhandled rejection.
+  while (true) {
+    try {
+      const migration = prismic.createMigration();
+      migration.createDocument(
+        { type: PRISMIC_POST_TYPE, lang: PRISMIC_LOCALE, uid: id, tags: [], data },
+        payload.title,
+      );
+      await writeClient.migrate(migration);
+      return id;
+    } catch (error) {
+      if (error instanceof prismic.InvalidDataError) {
+        id = `${baseId}-${suffix}`;
+        suffix += 1;
+        continue;
+      }
+      throw error;
+    }
+  }
 }
 
 export async function updatePost(id, payload) {
