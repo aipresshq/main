@@ -29,6 +29,10 @@ await test('renderAdminPage warns that changes are drafts until published', () =
   assert.ok(html.includes('Nothing goes live until you publish'));
 });
 
+await test('renderAdminPage warns about stacked unpublished edits', () => {
+  assert.ok(html.includes('Stacked unpublished edits'));
+});
+
 if (process.exitCode === 1) {
   console.log('\nSome checks failed.');
 } else {

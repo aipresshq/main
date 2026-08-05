@@ -76,6 +76,7 @@ export function renderAdminPage() {
       Changes here are saved as drafts in Prismic. Nothing goes live until you publish the
       pending release in your Prismic dashboard — and until you do, a newly created post won't
       show up in this list or be editable/deletable here either. Publish right after creating.
+      Stacked unpublished edits can silently discard earlier changes — always publish after each action, not just after creating.
     </p>
     <main id="app"></main>
     <script>
