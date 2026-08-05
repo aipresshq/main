@@ -96,7 +96,17 @@ export async function createPost(payload) {
   // with InvalidDataError instead of silently succeeding. Retry with the next numeric suffix in
   // that case, so a collision against an invisible draft still transparently produces a usable
   // id rather than surfacing as an unhandled rejection.
-  while (true) {
+  //
+  // InvalidDataError is Prismic's generic wrapper for any 400 the Migration API returns, not
+  // specifically a UID collision — reusing the same `data` on every retry would spin forever if
+  // some other, unrelated validation error caused it, since every retry would fail identically.
+  // Only retry when the message actually says the UID already exists, and cap the attempts as a
+  // backstop in case the wording ever varies in a way this check misses.
+  const isUidCollisionError = (error) =>
+    error instanceof prismic.InvalidDataError && /uid.*already exists/i.test(error.message ?? '');
+  const MAX_UID_COLLISION_RETRIES = 20;
+
+  for (let attempt = 0; ; attempt += 1) {
     try {
       const migration = prismic.createMigration();
       migration.createDocument(
@@ -106,7 +116,7 @@ export async function createPost(payload) {
       await writeClient.migrate(migration);
       return id;
     } catch (error) {
-      if (error instanceof prismic.InvalidDataError) {
+      if (isUidCollisionError(error) && attempt < MAX_UID_COLLISION_RETRIES) {
         id = `${baseId}-${suffix}`;
         suffix += 1;
         continue;
