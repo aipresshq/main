@@ -376,7 +376,7 @@ check('published stories link their reference covers and official reporting sour
       ],
     },
     [quaternaryPostId]: {
-      cover: '/images/codex-beyond-the-laptop.png',
+      cover: 'https://pub-450085b0b9f2461588d49e1539d3420b.r2.dev/codex-beyond-the-laptop.png',
       inlineUrls: [
         'https://openai.com/index/introducing-the-codex-app/',
         'https://openai.com/supply/co-lab/work-louder/',
@@ -384,7 +384,7 @@ check('published stories link their reference covers and official reporting sour
       ],
     },
     [pricingPostId]: {
-      cover: '/images/luna-price-efficiency.png',
+      cover: 'https://pub-450085b0b9f2461588d49e1539d3420b.r2.dev/luna-price-efficiency.png',
       inlineUrls: [
         'https://developers.openai.com/api/docs/models/gpt-5.6-luna',
         'https://openai.com/index/gpt-5-6/',
@@ -392,14 +392,14 @@ check('published stories link their reference covers and official reporting sour
       ],
     },
     [tutorialPostId]: {
-      cover: '/images/codex-workspace-cleanup.png',
+      cover: 'https://pub-450085b0b9f2461588d49e1539d3420b.r2.dev/codex-workspace-cleanup.png',
       inlineUrls: [
         'https://help.openai.com/en/articles/11096431',
         'https://openai.com/academy/codex-automations/',
       ],
     },
     [motionPostId]: {
-      cover: '/images/motion-claude-launch-video.png',
+      cover: 'https://pub-450085b0b9f2461588d49e1539d3420b.r2.dev/motion-claude-launch-video.png',
       inlineUrls: [
         'https://motion.so/blog/how-to-turn-a-product-launch-into-a-video',
         'https://motion.so/learn/mcp-video-generation',
