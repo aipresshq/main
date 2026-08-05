@@ -273,7 +273,13 @@ check('public posts contain no internal fixture language', () => {
   // nor admin/validate-post.mjs screens for scaffolding copy), so this gate is
   // the only thing standing between fixture prose and a published story.
   // Scoped to each story's own <article> so it fails on the post's editorial
-  // copy specifically rather than on shared nav/footer chrome.
+  // copy specifically rather than on shared nav/footer chrome. That scoping
+  // makes this check's failure conditions a strict subset of the dist-wide
+  // 'all generated public HTML is free of internal scaffolding language'
+  // check below, which already scans every HTML file in dist/, these 7 posts
+  // included — this check is real, but it adds no unique failure coverage
+  // beyond what the dist-wide check already provides, only a clearer,
+  // post-specific failure message when scaffolding copy slips into a story.
   for (const id of publishedPostIds) {
     const copy = extractPublicCopy(articleBody(dist(`posts/${id}/index.html`), `/posts/${id}/`));
     assert.equal(
@@ -296,10 +302,13 @@ check('published posts disclose an editorial update date', () => {
     // Parse the NewsArticle schema too, so the date is proven to be a real
     // dateModified field on the story's structured data and not an ISO string
     // that merely happens to sit next to that key somewhere on the page.
-    const schema = JSON.parse(
-      html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1],
-    );
-    assert.equal(schema['@type'], 'NewsArticle', `${id} must emit NewsArticle schema`);
+    // Select the ld+json block by its parsed @type rather than by position —
+    // taking the first block on the page would silently break if another
+    // JSON-LD block (e.g. BreadcrumbList) were ever emitted earlier in <head>.
+    const schema = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
+      .map((match) => JSON.parse(match[1]))
+      .find((block) => block['@type'] === 'NewsArticle');
+    assert.ok(schema, `${id} must emit NewsArticle schema`);
     assert.match(
       schema.dateModified ?? '',
       /^\d{4}-\d{2}-\d{2}T/,
@@ -434,7 +443,8 @@ check('rumor stories read as original reporting rather than source-post recaps',
     tutorialPostId,
     motionPostId,
   ]) {
-    const copy = extractPublicCopy(articleBody(dist(`posts/${id}/index.html`), `/posts/${id}/`));
+    const rawBody = articleBody(dist(`posts/${id}/index.html`), `/posts/${id}/`);
+    const copy = extractPublicCopy(rawBody);
     assert.doesNotMatch(
       copy,
       /\b(?:X post|tweet|screenshot|attached graphic|supplied graphic)\b/i,
@@ -444,6 +454,18 @@ check('rumor stories read as original reporting rather than source-post recaps',
       copy,
       /(?:x\.com|twitter\.com)/i,
       `${id} cites a social post as its source`,
+    );
+    // extractPublicCopy strips href attributes (it keeps only visible
+    // text/alt/title/aria-label/meta content), so a linked citation like
+    // <a href="https://x.com/someone/status/123">the leaker</a> is invisible
+    // to the text-level assertion above — only a bare "x.com" appearing in
+    // visible text would be caught. Scan the raw article HTML (before
+    // extractPublicCopy strips hrefs) for the same pattern so a linked
+    // social-post source is caught too.
+    assert.doesNotMatch(
+      rawBody,
+      /(?:x\.com|twitter\.com)/i,
+      `${id} links a social post as its source`,
     );
   }
 });
