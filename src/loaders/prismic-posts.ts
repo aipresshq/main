@@ -1,6 +1,7 @@
 // src/loaders/prismic-posts.ts
 import type { Loader } from 'astro/loaders';
 import * as prismic from '@prismicio/client';
+import GithubSlugger from 'github-slugger';
 import {
   PRISMIC_REPOSITORY_NAME,
   PRISMIC_LOCALE,
@@ -27,6 +28,40 @@ interface PrismicPostData {
   featured: boolean;
   archived: boolean;
   body: prismic.RichTextField;
+}
+
+interface ExtractedHeading {
+  depth: number;
+  slug: string;
+  text: string;
+}
+
+const HEADING_DEPTHS: Record<string, number> = {
+  heading1: 1,
+  heading2: 2,
+  heading3: 3,
+  heading4: 4,
+  heading5: 5,
+  heading6: 6,
+};
+
+export function serializeBodyWithHeadings(
+  body: prismic.RichTextField,
+): { html: string; headings: ExtractedHeading[] } {
+  const slugger = new GithubSlugger();
+  const headings: ExtractedHeading[] = [];
+
+  const serializer: prismic.HTMLRichTextMapSerializer = {};
+  for (const [type, depth] of Object.entries(HEADING_DEPTHS)) {
+    serializer[type] = ({ text, children }) => {
+      const slug = slugger.slug(text);
+      headings.push({ depth, slug, text });
+      return `<h${depth} id="${slug}">${children}</h${depth}>`;
+    };
+  }
+
+  const html = prismic.asHTML(body, { serializer }) ?? '';
+  return { html, headings };
 }
 
 export function prismicPostsLoader(): Loader {
@@ -64,11 +99,13 @@ export function prismicPostsLoader(): Loader {
           },
         });
 
+        const { html, headings } = serializeBodyWithHeadings(doc.data.body);
+
         store.set({
           id: doc.uid as string,
           data: validData,
           body: prismic.asText(doc.data.body) ?? '',
-          rendered: { html: prismic.asHTML(doc.data.body) ?? '' },
+          rendered: { html, metadata: { headings } },
           digest: generateDigest(doc.data),
         });
       }

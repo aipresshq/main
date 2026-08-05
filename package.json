@@ -23,7 +23,8 @@
     "@fontsource/source-serif-4": "^5.3.0",
     "@prismicio/client": "^7.21.8",
     "astro": "^7.1.6",
-    "astro-pagefind": "^2.0.1"
+    "astro-pagefind": "^2.0.1",
+    "github-slugger": "^2.0.0"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
