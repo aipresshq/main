@@ -328,7 +328,9 @@ Leave environment variables empty — the production build needs no credentials 
 
 - [ ] **Step 4: Wait for the first deploy and note the URL**
 
-Cloudflare deploys automatically once the project is created. Note the resulting `https://<project-name>.pages.dev` URL — later tasks need it.
+Cloudflare deploys automatically once the project is created. Note the resulting staging URL — later tasks need it.
+
+**Amendment (discovered during execution):** Cloudflare's current dashboard issues new projects a `<branch>.<project-name>.workers.dev` URL rather than the `<project-name>.pages.dev` format assumed elsewhere in this plan (Cloudflare has been unifying Pages onto its Workers runtime). This is the correct, current equivalent — not a misconfiguration. The real deployed URL for this project is `https://main.aipresshq.workers.dev`. One transient Cloudflare error 1042 was observed on the very first request right after deploy (a known brief propagation blip, not a real fault) and resolved itself on retry — confirmed via `cf-cache-status: HIT` on the next request. Wherever this plan's later steps say "`*.pages.dev` URL," read it as this actual staging URL instead.
 
 ---
 
