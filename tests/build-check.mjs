@@ -55,20 +55,97 @@ const filesUnder = (directory) =>
     const url = new URL(entry.name + (entry.isDirectory() ? '/' : ''), directory);
     return entry.isDirectory() ? filesUnder(url) : [url];
   });
+const decodePublicCopy = (text) =>
+  text
+    .replace(/&#x([0-9a-f]+);/gi, (_, value) => String.fromCodePoint(Number.parseInt(value, 16)))
+    .replace(/&#(\d+);/g, (_, value) => String.fromCodePoint(Number.parseInt(value, 10)))
+    .replace(
+      /&(nbsp|amp|quot|apos|lt|gt);/gi,
+      (_, entity) =>
+        ({
+          nbsp: ' ',
+          amp: '&',
+          quot: '"',
+          apos: "'",
+          lt: '<',
+          gt: '>',
+        })[entity.toLowerCase()],
+    );
+// Attribute values are HTML-escaped in the built markup, so expected URLs that
+// carry `&`, `<`, `>` or `"` must be escaped the same way before searching.
+const escapeHtmlAttribute = (value) =>
+  value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+// Prismic is the source of truth for post content, but this harness keeps its
+// own list of the published stories. Everything that iterates the built output
+// goes through sourcePosts(), so without an independent list a story that
+// silently failed to build would simply be skipped by every one of those checks
+// instead of turning the suite red.
+const primaryPostId = 'luna-max-vs-sol-medium';
+const secondaryPostId = 'gpt-6-mako-koi-tune-leak';
+const tertiaryPostId = 'mythos-6-leak';
+const quaternaryPostId = 'codex-beyond-the-laptop';
+const pricingPostId = 'luna-price-efficiency';
+const tutorialPostId = 'codex-workspace-cleanup';
+const motionPostId = 'motion-claude-launch-video';
+const publishedPostIds = [
+  primaryPostId,
+  secondaryPostId,
+  tertiaryPostId,
+  quaternaryPostId,
+  pricingPostId,
+  tutorialPostId,
+  motionPostId,
+];
+
+// Scope content assertions to the story itself. A post page also renders nav,
+// sidebar, Suggested Reads and footer chrome, so page-wide string searches can
+// be satisfied by markup that has nothing to do with the article.
+const articleBody = (html, label = 'page') => {
+  const start = html.indexOf('<article');
+  assert.ok(start >= 0, `${label} is missing its <article> element`);
+  const end = html.indexOf('</article>', start);
+  assert.ok(end > start, `${label} has an unterminated <article> element`);
+  return html.slice(start, end);
+};
+const articleTags = (html, label = 'page') => {
+  const list = articleBody(html, label).match(/<ul class="article-tags">([\s\S]*?)<\/ul>/);
+  if (!list) return [];
+  return [...list[1].matchAll(/<a class="pill" href="[^"]*">([^<]+)<\/a>/g)].map((match) =>
+    decodePublicCopy(match[1]).trim(),
+  );
+};
+const articleHeadings = (html, label = 'page') =>
+  [...articleBody(html, label).matchAll(/<(h[2-6])\b[^>]*>([\s\S]*?)<\/\1>/g)].map((match) =>
+    decodePublicCopy(match[2].replace(/<[^>]*>/g, '')).trim(),
+  );
+
 const sourcePosts = () => {
-  // After Prismic migration, posts are fetched from Prismic during build.
-  // Extract post IDs from the built output instead of source markdown.
+  // After the Prismic migration, posts are fetched from Prismic during build,
+  // so the built output — not source markdown — is the only local record of
+  // what shipped. Cross-check it against publishedPostIds so a story that
+  // failed to build fails loudly here rather than being quietly skipped.
   const distPostsDir = new URL('../dist/posts/', import.meta.url);
   const postDirs = readdirSync(distPostsDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
     .sort();
 
+  assert.deepEqual(
+    postDirs,
+    [...publishedPostIds].sort(),
+    'dist/posts/ must contain exactly the published stories — a post missing from the build would otherwise be skipped by every check that iterates sourcePosts()',
+  );
+
   return postDirs.map((id) => {
-    // Extract tags from the built HTML
-    const html = dist(`posts/${id}/index.html`);
-    const tagsMatch = html.match(/data-post-tags="([^"]*)"/);
-    const tags = tagsMatch ? tagsMatch[1].split(',').filter(Boolean) : [];
+    const tags = articleTags(dist(`posts/${id}/index.html`), `/posts/${id}/`);
+    // Tag extraction previously read a `data-post-tags` attribute that the
+    // build never emitted, which silently gave every post an empty tag list and
+    // emptied every sourceTopics()-driven check. Fail loudly instead.
+    assert.ok(
+      tags.length > 0,
+      `/posts/${id}/ rendered no tags in its <ul class="article-tags"> list — tag extraction is broken or the story lost its topics`,
+    );
     return {
       id,
       tags,
@@ -100,22 +177,6 @@ const currentTopicHrefs = (topicMenu) =>
   [...topicMenu.matchAll(/<a\b(?=[^>]*\baria-current="page")(?=[^>]*\bhref="([^"]+)")[^>]*>/g)].map(
     (match) => match[1],
   );
-const decodePublicCopy = (text) =>
-  text
-    .replace(/&#x([0-9a-f]+);/gi, (_, value) => String.fromCodePoint(Number.parseInt(value, 16)))
-    .replace(/&#(\d+);/g, (_, value) => String.fromCodePoint(Number.parseInt(value, 10)))
-    .replace(
-      /&(nbsp|amp|quot|apos|lt|gt);/gi,
-      (_, entity) =>
-        ({
-          nbsp: ' ',
-          amp: '&',
-          quot: '"',
-          apos: "'",
-          lt: '<',
-          gt: '>',
-        })[entity.toLowerCase()],
-    );
 const attributesFromTag = (tag) =>
   new Map(
     [...tag.matchAll(/\b([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/gi)].map((match) => [
@@ -181,13 +242,6 @@ const controllerModules = (html) =>
 const linksTo = (html, slug) => html.includes(`/posts/${slug}/`);
 
 const checks = [];
-const primaryPostId = 'luna-max-vs-sol-medium';
-const secondaryPostId = 'gpt-6-mako-koi-tune-leak';
-const tertiaryPostId = 'mythos-6-leak';
-const quaternaryPostId = 'codex-beyond-the-laptop';
-const pricingPostId = 'luna-price-efficiency';
-const tutorialPostId = 'codex-workspace-cleanup';
-const motionPostId = 'motion-claude-launch-video';
 function check(name, fn) {
   checks.push({ name, fn });
 }
@@ -199,40 +253,59 @@ check('dist/ exists after build', () => {
 });
 
 check('all content posts built successfully', () => {
-  assert.ok(distExists(`posts/${primaryPostId}/index.html`));
-  assert.ok(distExists(`posts/${secondaryPostId}/index.html`));
-  assert.ok(distExists(`posts/${tertiaryPostId}/index.html`));
-  assert.ok(distExists(`posts/${quaternaryPostId}/index.html`));
-  assert.ok(distExists(`posts/${pricingPostId}/index.html`));
-  assert.ok(distExists(`posts/${tutorialPostId}/index.html`));
-  assert.ok(distExists(`posts/${motionPostId}/index.html`));
+  assert.equal(publishedPostIds.length, 7, 'the published edition should contain seven stories');
+  for (const id of publishedPostIds) {
+    assert.ok(distExists(`posts/${id}/index.html`), `posts/${id}/index.html was not built`);
+  }
+  // sourcePosts() performs the same cross-check internally, so a story missing
+  // from the build fails every post-iterating check rather than only this one.
   assert.deepEqual(
     sourcePosts()
       .map(({ id }) => id)
       .sort(),
-    [
-      primaryPostId,
-      secondaryPostId,
-      tertiaryPostId,
-      quaternaryPostId,
-      pricingPostId,
-      tutorialPostId,
-      motionPostId,
-    ].sort(),
+    [...publishedPostIds].sort(),
     'the editorial fixture should contain the published stories',
   );
 });
 
 check('public posts contain no internal fixture language', () => {
-  // After Prismic migration, content is validated in Prismic, not in local markdown
-  // This check is now performed during Prismic content creation
-  assert.ok(true, 'content validation is now performed in Prismic');
+  // Prismic performs no editorial-language validation (neither the custom type
+  // nor admin/validate-post.mjs screens for scaffolding copy), so this gate is
+  // the only thing standing between fixture prose and a published story.
+  // Scoped to each story's own <article> so it fails on the post's editorial
+  // copy specifically rather than on shared nav/footer chrome.
+  for (const id of publishedPostIds) {
+    const copy = extractPublicCopy(articleBody(dist(`posts/${id}/index.html`), `/posts/${id}/`));
+    assert.equal(
+      containsInternalScaffolding(copy),
+      false,
+      `/posts/${id}/ contains internal scaffolding copy`,
+    );
+  }
 });
 
 check('published posts disclose an editorial update date', () => {
-  // After Prismic migration, update dates are managed in Prismic
-  // Validation happens during content publication in Prismic admin panel
-  assert.ok(true, 'update dates are now managed in Prismic');
+  for (const id of publishedPostIds) {
+    const html = dist(`posts/${id}/index.html`);
+    assert.match(
+      html,
+      /"dateModified":"\d{4}-\d{2}-\d{2}T/,
+      `${id} must disclose an editorial update date`,
+    );
+
+    // Parse the NewsArticle schema too, so the date is proven to be a real
+    // dateModified field on the story's structured data and not an ISO string
+    // that merely happens to sit next to that key somewhere on the page.
+    const schema = JSON.parse(
+      html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1],
+    );
+    assert.equal(schema['@type'], 'NewsArticle', `${id} must emit NewsArticle schema`);
+    assert.match(
+      schema.dateModified ?? '',
+      /^\d{4}-\d{2}-\d{2}T/,
+      `${id} schema must carry an ISO dateModified`,
+    );
+  }
 });
 
 check('every story carries explicit editorial format and reader context', () => {
@@ -244,36 +317,152 @@ check('every story carries explicit editorial format and reader context', () => 
   const validFormats = new Set(storyFormats.map(({ key }) => key));
   assert.equal(validFormats.size, 6, 'editorial format taxonomy should stay intentionally small');
 
-  // After Prismic migration, format and context validation happens in Prismic
-  // The presence of posts in the build output confirms they have required fields
-  assert.ok(sourcePosts().length > 0, 'posts are loaded from Prismic with required fields');
+  for (const id of publishedPostIds) {
+    const body = articleBody(dist(`posts/${id}/index.html`), `/posts/${id}/`);
+    const format = body.match(
+      /<a class="label article-kicker" href="\/format\/([a-z0-9-]+)\/"/,
+    )?.[1];
+    assert.ok(
+      format && validFormats.has(format),
+      `${id} does not link a known editorial format archive from its kicker`,
+    );
+    assert.ok(
+      body.includes('class="article-takeaways"'),
+      `${id} is missing the reader takeaways block`,
+    );
+  }
+
+  // The original check also guarded against four removed frontmatter fields
+  // (`known:`, `openQuestions:`, `whyItMatters:`, `updates:`). Those guards are
+  // deliberately dropped rather than translated to HTML: they were meaningful
+  // against markdown because a hand-edited frontmatter block could accidentally
+  // retain a field the schema no longer used, whereas Prismic's custom type has
+  // no such fields at all, so there is no authoring path that could reintroduce
+  // them and nothing for an HTML-level guard to catch.
 });
 
 check('published stories link their reference covers and official reporting sources', () => {
-  // After Prismic migration, reference covers and URLs are managed in Prismic
-  // Validation happens during content creation in the Prismic admin panel
-  for (const { id } of sourcePosts()) {
-    const html = dist(`posts/${id}/index.html`);
-    assert.ok(html.includes('class="article-figure'), `${id} must have a hero image`);
+  const expected = {
+    [primaryPostId]: {
+      cover: 'https://pbs.twimg.com/media/HOnDOnCasAE2_nP?format=jpg&name=4096x4096',
+      inlineUrls: [
+        'https://developers.openai.com/api/docs/models/gpt-5.6-terra',
+        'https://openai.com/index/gpt-5-6/',
+      ],
+    },
+    [secondaryPostId]: {
+      cover: 'https://pbs.twimg.com/media/HOviCSfXkAEWoPU.jpg:large',
+      inlineUrls: [
+        'https://developers.openai.com/api/docs/models',
+        'https://developers.openai.com/api/docs/guides/latest-model',
+        'https://openai.com/index/gpt-5-6/',
+      ],
+    },
+    [tertiaryPostId]: {
+      cover: 'https://pbs.twimg.com/media/HOzTipVX0AAuvA6.jpg:large',
+      inlineUrls: [
+        'https://www.anthropic.com/claude/mythos',
+        'https://www.anthropic.com/project/glasswing',
+        'https://www.anthropic.com/research/glasswing-initial-update?xs=1',
+      ],
+    },
+    [quaternaryPostId]: {
+      cover: '/images/codex-beyond-the-laptop.png',
+      inlineUrls: [
+        'https://openai.com/index/introducing-the-codex-app/',
+        'https://openai.com/supply/co-lab/work-louder/',
+        'https://openai.com/index/codex-for-knowledge-work/',
+      ],
+    },
+    [pricingPostId]: {
+      cover: '/images/luna-price-efficiency.png',
+      inlineUrls: [
+        'https://developers.openai.com/api/docs/models/gpt-5.6-luna',
+        'https://openai.com/index/gpt-5-6/',
+        'https://developers.openai.com/api/docs/models/compare',
+      ],
+    },
+    [tutorialPostId]: {
+      cover: '/images/codex-workspace-cleanup.png',
+      inlineUrls: [
+        'https://help.openai.com/en/articles/11096431',
+        'https://openai.com/academy/codex-automations/',
+      ],
+    },
+    [motionPostId]: {
+      cover: '/images/motion-claude-launch-video.png',
+      inlineUrls: [
+        'https://motion.so/blog/how-to-turn-a-product-launch-into-a-video',
+        'https://motion.so/learn/mcp-video-generation',
+        'https://motion.so/',
+      ],
+    },
+  };
+
+  assert.deepEqual(
+    Object.keys(expected).sort(),
+    [...publishedPostIds].sort(),
+    'the attribution table must cover exactly the published stories',
+  );
+
+  for (const [id, attribution] of Object.entries(expected)) {
+    // Scope to the story's own <article>: the surrounding page renders sidebar
+    // and Suggested Reads thumbnails plus nav/footer links, so a page-wide
+    // search would prove nothing about this story's own attribution.
+    const body = articleBody(dist(`posts/${id}/index.html`), `/posts/${id}/`);
     assert.ok(
-      html.includes('<a href="https://') || html.includes("href='https://"),
-      `${id} must contain reference links`,
+      body.includes(`src="${escapeHtmlAttribute(attribution.cover)}"`),
+      `${id} does not render its reference cover ${attribution.cover}`,
     );
+    for (const url of attribution.inlineUrls) {
+      // Exact href match, so a URL is never satisfied by a longer URL that
+      // merely starts with it (e.g. …/models vs …/models/compare).
+      assert.ok(
+        body.includes(`href="${escapeHtmlAttribute(url)}"`),
+        `${id} must link ${url} in the article copy`,
+      );
+    }
   }
 });
 
 check('rumor stories read as original reporting rather than source-post recaps', () => {
-  // After Prismic migration, content quality validation happens in Prismic
-  // Posts are validated during creation in the Prismic admin panel
-  assert.ok(sourcePosts().length > 0, 'posts are published in Prismic with quality validation');
+  for (const id of [
+    secondaryPostId,
+    tertiaryPostId,
+    quaternaryPostId,
+    pricingPostId,
+    tutorialPostId,
+    motionPostId,
+  ]) {
+    const copy = extractPublicCopy(articleBody(dist(`posts/${id}/index.html`), `/posts/${id}/`));
+    assert.doesNotMatch(
+      copy,
+      /\b(?:X post|tweet|screenshot|attached graphic|supplied graphic)\b/i,
+      `${id} recaps a source post instead of reporting`,
+    );
+    assert.doesNotMatch(
+      copy,
+      /(?:x\.com|twitter\.com)/i,
+      `${id} cites a social post as its source`,
+    );
+  }
 });
 
 check('the Terra story uses a grounded explainer structure', () => {
-  // After Prismic migration, story structure is managed in Prismic
-  // The published HTML confirms the story is properly formatted
-  const html = dist(`posts/${primaryPostId}/index.html`);
-  assert.ok(html.includes('class="article-figure'), `${primaryPostId} story is properly formatted`);
-  assert.ok(html.match(/<h[2-6]/), `${primaryPostId} story contains section headings`);
+  const headings = articleHeadings(
+    dist(`posts/${primaryPostId}/index.html`),
+    `/posts/${primaryPostId}/`,
+  );
+  for (const heading of [
+    'Terra is the middle option',
+    'The tier matters less than the job',
+    'What Terra gives you',
+    'A fair way to test Terra',
+  ]) {
+    assert.ok(headings.includes(heading), `story is missing the "${heading}" heading`);
+  }
+  assert.ok(!headings.includes('What happened'), 'story retains the event-reporting heading');
+  assert.ok(!headings.includes('Why it matters'), 'story retains the removed generic section');
 });
 
 check(
@@ -650,13 +839,23 @@ check('posts resolve validated author profiles into linked bylines and schema', 
   assert.match(config, /const authors = defineCollection/);
   assert.match(config, /author:\s*reference\(['"]authors['"]\)/);
 
-  // After Prismic migration, author assignment is managed in Prismic
-  // Verify all built posts have author attribution
-  for (const { id } of sourcePosts()) {
+  // Capture the byline element itself and require the author name inside it.
+  // Testing `hasByline && page.includes(name)` independently would pass on a
+  // page whose byline is empty but that mentions the author anywhere else —
+  // every post page links "Tejas Telkar" from its author module and Suggested
+  // Reads, so that form of the check could never fail.
+  for (const id of publishedPostIds) {
     const html = dist(`posts/${id}/index.html`);
+    const byline = html.match(/<a\b[^>]*class="byline(?:\s[^"]*)?"[^>]*>[\s\S]*?<\/a>/);
+    assert.ok(byline, `${id} must have an author byline`);
     assert.ok(
-      html.match(/class="byline/) && html.includes('Tejas Telkar'),
-      `${id} must have an author byline`,
+      byline[0].includes('Tejas Telkar'),
+      `${id} byline must name its resolved author profile`,
+    );
+    assert.match(
+      byline[0],
+      /href="\/authors\/tejas-telkar\/"/,
+      `${id} byline must link its resolved author profile`,
     );
   }
 
@@ -2046,7 +2245,10 @@ check('generated pages use the aiPressHQ public identity', () => {
   for (const file of htmlFiles) {
     const html = readFileSync(file, 'utf-8');
     assert.ok(!html.includes(legacyPublicBrand), `${file.pathname} still exposes the old brand`);
-    assert.ok(!html.includes(legacyPublicDomain), `${file.pathname} still exposes the old site domain`);
+    assert.ok(
+      !html.includes(legacyPublicDomain),
+      `${file.pathname} still exposes the old site domain`,
+    );
   }
 });
 
