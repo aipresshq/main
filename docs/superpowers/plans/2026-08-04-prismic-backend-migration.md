@@ -527,6 +527,7 @@ git commit -m "feat: add a shared Prismic client helper for the admin panel"
 - Create: `admin/prismic-write-mapping.mjs`
 - Modify: `admin/posts-store.mjs`
 - Modify: `admin/posts-store.test.mjs`
+- Modify: `admin/api-handlers.test.mjs` (amendment, discovered during execution — see Step 9 below)
 
 **Interfaces:**
 - Consumes: `createPrismicClient`, `createPrismicWriteClient`, `PRISMIC_LOCALE`, `PRISMIC_POST_TYPE` from Task 5's `admin/prismic-client.mjs`; `factsTableToGroupFields`, `stringsToGroupField`, `groupFieldsToFactsTable`, `groupFieldToStrings` from Task 3's `src/loaders/prismic-fields.ts`.
@@ -842,6 +843,95 @@ Expected: all suites pass. `admin/authors-store.test.mjs`, `admin/frontmatter.te
 ```bash
 git add admin/prismic-write-mapping.mjs admin/posts-store.mjs admin/posts-store.test.mjs package.json
 git commit -m "feat: repoint the admin panel's post storage at Prismic"
+```
+
+- [ ] **Step 9: Fix `admin/api-handlers.test.mjs`'s lifecycle test (discovered during execution)**
+
+`admin/api-handlers.test.mjs` has the identical "full create, read, update, delete lifecycle" pattern this task already fixed in `posts-store.test.mjs`, and fails for the exact same reason: it assumes create→read/update/delete work synchronously, which the confirmed publish-gate constraint above rules out.
+
+Replace this test:
+
+```js
+await test('full create, read, update, delete lifecycle through the handler', async () => {
+  const created = await handleAdminApiRequest({
+    method: 'POST',
+    url: '/admin/api/posts',
+    body: validPost(),
+  });
+  assert.equal(created.status, 201);
+  const { id } = created.json;
+
+  const fetched = await handleAdminApiRequest({ method: 'GET', url: `/admin/api/posts/${id}` });
+  assert.equal(fetched.status, 200);
+  assert.equal(fetched.json.title, '__Admin Tool API Handler Test__');
+
+  const updated = await handleAdminApiRequest({
+    method: 'PUT',
+    url: `/admin/api/posts/${id}`,
+    body: { ...validPost(), description: 'Updated via PUT.' },
+  });
+  assert.equal(updated.status, 200);
+
+  const refetched = await handleAdminApiRequest({ method: 'GET', url: `/admin/api/posts/${id}` });
+  assert.equal(refetched.json.description, 'Updated via PUT.');
+
+  const deleted = await handleAdminApiRequest({ method: 'DELETE', url: `/admin/api/posts/${id}` });
+  assert.equal(deleted.status, 200);
+
+  const afterDelete = await handleAdminApiRequest({ method: 'GET', url: `/admin/api/posts/${id}` });
+  assert.equal(afterDelete.status, 404);
+});
+```
+
+with:
+
+```js
+await test('POST creates a post and returns 201 with a generated id', async () => {
+  // Title must be unique per run — see posts-store.test.mjs's identical note on why a fixed
+  // title collides with this same test's leftover unpublished draft from every prior run.
+  const body = { ...validPost(), title: `__Admin Tool API Handler Test ${Date.now()}__` };
+  const created = await handleAdminApiRequest({ method: 'POST', url: '/admin/api/posts', body });
+  assert.equal(created.status, 201);
+  assert.ok(typeof created.json.id === 'string' && created.json.id.length > 0);
+});
+
+await test('GET on an id that has never existed returns 404', async () => {
+  const response = await handleAdminApiRequest({
+    method: 'GET',
+    url: '/admin/api/posts/this-post-does-not-exist',
+  });
+  assert.equal(response.status, 404);
+});
+
+await test('PUT on an id that has never existed returns 404', async () => {
+  const response = await handleAdminApiRequest({
+    method: 'PUT',
+    url: '/admin/api/posts/this-post-does-not-exist',
+    body: validPost(),
+  });
+  assert.equal(response.status, 404);
+});
+
+await test('DELETE on an id that has never existed returns 404', async () => {
+  const response = await handleAdminApiRequest({
+    method: 'DELETE',
+    url: '/admin/api/posts/this-post-does-not-exist',
+  });
+  assert.equal(response.status, 404);
+});
+```
+
+Run: `node --env-file=.env admin/api-handlers.test.mjs`
+Expected: `All checks passed.`, exit code 0.
+
+Then run the full suite again: `npm run test:admin`
+Expected: every suite passes.
+
+Commit separately from Step 8 (this fixes a file outside this task's original scope, discovered mid-execution):
+
+```bash
+git add admin/api-handlers.test.mjs
+git commit -m "fix: drop api-handlers.test.mjs's synchronous create-then-read assumption"
 ```
 
 ---
