@@ -150,6 +150,17 @@ backend. Consequences:
   - Also sets `body` to a plain-text extraction of the Rich Text content, so
     `src/lib/read-time.ts`'s `readMinutes()` (which does `post.body.split(/\s+/).length`) keeps
     working unchanged.
+  - **Amendment (discovered during Task 9 execution, once real content flowed through for the
+    first time):** `src/components/ArticleToc.astro` reads `headings` from `render(currentPost)`
+    to build the article's table of contents — a field Astro's own Markdown pipeline populates
+    automatically (depth/slug/text per heading, slugged with `github-slugger`), but that a
+    Rich-Text-sourced loader must populate itself. A plain `asHTML()` call produces headings with
+    no `id` attributes and no heading metadata at all, silently emptying the TOC (caught by
+    `tests/build-check.mjs`'s `data-toc-link` assertion once real posts existed to render). Fix:
+    the loader builds a per-document `github-slugger` instance, passes a custom map serializer to
+    `asHTML()` that injects a matching `id` on every heading tag as it's generated, and collects
+    the same `{depth, slug, text}` triples into `rendered.metadata.headings` — matching Astro's
+    own `MarkdownHeading[]` shape exactly, so `ArticleToc.astro` needs no changes itself.
 - Net effect: this is a one-new-file change (the loader) + the custom type defined in Prismic's
   dashboard. Every existing page/component reading `getCollection('posts')` /
   `getEntry('posts', id)` is untouched.
