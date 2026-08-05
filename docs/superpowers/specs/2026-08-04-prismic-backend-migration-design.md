@@ -98,11 +98,36 @@ changes in Prismic." A human must open the Migration Release tab in Prismic's da
 click Publish before any API-created or API-updated post becomes visible via the read API the
 Astro build queries.
 
-**Decision:** accept this as a standing manual step, not a blocker. Editors use the admin panel
-(or the migration script) to create/update/archive posts freely; nothing goes live until someone
-publishes the pending release in Prismic's dashboard — done once per batch, not once per post.
-This is called out explicitly in the admin UI (a banner reminding editors that changes are
-drafts until published) so it isn't a silent surprise.
+**Amendment (discovered during Task 6 execution, verified directly, not from docs alone):** this
+constraint is more severe than "the site doesn't update until you publish." Draft content in the
+Migration Release is invisible to **every** read query, from **any** client, with **any**
+credential — there is no preview/release-ref mechanism available in this repository.
+Confirmed directly: `client.getReleases()` (with the write token passed as `accessToken`) returns
+`[]`, and the repository's raw API root (`GET /api/v2` with `access_token` set) lists only the
+`master` ref, no release ref at all. Two independent field-level investigations (a stale
+"unexpected field" `ParsingError` that turned out to require at least one *published* document to
+exist before Prismic's predicate index recognizes a field at all, and a separate "document
+created via `migrate()` is invisible to `getByUID`/`getAllByType` on both the anonymous and write
+clients") converged on the same conclusion.
+
+**Practical effect on the admin panel:** `createPost` is fire-and-forget — its collision-avoidance
+loop only checks against already-*published* posts, not other pending drafts, since it cannot see
+drafts either. `updatePost`, `deletePost`, and `readPost` cannot find a post that hasn't been
+published yet (`NotFoundError`), and `listPosts` won't include it. The realistic editorial
+workflow is: create a post → immediately go publish it in Prismic's dashboard → only then can it
+be read, edited, or archived through the admin panel. This is a real change from a "normal CMS"
+review-then-publish flow, not a cosmetic inconvenience.
+
+**Decision:** accept this as the admin panel's actual contract rather than reconsidering the
+backend. Consequences:
+- The admin UI's banner (Task 7) states the workflow plainly: publish immediately after creating,
+  or the post won't be visible or editable here.
+- `admin/posts-store.test.mjs` cannot automate a create→read/update/delete round trip live (it
+  would require a manual publish click mid-test-run, which is not automatable). Its live test
+  coverage is limited to what's true regardless of publish state: return-value shapes,
+  `false`/`undefined` for definitely-nonexistent ids, and `isSafePostId`. The full
+  create→publish→edit→archive round trip is verified once, by hand, as part of Task 9's manual
+  verification pass — not by an automated suite.
 
 ## Astro integration
 
