@@ -532,14 +532,38 @@ git commit -m "feat: add a shared Prismic client helper for the admin panel"
 - Consumes: `createPrismicClient`, `createPrismicWriteClient`, `PRISMIC_LOCALE`, `PRISMIC_POST_TYPE` from Task 5's `admin/prismic-client.mjs`; `factsTableToGroupFields`, `stringsToGroupField`, `groupFieldsToFactsTable`, `groupFieldToStrings` from Task 3's `src/loaders/prismic-fields.ts`.
 - Produces: `postPayloadToPrismicData(payload)` from `admin/prismic-write-mapping.mjs` — takes a payload shaped `{title, description, author, pubDate, updatedDate?, format, cover, coverAlt, coverCredit?, takeaways, factsTable?, tags, postType, featured, body}` and returns the Prismic `data` object (snake_case field names, Group shapes, Rich Text body), reused as-is by Task 8's migration script so the markdown→Rich Text conversion logic exists in exactly one place. Also produces `isSafePostId`, `listPosts`, `readPost`, `postExists`, `createPost`, `updatePost`, `deletePost` from `posts-store.mjs` — same function names/signatures `admin/api-handlers.mjs` already imports, so that file needs no changes.
 
-This task changes real behavior editors will see, so read it in full before writing the test: `postExists` now means "a non-archived document exists"; `deletePost` archives instead of removing, so calling it twice on the same id returns `true` both times (it's idempotently re-archiving a document that still exists), not `false` the second time as the old filesystem version did.
+This task changes real behavior editors will see, so read it in full before writing the test.
+**Verified directly against the live repository (not from docs alone):** a document written via
+`writeClient.migrate()` is invisible to every read query — the anonymous client, the write
+client's own read methods, even `client.getReleases()` with the write token passed as
+`accessToken` — until a human publishes the pending Migration Release in Prismic's dashboard.
+There is no credential or API call that can read pending content in this repository. Practical
+consequences:
+- `createPost` is fire-and-forget: its collision-avoidance loop only detects collisions against
+  already-*published* posts, not other pending drafts, because it cannot see drafts either.
+- `readPost`, `updatePost`, `deletePost`, and `listPosts` cannot find, edit, or list a post that
+  hasn't been published yet — `updatePost`/`deletePost` return `false` for it, indistinguishable
+  from a truly nonexistent id.
+- `postExists` now means "a published, non-archived document exists." `deletePost` archives
+  instead of removing, so calling it twice on an already-archived-and-published id returns `true`
+  both times (idempotently re-archiving), not `false` the second time as the old filesystem
+  version did.
+
+**Because of this, a live automated test cannot exercise create→read, create→update, or
+create→delete round trips** — that would require a manual publish click in the middle of a test
+run, which isn't automatable. The test suite below only asserts what's true regardless of publish
+state. The full create→publish→edit→archive round trip is verified once, by hand, in Task 9.
+`createPost`'s test does create one real (harmless, never-published) draft document as a side
+effect of testing its return value — this is unavoidable debris in the pending Migration Release;
+it's cheap and safe to ignore or periodically discard via Prismic's dashboard, not something to
+solve in code.
 
 - [ ] **Step 1: Write the failing tests**
 
 ```js
 // admin/posts-store.test.mjs
 import assert from 'node:assert/strict';
-import { listPosts, readPost, postExists, createPost, updatePost, deletePost, isSafePostId } from './posts-store.mjs';
+import { readPost, postExists, createPost, updatePost, deletePost, isSafePostId } from './posts-store.mjs';
 
 async function test(name, fn) {
   try {
@@ -568,95 +592,25 @@ const validPayload = (overrides) => ({
   ...overrides,
 });
 
-await test('createPost creates a document and returns a generated id', async () => {
-  const id = await createPost(validPayload());
-  try {
-    assert.ok(id.startsWith('admin-tool-test-post'));
-    const created = await readPost(id);
-    assert.equal(created.title, '__Admin Tool Test Post__');
-    assert.equal(created.body, 'Temporary body content.');
-  } finally {
-    await deletePost(id);
-  }
+await test('createPost returns a slug-shaped id derived from the title', async () => {
+  const id = await createPost(validPayload({ title: '__Admin Tool Smoke Test Post__' }));
+  assert.match(id, /^admin-tool-smoke-test-post(-\d+)?$/);
 });
 
-await test('createPost avoids id collisions by appending a numeric suffix', async () => {
-  const payload = validPayload({ title: '__Admin Tool Collision Test__' });
-  const firstId = await createPost(payload);
-  try {
-    const secondId = await createPost(payload);
-    try {
-      assert.notEqual(firstId, secondId);
-      assert.ok(secondId.startsWith(firstId));
-    } finally {
-      await deletePost(secondId);
-    }
-  } finally {
-    await deletePost(firstId);
-  }
+await test('readPost returns undefined for an id that has never existed', async () => {
+  assert.equal(await readPost('this-post-does-not-exist'), undefined);
 });
 
-await test('updatePost overwrites an existing document and returns true', async () => {
-  const id = await createPost(
-    validPayload({ title: '__Admin Tool Update Test__', description: 'Original description.' }),
-  );
-  try {
-    const updated = await updatePost(
-      id,
-      validPayload({
-        title: '__Admin Tool Update Test__',
-        description: 'Updated description.',
-        body: 'Updated body.',
-      }),
-    );
-    assert.equal(updated, true);
-    const result = await readPost(id);
-    assert.equal(result.description, 'Updated description.');
-    assert.equal(result.body, 'Updated body.');
-  } finally {
-    await deletePost(id);
-  }
+await test('postExists returns false for an id that has never existed', async () => {
+  assert.equal(await postExists('this-post-does-not-exist'), false);
 });
 
-await test('updatePost returns false for an unknown id', async () => {
+await test('updatePost returns false for an id that has never existed', async () => {
   const updated = await updatePost('this-post-does-not-exist', validPayload());
   assert.equal(updated, false);
 });
 
-await test('updatePost preserves an unmanaged field (factsTable) the form does not send', async () => {
-  const factsTable = { columns: ['A', 'B'], rows: [['x', 'y']] };
-  const id = await createPost(
-    validPayload({ title: '__Admin Tool FactsTable Preservation Test__', factsTable }),
-  );
-  try {
-    const before = await readPost(id);
-    assert.deepEqual(before.factsTable, factsTable);
-
-    const updated = await updatePost(
-      id,
-      validPayload({ title: '__Admin Tool FactsTable Preservation Test__', description: 'Edited.' }),
-    );
-    assert.equal(updated, true);
-
-    const after = await readPost(id);
-    assert.equal(after.description, 'Edited.');
-    assert.deepEqual(after.factsTable, factsTable);
-  } finally {
-    await deletePost(id);
-  }
-});
-
-await test('deletePost archives the document: listPosts excludes it, but the document still exists', async () => {
-  const id = await createPost(validPayload({ title: '__Admin Tool Delete Test__' }));
-  assert.equal(await deletePost(id), true);
-  assert.equal(await postExists(id), false);
-  const posts = await listPosts();
-  assert.ok(!posts.some((post) => post.id === id));
-  // Idempotent: archiving an already-archived document still succeeds.
-  assert.equal(await deletePost(id), true);
-});
-
-await test('deletePost returns false for an id that never existed', async () => {
+await test('deletePost returns false for an id that has never existed', async () => {
   assert.equal(await deletePost('this-post-does-not-exist'), false);
 });
 
@@ -864,7 +818,7 @@ export async function deletePost(id) {
 - [ ] **Step 5: Run the test to verify it passes**
 
 Run: `node --env-file=.env admin/posts-store.test.mjs`
-Expected: `All checks passed.`, exit code 0. Each test's writes land as drafts in Prismic's Migration Release, same as any other write in this plan — the tests read them back via `getByUID`/`getAllByType` against the *draft* state (the write client and its queries can see pending release content; only the site's production read path is affected by the publish gate), so they don't require a manual publish step to pass.
+Expected: `All checks passed.`, exit code 0. None of these tests require a manual publish step, by design — they only assert behavior that holds regardless of publish state (a nonexistent id stays nonexistent; a newly created id has the right shape).
 
 - [ ] **Step 6: Update the `test:admin` script's dependency on env**
 
@@ -925,7 +879,8 @@ Then add the banner markup between the closing `</header>` tag and the `<main id
 ```html
     <p class="prismic-banner">
       Changes here are saved as drafts in Prismic. Nothing goes live until you publish the
-      pending release in your Prismic dashboard.
+      pending release in your Prismic dashboard — and until you do, a newly created post won't
+      show up in this list or be editable/deletable here either. Publish right after creating.
     </p>
 ```
 
@@ -1044,7 +999,7 @@ Run: `npm run preview` (or `astro dev --background`), open a migrated post (e.g.
 
 - [ ] **Step 5: Verify the repointed admin panel end-to-end**
 
-Run `astro dev --background`, open `/admin`, create a new test post through the form, publish the resulting release in Prismic's dashboard, then refresh `/admin` and confirm the new post appears in the list. Delete it through the admin UI, and confirm it disappears from the admin list immediately (no extra publish needed for it to disappear from `listPosts`, since that reads live via the write-capable query path already exercised in Task 6's tests) — then clean it up by leaving it archived (no further action needed).
+Run `astro dev --background`, open `/admin`, create a new test post through the form. It will not appear in the list yet — per the "Publish workflow" constraint, nothing written through the admin panel is visible, editable, or listable until published. Go publish the resulting release in Prismic's dashboard, then refresh `/admin` and confirm the new post now appears in the list and can be opened/edited. Delete it through the admin UI (archives it), then publish that pending change too, then refresh `/admin` again and confirm it's gone from the list. This exercises the full create→publish→edit→archive→publish round trip by hand, since Task 6's automated tests can't (see Task 6's notes on why).
 
 - [ ] **Step 6: Run the full test suite one more time**
 
