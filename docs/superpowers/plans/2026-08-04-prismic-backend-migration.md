@@ -593,8 +593,12 @@ const validPayload = (overrides) => ({
 });
 
 await test('createPost returns a slug-shaped id derived from the title', async () => {
-  const id = await createPost(validPayload({ title: '__Admin Tool Smoke Test Post__' }));
-  assert.match(id, /^admin-tool-smoke-test-post(-\d+)?$/);
+  // Title must be unique per run: createPost's collision-avoidance loop can't see unpublished
+  // drafts (per the publish-gate constraint above), so a fixed title would collide with this
+  // same test's leftover draft from every prior run and fail deterministically forever after.
+  const uniqueTitle = `__Admin Tool Smoke Test Post ${Date.now()}__`;
+  const id = await createPost(validPayload({ title: uniqueTitle }));
+  assert.match(id, /^admin-tool-smoke-test-post-\d+(-\d+)?$/);
 });
 
 await test('readPost returns undefined for an id that has never existed', async () => {
