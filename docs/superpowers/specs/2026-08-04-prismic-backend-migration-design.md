@@ -118,6 +118,17 @@ workflow is: create a post → immediately go publish it in Prismic's dashboard 
 be read, edited, or archived through the admin panel. This is a real change from a "normal CMS"
 review-then-publish flow, not a cosmetic inconvenience.
 
+**Further consequence, confirmed during Task 9's manual verification pass:** `updatePost` and
+`deletePost` both fetch the document fresh from *published* state before patching it — neither
+can see any other still-unpublished change to that same document, including your own. Editing a
+post, then archiving it again before publishing the first edit, discards the edit: the archive
+action's fetch doesn't see it, so the archive's patch is based on the last-published data plus
+`archived: true`, and this becomes the document's entire pending state (the two pending patches
+don't merge). There's no code fix for this — it's the same "drafts are invisible to every read"
+constraint applying to a document's own edit history, not a new bug. Practical rule for editors:
+**publish after every single action on a post, not just after the first one**, or a later
+unpublished action can silently discard an earlier unpublished one.
+
 **Decision:** accept this as the admin panel's actual contract rather than reconsidering the
 backend. Consequences:
 - The admin UI's banner (Task 7) states the workflow plainly: publish immediately after creating,
