@@ -15,9 +15,8 @@ export default defineConfig({
     adminPanel(),
   ],
   image: {
-    // Allows Astro's build-time image optimizer to fetch and process
-    // covers stored in Cloudflare R2 instead of committing images to the repo.
-    // TODO: replace with the real R2 public/custom domain once provisioned.
+    // Allows Astro's build-time image optimizer to fetch and process covers stored in
+    // Cloudflare R2 (see PUBLIC_R2_PUBLIC_URL in .env) instead of committing images to the repo.
     remotePatterns: [{ protocol: 'https' }],
   },
 });
