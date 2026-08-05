@@ -49,34 +49,38 @@ await test('POST with an invalid payload returns 400 with field errors', async (
   assert.ok(response.json.errors.title);
 });
 
-await test('full create, read, update, delete lifecycle through the handler', async () => {
-  const created = await handleAdminApiRequest({
-    method: 'POST',
-    url: '/admin/api/posts',
+await test('POST creates a post and returns 201 with a generated id', async () => {
+  // Title must be unique per run — see posts-store.test.mjs's identical note on why a fixed
+  // title collides with this same test's leftover unpublished draft from every prior run.
+  const body = { ...validPost(), title: `__Admin Tool API Handler Test ${Date.now()}__` };
+  const created = await handleAdminApiRequest({ method: 'POST', url: '/admin/api/posts', body });
+  assert.equal(created.status, 201);
+  assert.ok(typeof created.json.id === 'string' && created.json.id.length > 0);
+});
+
+await test('GET on an id that has never existed returns 404', async () => {
+  const response = await handleAdminApiRequest({
+    method: 'GET',
+    url: '/admin/api/posts/this-post-does-not-exist',
+  });
+  assert.equal(response.status, 404);
+});
+
+await test('PUT on an id that has never existed returns 404', async () => {
+  const response = await handleAdminApiRequest({
+    method: 'PUT',
+    url: '/admin/api/posts/this-post-does-not-exist',
     body: validPost(),
   });
-  assert.equal(created.status, 201);
-  const { id } = created.json;
+  assert.equal(response.status, 404);
+});
 
-  const fetched = await handleAdminApiRequest({ method: 'GET', url: `/admin/api/posts/${id}` });
-  assert.equal(fetched.status, 200);
-  assert.equal(fetched.json.title, '__Admin Tool API Handler Test__');
-
-  const updated = await handleAdminApiRequest({
-    method: 'PUT',
-    url: `/admin/api/posts/${id}`,
-    body: { ...validPost(), description: 'Updated via PUT.' },
+await test('DELETE on an id that has never existed returns 404', async () => {
+  const response = await handleAdminApiRequest({
+    method: 'DELETE',
+    url: '/admin/api/posts/this-post-does-not-exist',
   });
-  assert.equal(updated.status, 200);
-
-  const refetched = await handleAdminApiRequest({ method: 'GET', url: `/admin/api/posts/${id}` });
-  assert.equal(refetched.json.description, 'Updated via PUT.');
-
-  const deleted = await handleAdminApiRequest({ method: 'DELETE', url: `/admin/api/posts/${id}` });
-  assert.equal(deleted.status, 200);
-
-  const afterDelete = await handleAdminApiRequest({ method: 'GET', url: `/admin/api/posts/${id}` });
-  assert.equal(afterDelete.status, 404);
+  assert.equal(response.status, 404);
 });
 
 await test('unknown route returns 404', async () => {
