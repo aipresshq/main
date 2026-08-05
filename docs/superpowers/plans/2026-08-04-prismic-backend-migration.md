@@ -325,6 +325,8 @@ git commit -m "feat: add Prismic Group field mapping helpers"
 **Files:**
 - Create: `src/loaders/prismic-posts.ts`
 - Modify: `src/content.config.ts`
+- Create: `src/loaders/prismic-posts.test.mjs` (amendment, discovered during Task 9 — see Step 6 below)
+- Modify: `package.json` / `package-lock.json` (adds `github-slugger`, Step 6)
 
 **Interfaces:**
 - Consumes: `PRISMIC_REPOSITORY_NAME`, `PRISMIC_LOCALE`, `PRISMIC_POST_TYPE`, `groupFieldsToFactsTable`, `groupFieldToStrings` from Task 3's `src/loaders/prismic-fields.ts`.
@@ -470,6 +472,146 @@ Expected: the build either succeeds with zero posts, or fails in a page/componen
 ```bash
 git add src/loaders/prismic-posts.ts src/content.config.ts
 git commit -m "feat: load the posts collection from Prismic instead of local markdown"
+```
+
+- [ ] **Step 6: Fix the missing article table-of-contents (discovered during Task 9, once real content existed to render)**
+
+`src/components/ArticleToc.astro` reads `headings` from `await render(currentPost)` to build the article's table of contents. Astro's own Markdown pipeline populates this automatically (depth/slug/text per heading); a Rich-Text-sourced loader must build it itself, or the TOC silently renders empty — caught by `tests/build-check.mjs`'s `data-toc-link` assertion once Task 8 migrated real posts with real headings. The fix also needs each heading in the actual HTML to carry a matching `id` attribute (the TOC's links are `href="#slug"`), which a plain `asHTML()` call doesn't add either.
+
+Add `github-slugger` as a direct dependency (it's already present transitively via Astro's own dependency tree — pin it explicitly rather than relying on that):
+
+```bash
+npm install github-slugger
+```
+
+Add this test first:
+
+```js
+// src/loaders/prismic-posts.test.mjs
+import assert from 'node:assert/strict';
+import { serializeBodyWithHeadings } from './prismic-posts.ts';
+
+async function test(name, fn) {
+  try {
+    await fn();
+    console.log(`✓ ${name}`);
+  } catch (error) {
+    console.error(`✗ ${name}`);
+    console.error(error);
+    process.exitCode = 1;
+  }
+}
+
+const sampleBody = [
+  { type: 'heading2', text: 'Overview', spans: [] },
+  { type: 'paragraph', text: 'Some intro text.', spans: [] },
+  { type: 'heading2', text: 'What changed', spans: [] },
+  { type: 'heading2', text: 'Overview', spans: [] },
+];
+
+await test('serializeBodyWithHeadings extracts headings with github-slugger slugs', () => {
+  const { headings } = serializeBodyWithHeadings(sampleBody);
+  assert.deepEqual(headings, [
+    { depth: 2, slug: 'overview', text: 'Overview' },
+    { depth: 2, slug: 'what-changed', text: 'What changed' },
+    { depth: 2, slug: 'overview-1', text: 'Overview' },
+  ]);
+});
+
+await test('serializeBodyWithHeadings injects a matching id onto each heading tag', () => {
+  const { html } = serializeBodyWithHeadings(sampleBody);
+  assert.ok(html.includes('<h2 id="overview">Overview</h2>'));
+  assert.ok(html.includes('<h2 id="what-changed">What changed</h2>'));
+  assert.ok(html.includes('<h2 id="overview-1">Overview</h2>'));
+});
+
+if (process.exitCode === 1) {
+  console.log('\nSome checks failed.');
+} else {
+  console.log('\nAll checks passed.');
+}
+```
+
+Run: `node src/loaders/prismic-posts.test.mjs`
+Expected: an import error — `serializeBodyWithHeadings` doesn't exist yet.
+
+Then in `src/loaders/prismic-posts.ts`, add this exported function and use it in place of the direct `asHTML`/`body` construction:
+
+```ts
+import GithubSlugger from 'github-slugger';
+
+interface ExtractedHeading {
+  depth: number;
+  slug: string;
+  text: string;
+}
+
+const HEADING_DEPTHS: Record<string, number> = {
+  heading1: 1,
+  heading2: 2,
+  heading3: 3,
+  heading4: 4,
+  heading5: 5,
+  heading6: 6,
+};
+
+export function serializeBodyWithHeadings(
+  body: prismic.RichTextField,
+): { html: string; headings: ExtractedHeading[] } {
+  const slugger = new GithubSlugger();
+  const headings: ExtractedHeading[] = [];
+
+  const serializer: prismic.HTMLRichTextMapSerializer = {};
+  for (const [type, depth] of Object.entries(HEADING_DEPTHS)) {
+    serializer[type] = ({ text, children }) => {
+      const slug = slugger.slug(text);
+      headings.push({ depth, slug, text });
+      return `<h${depth} id="${slug}">${children}</h${depth}>`;
+    };
+  }
+
+  const html = prismic.asHTML(body, { serializer }) ?? '';
+  return { html, headings };
+}
+```
+
+In the `load` function's per-document loop, replace:
+
+```ts
+store.set({
+  id: doc.uid as string,
+  data: validData,
+  body: prismic.asText(doc.data.body) ?? '',
+  rendered: { html: prismic.asHTML(doc.data.body) ?? '' },
+  digest: generateDigest(doc.data),
+});
+```
+
+with:
+
+```ts
+const { html, headings } = serializeBodyWithHeadings(doc.data.body);
+
+store.set({
+  id: doc.uid as string,
+  data: validData,
+  body: prismic.asText(doc.data.body) ?? '',
+  rendered: { html, metadata: { headings } },
+  digest: generateDigest(doc.data),
+});
+```
+
+Run: `node src/loaders/prismic-posts.test.mjs`
+Expected: `All checks passed.`, exit code 0.
+
+Run: `npm run build && npm test`
+Expected: the build succeeds, and `tests/build-check.mjs`'s `data-toc-link` assertion now passes along with everything else.
+
+Commit:
+
+```bash
+git add package.json package-lock.json src/loaders/prismic-posts.ts src/loaders/prismic-posts.test.mjs
+git commit -m "fix: populate article table-of-contents headings from Prismic Rich Text"
 ```
 
 ---
