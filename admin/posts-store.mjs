@@ -1,51 +1,10 @@
-import { readdir, readFile, writeFile, unlink } from 'node:fs/promises';
-import path from 'node:path';
-import { parseFrontmatter, serializeFrontmatter } from './frontmatter.mjs';
-
-const POSTS_DIR = path.join(process.cwd(), 'src/content/posts');
-
-function toId(filename) {
-  return filename.replace(/\.md$/, '');
-}
+import * as prismic from '@prismicio/client';
+import { createPrismicClient, createPrismicWriteClient, PRISMIC_LOCALE, PRISMIC_POST_TYPE } from './prismic-client.mjs';
+import { postPayloadToPrismicData } from './prismic-write-mapping.mjs';
+import { groupFieldsToFactsTable, groupFieldToStrings } from '../src/loaders/prismic-fields.ts';
 
 export function isSafePostId(id) {
   return typeof id === 'string' && /^[a-z0-9-]+$/.test(id);
-}
-
-export async function listPosts() {
-  const files = (await readdir(POSTS_DIR)).filter((file) => file.endsWith('.md'));
-  const posts = [];
-  for (const file of files) {
-    const raw = await readFile(path.join(POSTS_DIR, file), 'utf-8');
-    const { frontmatter } = parseFrontmatter(raw);
-    posts.push({
-      id: toId(file),
-      title: frontmatter.title ?? file,
-      pubDate: frontmatter.pubDate ?? null,
-      format: frontmatter.format ?? 'brief',
-      postType: frontmatter.postType ?? 'digest',
-      featured: Boolean(frontmatter.featured),
-    });
-  }
-  return posts.sort((a, b) => String(b.pubDate).localeCompare(String(a.pubDate)));
-}
-
-export async function readPost(id) {
-  if (!isSafePostId(id)) return undefined;
-  const filePath = path.join(POSTS_DIR, `${id}.md`);
-  let raw;
-  try {
-    raw = await readFile(filePath, 'utf-8');
-  } catch (error) {
-    if (error.code === 'ENOENT') return undefined;
-    throw error;
-  }
-  const { frontmatter, body } = parseFrontmatter(raw);
-  return { id, ...frontmatter, body: body.trim() };
-}
-
-export async function postExists(id) {
-  return (await readPost(id)) !== undefined;
 }
 
 function slugify(value) {
@@ -56,24 +15,66 @@ function slugify(value) {
     .replace(/^-+|-+$/g, '');
 }
 
-function toFrontmatter(payload) {
-  const frontmatter = {
-    title: payload.title,
-    description: payload.description,
-    author: payload.author,
-    pubDate: payload.pubDate,
-    format: payload.format,
-    cover: payload.cover,
-    coverAlt: payload.coverAlt,
-    takeaways: payload.takeaways,
-    tags: payload.tags,
-    postType: payload.postType,
-    featured: payload.featured,
+function fromPrismicDocument(doc) {
+  const data = doc.data;
+  return {
+    id: doc.uid,
+    title: data.title,
+    description: data.description,
+    author: data.author,
+    pubDate: data.pub_date,
+    updatedDate: data.updated_date ?? undefined,
+    format: data.format,
+    cover: data.cover,
+    coverAlt: data.cover_alt,
+    coverCredit: data.cover_credit ?? undefined,
+    takeaways: groupFieldToStrings(data.takeaways, 'item'),
+    factsTable: groupFieldsToFactsTable(data.facts_table_columns, data.facts_table_rows),
+    tags: groupFieldToStrings(data.tags, 'tag'),
+    postType: data.post_type,
+    featured: Boolean(data.featured),
+    body: prismic.asText(data.body) ?? '',
   };
-  if (payload.updatedDate) frontmatter.updatedDate = payload.updatedDate;
-  if (payload.coverCredit) frontmatter.coverCredit = payload.coverCredit;
-  if (payload.factsTable) frontmatter.factsTable = payload.factsTable;
-  return frontmatter;
+}
+
+export async function listPosts() {
+  const client = createPrismicClient();
+  const documents = await client.getAllByType(PRISMIC_POST_TYPE, { lang: PRISMIC_LOCALE });
+  return documents
+    .filter((doc) => !doc.data.archived)
+    .map((doc) => ({
+      id: doc.uid,
+      title: doc.data.title,
+      pubDate: doc.data.pub_date,
+      format: doc.data.format,
+      postType: doc.data.post_type,
+      featured: Boolean(doc.data.featured),
+    }))
+    .sort((a, b) => String(b.pubDate).localeCompare(String(a.pubDate)));
+}
+
+export async function readPost(id) {
+  if (!isSafePostId(id)) return undefined;
+  const client = createPrismicClient();
+  try {
+    const doc = await client.getByUID(PRISMIC_POST_TYPE, id, { lang: PRISMIC_LOCALE });
+    return fromPrismicDocument(doc);
+  } catch (error) {
+    if (error instanceof prismic.NotFoundError) return undefined;
+    throw error;
+  }
+}
+
+export async function postExists(id) {
+  if (!isSafePostId(id)) return false;
+  const client = createPrismicClient();
+  try {
+    const doc = await client.getByUID(PRISMIC_POST_TYPE, id, { lang: PRISMIC_LOCALE });
+    return !doc.data.archived;
+  } catch (error) {
+    if (error instanceof prismic.NotFoundError) return false;
+    throw error;
+  }
 }
 
 export async function createPost(payload) {
@@ -85,33 +86,52 @@ export async function createPost(payload) {
     suffix += 1;
   }
 
-  await writeFile(
-    path.join(POSTS_DIR, `${id}.md`),
-    serializeFrontmatter(toFrontmatter(payload), payload.body ?? ''),
-    'utf-8',
+  const writeClient = createPrismicWriteClient();
+  const migration = prismic.createMigration();
+  migration.createDocument(
+    {
+      type: PRISMIC_POST_TYPE,
+      lang: PRISMIC_LOCALE,
+      uid: id,
+      tags: [],
+      data: { ...postPayloadToPrismicData(payload), archived: false },
+    },
+    payload.title,
   );
+  await writeClient.migrate(migration);
   return id;
 }
 
 export async function updatePost(id, payload) {
   if (!isSafePostId(id)) return false;
-  const filePath = path.join(POSTS_DIR, `${id}.md`);
-  let existingRaw;
+  const writeClient = createPrismicWriteClient();
+  let existingDoc;
   try {
-    existingRaw = await readFile(filePath, 'utf-8');
+    existingDoc = await writeClient.getByUID(PRISMIC_POST_TYPE, id, { lang: PRISMIC_LOCALE });
   } catch (error) {
-    if (error.code === 'ENOENT') return false;
+    if (error instanceof prismic.NotFoundError) return false;
     throw error;
   }
-  const { frontmatter: existingFrontmatter } = parseFrontmatter(existingRaw);
-  const merged = { ...existingFrontmatter, ...toFrontmatter(payload) };
-  await writeFile(filePath, serializeFrontmatter(merged, payload.body ?? ''), 'utf-8');
+  existingDoc.data = { ...existingDoc.data, ...postPayloadToPrismicData(payload) };
+  const migration = prismic.createMigration();
+  migration.updateDocument(existingDoc, payload.title);
+  await writeClient.migrate(migration);
   return true;
 }
 
 export async function deletePost(id) {
   if (!isSafePostId(id)) return false;
-  if (!(await postExists(id))) return false;
-  await unlink(path.join(POSTS_DIR, `${id}.md`));
+  const writeClient = createPrismicWriteClient();
+  let existingDoc;
+  try {
+    existingDoc = await writeClient.getByUID(PRISMIC_POST_TYPE, id, { lang: PRISMIC_LOCALE });
+  } catch (error) {
+    if (error instanceof prismic.NotFoundError) return false;
+    throw error;
+  }
+  existingDoc.data = { ...existingDoc.data, archived: true };
+  const migration = prismic.createMigration();
+  migration.updateDocument(existingDoc);
+  await writeClient.migrate(migration);
   return true;
 }
