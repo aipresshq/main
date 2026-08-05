@@ -25,6 +25,10 @@ await test('renderAdminPage includes the app mount point and inline script', () 
   assert.ok(html.includes('renderList()'));
 });
 
+await test('renderAdminPage warns that changes are drafts until published', () => {
+  assert.ok(html.includes('Nothing goes live until you publish'));
+});
+
 if (process.exitCode === 1) {
   console.log('\nSome checks failed.');
 } else {

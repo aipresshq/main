@@ -64,6 +64,7 @@ export function renderAdminPage() {
       .takeaway-row input { flex: 1; }
       .list-controls { margin-top: 8px; }
       .empty { color: var(--text-muted); font-style: italic; margin-top: 16px; }
+      .prismic-banner { background: #fff4e5; border: 1px solid #b3261e; border-radius: 4px; padding: 10px 14px; margin: 16px 24px 0; font-size: 0.85rem; }
     </style>
   </head>
   <body>
@@ -71,6 +72,11 @@ export function renderAdminPage() {
       <h1>Posts admin</h1>
       <span id="status-line"></span>
     </header>
+    <p class="prismic-banner">
+      Changes here are saved as drafts in Prismic. Nothing goes live until you publish the
+      pending release in your Prismic dashboard — and until you do, a newly created post won't
+      show up in this list or be editable/deletable here either. Publish right after creating.
+    </p>
     <main id="app"></main>
     <script>
       const FORMATS = ['brief', 'explainer', 'comparison', 'tracker', 'analysis', 'tutorial'];
