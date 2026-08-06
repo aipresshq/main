@@ -29,6 +29,8 @@ export interface Props {
   type?: 'website' | 'article';
   publishedTime?: Date;
   updatedTime?: Date;
+  /** Set true for pages with no unique server-rendered content to index (e.g. a client-only reading list). */
+  noindex?: boolean;
 }
 
 const {
@@ -42,6 +44,7 @@ const {
   type = 'website',
   publishedTime,
   updatedTime,
+  noindex = false,
 } = Astro.props;
 
 const sections = [
@@ -97,7 +100,11 @@ const organizationSchema = {
     <link rel="manifest" href="/site.webmanifest" />
     <link rel="alternate" type="application/rss+xml" title="aiPressHQ" href="/rss.xml" />
     <meta name="theme-color" content="#ffffff" data-theme-color />
-    <meta name="viewport" content="width=device-width" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    {
+      /* If you edit this script's content, regenerate the sha256 hash in
+         public/_headers' CSP or the report-only policy will flag it. */
+    }
     <script is:inline>
       (() => {
         let theme = 'light';
@@ -136,6 +143,7 @@ const organizationSchema = {
       })();
     </script>
     {description && <meta name="description" content={description} />}
+    {noindex && <meta name="robots" content="noindex, follow" />}
     <link rel="canonical" href={canonicalUrl} />
     <title>{title}</title>
 

@@ -5,6 +5,7 @@ import CategoryFront from '../../components/CategoryFront.astro';
 import { formatEditionDate } from '../../lib/date';
 import { getFormatDefinition, storyFormats, type StoryFormat } from '../../lib/formats';
 import { sortPostsNewestFirst } from '../../lib/post-order';
+import { buildCollectionPageSchema, toSafeJsonLd } from '../../lib/json-ld';
 
 export async function getStaticPaths() {
   const allPosts = await getCollection('posts');
@@ -23,6 +24,17 @@ interface Props {
 const { format, allPosts } = Astro.props as Props;
 const definition = getFormatDefinition(format);
 const posts = sortPostsNewestFirst(allPosts.filter((post) => post.data.format === format));
+const site = Astro.site ?? 'https://aipresshq.com';
+const schemas =
+  posts.length > 0
+    ? buildCollectionPageSchema({
+        site,
+        path: `/format/${format}/`,
+        name: definition.label,
+        description: definition.description,
+        postUrls: posts.map((post) => new URL(`/posts/${post.id}/`, site).href),
+      })
+    : null;
 ---
 
 <BaseLayout
@@ -30,7 +42,20 @@ const posts = sortPostsNewestFirst(allPosts.filter((post) => post.data.format ==
   description={definition.description}
   activeFormat={format}
   editionDate={posts[0] && formatEditionDate(posts[0].data.pubDate)}
+  noindex={posts.length === 0}
 >
+  {
+    schemas && (
+      <Fragment>
+        <script
+          is:inline
+          type="application/ld+json"
+          set:html={toSafeJsonLd(schemas.collectionPage)}
+        />
+        <script is:inline type="application/ld+json" set:html={toSafeJsonLd(schemas.breadcrumb)} />
+      </Fragment>
+    )
+  }
   <CategoryFront
     title={definition.label}
     description={definition.description}

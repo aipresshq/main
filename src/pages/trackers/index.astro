@@ -14,6 +14,7 @@ const posts = sortPostsNewestFirst(allPosts.filter((p) => p.data.postType === 't
   description="Live usage-limit and pricing trackers for major AI tools, updated regularly."
   activeTab="trackers"
   editionDate={posts[0] && formatEditionDate(posts[0].data.pubDate)}
+  noindex={posts.length === 0}
 >
   <CategoryFront
     title="Trackers"

@@ -6,6 +6,7 @@ import { formatEditionDate } from '../../lib/date';
 import { sortPostsNewestFirst } from '../../lib/post-order';
 import { slugify } from '../../lib/slug';
 import { getTopicDescription, knownTopics } from '../../lib/topics';
+import { buildCollectionPageSchema, toSafeJsonLd } from '../../lib/json-ld';
 
 export async function getStaticPaths() {
   const allPosts = await getCollection('posts');
@@ -23,6 +24,17 @@ export async function getStaticPaths() {
 
 const { tag, allPosts } = Astro.props;
 const posts = sortPostsNewestFirst(allPosts.filter((p) => p.data.tags.includes(tag)));
+const site = Astro.site ?? 'https://aipresshq.com';
+const schemas =
+  posts.length > 0
+    ? buildCollectionPageSchema({
+        site,
+        path: `/tag/${Astro.params.tag}/`,
+        name: tag,
+        description: `Latest aiPressHQ coverage tagged ${tag}.`,
+        postUrls: posts.map((post) => new URL(`/posts/${post.id}/`, site).href),
+      })
+    : null;
 ---
 
 <BaseLayout
@@ -30,7 +42,20 @@ const posts = sortPostsNewestFirst(allPosts.filter((p) => p.data.tags.includes(t
   description={`Latest aiPressHQ coverage tagged ${tag}.`}
   activeTag={tag}
   editionDate={posts[0] && formatEditionDate(posts[0].data.pubDate)}
+  noindex={posts.length === 0}
 >
+  {
+    schemas && (
+      <Fragment>
+        <script
+          is:inline
+          type="application/ld+json"
+          set:html={toSafeJsonLd(schemas.collectionPage)}
+        />
+        <script is:inline type="application/ld+json" set:html={toSafeJsonLd(schemas.breadcrumb)} />
+      </Fragment>
+    )
+  }
   <CategoryFront
     title={tag}
     description={getTopicDescription(tag)}
