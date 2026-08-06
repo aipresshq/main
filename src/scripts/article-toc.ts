@@ -1,9 +1,15 @@
-// scrollTo rounds to the nearest device pixel, so a section that should land
-// exactly on the threshold after a TOC click can settle a fraction of a
-// pixel short of it. A strict <= comparison then excludes that section and
-// the highlight snaps back to the previous link. This absorbs that
-// sub-pixel gap without affecting anything a real scroll distance away.
-const ACTIVE_SECTION_EPSILON = 2;
+// A smooth scroll counts as arrived once it lands within this many pixels of
+// the threshold. scrollTo rounds to the nearest device pixel and the
+// animation's final frames creep in fractions, so demanding an exact landing
+// would leave a section permanently short of the line.
+//
+// Active-section detection has to use the same tolerance as the click lock in
+// update(). When the lock released at 12px but detection still demanded 2px,
+// every click whose animation passed through that 2-12px window flashed the
+// *previous* section for a frame or two before the scroll finished closing
+// the gap — the lock had let go, but geometry did not yet agree the target
+// was active.
+const SCROLL_SETTLE_TOLERANCE = 12;
 
 function getArticleOutlines() {
   return [...document.querySelectorAll<HTMLElement>('[data-article-toc]')];
@@ -142,7 +148,8 @@ export function initArticleToc() {
           const atBottom =
             window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2;
           const reachedTarget =
-            Math.abs(targetTop - threshold) <= 12 || (atBottom && targetTop <= window.innerHeight);
+            Math.abs(targetTop - threshold) <= SCROLL_SETTLE_TOLERANCE ||
+            (atBottom && targetTop <= window.innerHeight);
 
           setCurrentLink(outline, pending.activeIndex);
           if (!reachedTarget) return;
@@ -155,7 +162,7 @@ export function initArticleToc() {
       let activeIndex = 0;
 
       sections.forEach((section, index) => {
-        if (section && section.getBoundingClientRect().top <= threshold + ACTIVE_SECTION_EPSILON) {
+        if (section && section.getBoundingClientRect().top <= threshold + SCROLL_SETTLE_TOLERANCE) {
           activeIndex = index;
         }
       });
