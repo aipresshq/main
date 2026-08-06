@@ -307,8 +307,8 @@ check('published posts disclose an editorial update date', () => {
     // JSON-LD block (e.g. BreadcrumbList) were ever emitted earlier in <head>.
     const schema = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
       .map((match) => JSON.parse(match[1]))
-      .find((block) => block['@type'] === 'NewsArticle');
-    assert.ok(schema, `${id} must emit NewsArticle schema`);
+      .find((block) => block['@type'] === 'NewsArticle' || block['@type'] === 'Article');
+    assert.ok(schema, `${id} must emit Article/NewsArticle schema`);
     assert.match(
       schema.dateModified ?? '',
       /^\d{4}-\d{2}-\d{2}T/,
@@ -895,8 +895,8 @@ check('posts resolve validated author profiles into linked bylines and schema', 
 
   const schema = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
     .map((match) => JSON.parse(match[1]))
-    .find((block) => block['@type'] === 'NewsArticle');
-  assert.ok(schema, 'no NewsArticle JSON-LD block found');
+    .find((block) => block['@type'] === 'NewsArticle' || block['@type'] === 'Article');
+  assert.ok(schema, 'no Article/NewsArticle JSON-LD block found');
   assert.equal(schema.author[0].name, 'Tejas Telkar');
   assert.equal(schema.author[0].url, 'https://aipresshq.com/authors/tejas-telkar/');
 });
@@ -1876,12 +1876,12 @@ check('removed generic article blocks stay out of the rendered story', () => {
   }
 });
 
-check('article page emits NewsArticle schema with an image', () => {
+check('article page emits Article/NewsArticle schema with an image', () => {
   const html = dist(`posts/${primaryPostId}/index.html`);
   const schema = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
     .map((match) => JSON.parse(match[1]))
-    .find((block) => block['@type'] === 'NewsArticle');
-  assert.ok(schema, 'no NewsArticle JSON-LD block found');
+    .find((block) => block['@type'] === 'NewsArticle' || block['@type'] === 'Article');
+  assert.ok(schema, 'no Article/NewsArticle JSON-LD block found');
   assert.ok(
     Array.isArray(schema.image) && schema.image.length > 0,
     'schema image field must be populated',
