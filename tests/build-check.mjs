@@ -81,7 +81,7 @@ const escapeHtmlAttribute = (value) =>
 // goes through sourcePosts(), so without an independent list a story that
 // silently failed to build would simply be skipped by every one of those checks
 // instead of turning the suite red.
-const primaryPostId = 'luna-max-vs-sol-medium';
+const primaryPostId = 'gpt-5-6-terra';
 const secondaryPostId = 'gpt-6-mako-koi-tune-leak';
 const tertiaryPostId = 'mythos-6-leak';
 const quaternaryPostId = 'codex-beyond-the-laptop';
