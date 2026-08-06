@@ -1,0 +1,101 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="Privacy Policy | aiPressHQ"
+  description="What aiPressHQ collects, what it doesn't, and how the site's local-storage features work."
+>
+  <section class="legal-page" aria-labelledby="legal-title">
+    <header class="legal-header">
+      <span class="label">aiPressHQ / Privacy Policy</span>
+      <h1 id="legal-title">Privacy Policy</h1>
+      <p class="legal-updated">Last updated August 6, 2026</p>
+    </header>
+
+    <div class="prose legal-body">
+      <p>
+        aiPressHQ is a news and explainer site about artificial intelligence. This page explains
+        what information the site collects when you read it, what it doesn't, and how the few
+        client-side features that remember anything actually work.
+      </p>
+
+      <h2>The short version</h2>
+      <p>
+        There are no accounts, no mailing list, no ad network, and no analytics or tracking
+        scripts on this site. The only data that gets stored lives in your own browser's local
+        storage and is never sent to aiPressHQ's servers.
+      </p>
+
+      <h2>What we don't collect</h2>
+      <ul>
+        <li>No sign-up, login, or account system.</li>
+        <li>No forms, comments, or mailing list sign-ups.</li>
+        <li>No advertising, ad networks, or ad-targeting pixels.</li>
+        <li>No analytics or behavioral tracking scripts of any kind.</li>
+      </ul>
+
+      <h2>What's stored in your browser</h2>
+      <p>
+        A few optional features use your browser's <code>localStorage</code> to remember things on
+        your device between visits. None of this is transmitted to us — it stays on your device
+        until you clear it.
+      </p>
+      <ul>
+        <li><strong>Saved stories</strong> — the list of articles you bookmark for later.</li>
+        <li><strong>Recent searches</strong> — your last few searches on this site, shown as shortcuts.</li>
+        <li><strong>Theme preference</strong> — whether you last chose light or dark mode.</li>
+      </ul>
+      <p>
+        You can clear any of this at any time by clearing your browser's site data for
+        aiPressHQ, or by using the remove controls built into the saved-stories and search
+        features themselves.
+      </p>
+
+      <h2>Cookies</h2>
+      <p>
+        aiPressHQ does not set cookies. See the <a href="/cookies/">Cookie Policy</a> for details
+        on why, and on how the local-storage features above differ from cookies.
+      </p>
+
+      <h2>Hosting and infrastructure</h2>
+      <p>
+        The site is served from Cloudflare's network (Cloudflare Pages/Workers), with images
+        delivered from Cloudflare R2 and article content sourced from Prismic, our headless
+        content management system. These are backend infrastructure providers, not
+        user-tracking services, and neither is configured to collect visitor data on
+        aiPressHQ's behalf beyond the standard technical request logs any web host keeps for
+        security and reliability (such as IP address, user agent, and request timestamp).
+        Cloudflare's own handling of that data is governed by its <a
+          href="https://www.cloudflare.com/privacypolicy/"
+          rel="noopener noreferrer"
+          target="_blank">privacy policy</a>.
+      </p>
+
+      <h2>External links</h2>
+      <p>
+        Articles link out to the sources they report on — official documentation, company
+        announcements, research papers, and other outlets. Once you follow a link off
+        aiPressHQ, that site's own privacy practices apply, not this one.
+      </p>
+
+      <h2>Children's privacy</h2>
+      <p>
+        aiPressHQ is a general-audience news site and is not directed at children under 13. We
+        do not knowingly collect personal information from children.
+      </p>
+
+      <h2>Changes to this policy</h2>
+      <p>
+        If what the site collects or how it's stored changes, this page will be updated and the
+        date above will change accordingly.
+      </p>
+
+      <h2>Contact</h2>
+      <p>
+        Questions about this policy can be sent to <a
+          href="mailto:privacy@aipresshq.com">privacy@aipresshq.com</a>.
+      </p>
+    </div>
+  </section>
+</BaseLayout>

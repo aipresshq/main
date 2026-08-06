@@ -1509,6 +1509,21 @@ check('format archives and utility routes build with their reader-facing contrac
     dist('about/index.html').includes('class="standards-page"'),
     'standards page is missing',
   );
+  assert.ok(distExists('privacy/index.html'), 'privacy policy route is missing');
+  assert.ok(
+    dist('privacy/index.html').includes('class="legal-page"'),
+    'privacy policy page is missing',
+  );
+  assert.ok(distExists('terms/index.html'), 'terms of service route is missing');
+  assert.ok(
+    dist('terms/index.html').includes('class="legal-page"'),
+    'terms of service page is missing',
+  );
+  assert.ok(distExists('cookies/index.html'), 'cookie policy route is missing');
+  assert.ok(
+    dist('cookies/index.html').includes('class="legal-page"'),
+    'cookie policy page is missing',
+  );
   assert.ok(distExists('404.html'), 'custom 404 page is missing');
 });
 
@@ -2146,10 +2161,9 @@ check('footer renders editorial navigation, wordmark, columns and base line', ()
   assert.ok(footer.includes('class="footer-columns"'), 'missing link columns');
   assert.match(footer, /All rights reserved/, 'missing copyright line');
   assert.ok(footer.includes('href="/about/"'), 'footer should link editorial standards');
-  assert.ok(
-    !/href="\/(privacy|terms|contact)\/?"/.test(footer),
-    'footer links a page that is not built',
-  );
+  assert.ok(footer.includes('href="/privacy/"'), 'footer should link the privacy policy');
+  assert.ok(footer.includes('href="/terms/"'), 'footer should link the terms of service');
+  assert.ok(footer.includes('href="/cookies/"'), 'footer should link the cookie policy');
   const footerRule = css.match(/\.site-footer\s*\{([\s\S]*?)\n\}/);
   assert.ok(footerRule, 'footer styles are missing');
   assert.match(footerRule[1], /background:\s*var\(--text\)/);
