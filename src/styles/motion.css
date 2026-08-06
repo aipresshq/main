@@ -168,10 +168,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
-
   body,
   .continuous-article,
   .article-figure img,
