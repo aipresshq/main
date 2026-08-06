@@ -31,3 +31,6 @@ pnpm-debug.log*
 
 # local git worktrees
 .worktrees/
+
+# wrangler local state
+.wrangler/
