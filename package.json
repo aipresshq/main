@@ -15,10 +15,10 @@
     "preview": "astro preview",
     "test": "node tests/build-check.mjs",
     "test:admin": "node --env-file=.env admin/frontmatter.test.mjs && node --env-file=.env admin/authors-store.test.mjs && node --env-file=.env admin/posts-store.test.mjs && node --env-file=.env admin/validate-post.test.mjs && node --env-file=.env admin/api-handlers.test.mjs && node --env-file=.env admin/ui.test.mjs && node --env-file=.env admin/integration.test.mjs",
+    "indexnow": "node scripts/indexnow-ping.mjs",
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/rss": "^4.0.19",
     "@astrojs/sitemap": "^3.7.3",
     "@fontsource-variable/inter": "^5.3.0",
     "@fontsource/source-serif-4": "^5.3.0",
