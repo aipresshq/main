@@ -93,7 +93,7 @@
 
 .category-featured-lead {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
+  grid-template-columns: minmax(0, 0.95fr) minmax(320px, 1.05fr);
   gap: 40px;
   align-items: start;
   padding-bottom: 24px;
@@ -102,7 +102,7 @@
 
 .category-featured-lead img {
   width: 100%;
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 16 / 9;
   object-fit: cover;
 }
 
