@@ -11,6 +11,7 @@ import {
 } from './prismic-fields.ts';
 
 interface PrismicPostData {
+  [key: string]: unknown;
   title: string;
   description: string;
   author: string;
@@ -36,7 +37,9 @@ interface ExtractedHeading {
   text: string;
 }
 
-const HEADING_DEPTHS: Record<string, number> = {
+type HeadingSerializerKey = 'heading1' | 'heading2' | 'heading3' | 'heading4' | 'heading5' | 'heading6';
+
+const HEADING_DEPTHS: Record<HeadingSerializerKey, number> = {
   heading1: 1,
   heading2: 2,
   heading3: 3,
@@ -52,8 +55,14 @@ export function serializeBodyWithHeadings(
   const headings: ExtractedHeading[] = [];
 
   const serializer: prismic.HTMLRichTextMapSerializer = {};
-  for (const [type, depth] of Object.entries(HEADING_DEPTHS)) {
-    serializer[type] = ({ text, children }) => {
+  for (const [type, depth] of Object.entries(HEADING_DEPTHS) as [HeadingSerializerKey, number][]) {
+    serializer[type] = (payload: Record<string, unknown>) => {
+      // Prismic's own HTMLRichTextMapSerializer type narrows `text` to
+      // `undefined` for heading nodes specifically, but the library always
+      // provides the real heading text at runtime (verified against built
+      // output: headings get real slugs, not "undefined") — the cast below
+      // reflects the actual runtime shape, not the library's narrower type.
+      const { text, children } = payload as { text: string; children: string };
       const slug = slugger.slug(text);
       headings.push({ depth, slug, text });
       return `<h${depth} id="${slug}">${children}</h${depth}>`;
@@ -69,44 +78,47 @@ export function prismicPostsLoader(): Loader {
     name: 'prismic-posts-loader',
     load: async ({ store, logger, parseData, generateDigest }) => {
       const client = prismic.createClient(PRISMIC_REPOSITORY_NAME);
-      const documents = await client.getAllByType<
-        prismic.PrismicDocument<PrismicPostData, typeof PRISMIC_POST_TYPE>
-      >(PRISMIC_POST_TYPE, { lang: PRISMIC_LOCALE });
+      const documents = await client.getAllByType(PRISMIC_POST_TYPE, { lang: PRISMIC_LOCALE });
 
       logger.info(`Fetched ${documents.length} post document(s) from Prismic`);
       store.clear();
 
       for (const doc of documents) {
-        if (doc.data.archived) continue;
+        // Prismic's field-value union constraint on PrismicDocument's data type
+        // parameter doesn't structurally accept a plain named-fields interface
+        // without full typegen, so the shape is asserted here, at the one place
+        // it's read, rather than fought at the client's generic call site.
+        const data = doc.data as unknown as PrismicPostData;
+        if (data.archived) continue;
 
         const validData = await parseData({
           id: doc.uid as string,
           data: {
-            title: doc.data.title,
-            description: doc.data.description,
-            author: doc.data.author,
-            pubDate: doc.data.pub_date,
-            updatedDate: doc.data.updated_date ?? undefined,
-            format: doc.data.format,
-            cover: doc.data.cover,
-            coverAlt: doc.data.cover_alt,
-            coverCredit: doc.data.cover_credit ?? undefined,
-            takeaways: groupFieldToStrings(doc.data.takeaways, 'item'),
-            factsTable: groupFieldsToFactsTable(doc.data.facts_table_columns, doc.data.facts_table_rows),
-            tags: groupFieldToStrings(doc.data.tags, 'tag'),
-            postType: doc.data.post_type,
-            featured: doc.data.featured,
+            title: data.title,
+            description: data.description,
+            author: data.author,
+            pubDate: data.pub_date,
+            updatedDate: data.updated_date ?? undefined,
+            format: data.format,
+            cover: data.cover,
+            coverAlt: data.cover_alt,
+            coverCredit: data.cover_credit ?? undefined,
+            takeaways: groupFieldToStrings(data.takeaways, 'item'),
+            factsTable: groupFieldsToFactsTable(data.facts_table_columns, data.facts_table_rows),
+            tags: groupFieldToStrings(data.tags, 'tag'),
+            postType: data.post_type,
+            featured: data.featured,
           },
         });
 
-        const { html, headings } = serializeBodyWithHeadings(doc.data.body);
+        const { html, headings } = serializeBodyWithHeadings(data.body);
 
         store.set({
           id: doc.uid as string,
           data: validData,
-          body: prismic.asText(doc.data.body) ?? '',
+          body: prismic.asText(data.body) ?? '',
           rendered: { html, metadata: { headings } },
-          digest: generateDigest(doc.data),
+          digest: generateDigest(data),
         });
       }
     },
