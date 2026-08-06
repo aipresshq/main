@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /posts/*/fragment/
+
+Sitemap: https://aipresshq.com/sitemap-index.xml

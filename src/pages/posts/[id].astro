@@ -63,6 +63,10 @@ const schema = {
   title={`${title} | aiPressHQ`}
   description={description}
   editionDate={formatEditionDate(pubDate)}
+  image={cover}
+  type="article"
+  publishedTime={pubDate}
+  updatedTime={updatedDate}
 >
   <script is:inline type="application/ld+json" set:html={toSafeJsonLd(schema)} />
 

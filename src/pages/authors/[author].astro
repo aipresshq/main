@@ -45,6 +45,7 @@ const schema = {
   title={`${author.data.name} | aiPressHQ`}
   description={author.data.bio}
   editionDate={posts[0] && formatEditionDate(posts[0].data.pubDate)}
+  image={author.data.avatar}
 >
   <script is:inline type="application/ld+json" set:html={toSafeJsonLd(schema)} />
 

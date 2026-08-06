@@ -886,8 +886,10 @@ check('posts resolve validated author profiles into linked bylines and schema', 
   assert.ok(html.includes('Tejas Telkar'));
   assert.ok(html.includes('Writer and editor'));
 
-  const match = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
-  const schema = JSON.parse(match[1]);
+  const schema = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
+    .map((match) => JSON.parse(match[1]))
+    .find((block) => block['@type'] === 'NewsArticle');
+  assert.ok(schema, 'no NewsArticle JSON-LD block found');
   assert.equal(schema.author[0].name, 'Tejas Telkar');
   assert.equal(schema.author[0].url, 'https://aipresshq.com/authors/tejas-telkar/');
 });
@@ -1869,10 +1871,10 @@ check('removed generic article blocks stay out of the rendered story', () => {
 
 check('article page emits NewsArticle schema with an image', () => {
   const html = dist(`posts/${primaryPostId}/index.html`);
-  const match = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
-  assert.ok(match, 'no JSON-LD block found');
-  const schema = JSON.parse(match[1]);
-  assert.equal(schema['@type'], 'NewsArticle');
+  const schema = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
+    .map((match) => JSON.parse(match[1]))
+    .find((block) => block['@type'] === 'NewsArticle');
+  assert.ok(schema, 'no NewsArticle JSON-LD block found');
   assert.ok(
     Array.isArray(schema.image) && schema.image.length > 0,
     'schema image field must be populated',

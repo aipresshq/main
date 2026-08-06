@@ -7,6 +7,7 @@ import Footer from '../components/Footer.astro';
 import { storyFormats, type StoryFormat } from '../lib/formats';
 import { slugify } from '../lib/slug';
 import { topicGroups, knownTopics } from '../lib/topics';
+import { toSafeJsonLd } from '../lib/json-ld';
 
 export interface Props {
   title: string;
@@ -22,6 +23,12 @@ export interface Props {
    * after it was built.
    */
   editionDate?: string;
+  /** Absolute or site-relative image URL for social share cards. Falls back to the wordmark. */
+  image?: string;
+  /** OG type — 'article' for individual stories, 'website' for everything else. */
+  type?: 'website' | 'article';
+  publishedTime?: Date;
+  updatedTime?: Date;
 }
 
 const {
@@ -31,6 +38,10 @@ const {
   activeTag = null,
   activeFormat = null,
   editionDate,
+  image,
+  type = 'website',
+  publishedTime,
+  updatedTime,
 } = Astro.props;
 
 const sections = [
@@ -38,6 +49,30 @@ const sections = [
   { label: 'Trending', href: '/trending/', active: activeTab === 'trending' },
   { label: 'Tutorials', href: '/tag/tutorials/', active: activeTag?.toLowerCase() === 'tutorials' },
 ];
+
+const site = Astro.site ?? 'https://aipresshq.com';
+const canonicalUrl = new URL(Astro.url.pathname, site).href;
+const ogImageUrl = new URL(image ?? '/brand/aipresshq-logo-light.png', site).href;
+
+const websiteSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'aiPressHQ',
+  url: site,
+  potentialAction: {
+    '@type': 'SearchAction',
+    target: `${new URL('/search/', site).href}?q={search_term_string}`,
+    'query-input': 'required name=search_term_string',
+  },
+};
+
+const organizationSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: 'aiPressHQ',
+  url: site,
+  logo: new URL('/brand/aipresshq-logo-light.png', site).href,
+};
 ---
 
 <html lang="en">
@@ -60,6 +95,7 @@ const sections = [
     <link rel="alternate icon" href="/favicon.ico?v=5" sizes="any" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3" />
     <link rel="manifest" href="/site.webmanifest" />
+    <link rel="alternate" type="application/rss+xml" title="aiPressHQ" href="/rss.xml" />
     <meta name="theme-color" content="#ffffff" data-theme-color />
     <meta name="viewport" content="width=device-width" />
     <script is:inline>
@@ -100,7 +136,29 @@ const sections = [
       })();
     </script>
     {description && <meta name="description" content={description} />}
+    <link rel="canonical" href={canonicalUrl} />
     <title>{title}</title>
+
+    <meta property="og:site_name" content="aiPressHQ" />
+    <meta property="og:type" content={type} />
+    <meta property="og:title" content={title} />
+    {description && <meta property="og:description" content={description} />}
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:image" content={ogImageUrl} />
+    {type === 'article' && publishedTime && (
+      <meta property="article:published_time" content={publishedTime.toISOString()} />
+    )}
+    {type === 'article' && updatedTime && (
+      <meta property="article:modified_time" content={updatedTime.toISOString()} />
+    )}
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    {description && <meta name="twitter:description" content={description} />}
+    <meta name="twitter:image" content={ogImageUrl} />
+
+    <script type="application/ld+json" set:html={toSafeJsonLd(websiteSchema)} />
+    <script type="application/ld+json" set:html={toSafeJsonLd(organizationSchema)} />
   </head>
   <body>
     <a class="skip-link" href="#main-content">Skip to content</a>
