@@ -351,16 +351,22 @@ check('every story carries explicit editorial format and reader context', () => 
 });
 
 check('published stories link their reference covers and official reporting sources', () => {
+  // Cover images render through Astro's image optimizer, which re-hosts them
+  // as locally built, hashed files — the original source URL never appears in
+  // the output HTML. Asserting on the stable coverAlt text instead still
+  // proves the right image rendered in the right story, without depending on
+  // an implementation detail of how (or whether) it gets optimized.
   const expected = {
     [primaryPostId]: {
-      cover: 'https://pbs.twimg.com/media/HOnDOnCasAE2_nP?format=jpg&name=4096x4096',
+      coverAlt: 'Chart comparing model capability and cost across GPT-5.6 tiers',
       inlineUrls: [
         'https://developers.openai.com/api/docs/models/gpt-5.6-terra',
         'https://openai.com/index/gpt-5-6/',
       ],
     },
     [secondaryPostId]: {
-      cover: 'https://pbs.twimg.com/media/HOviCSfXkAEWoPU.jpg:large',
+      coverAlt:
+        'Graphic showing three rumored GPT-6 model tiers with different capability and price positions',
       inlineUrls: [
         'https://developers.openai.com/api/docs/models',
         'https://developers.openai.com/api/docs/guides/latest-model',
@@ -368,7 +374,7 @@ check('published stories link their reference covers and official reporting sour
       ],
     },
     [tertiaryPostId]: {
-      cover: 'https://pbs.twimg.com/media/HOzTipVX0AAuvA6.jpg:large',
+      coverAlt: 'Graphic labelled Claude Mythos 6 with a warning light',
       inlineUrls: [
         'https://www.anthropic.com/claude/mythos',
         'https://www.anthropic.com/project/glasswing',
@@ -376,7 +382,7 @@ check('published stories link their reference covers and official reporting sour
       ],
     },
     [quaternaryPostId]: {
-      cover: 'https://pub-450085b0b9f2461588d49e1539d3420b.r2.dev/codex-beyond-the-laptop.png',
+      coverAlt: 'Laptop and compact control surface for supervising AI coding agents',
       inlineUrls: [
         'https://openai.com/index/introducing-the-codex-app/',
         'https://openai.com/supply/co-lab/work-louder/',
@@ -384,7 +390,7 @@ check('published stories link their reference covers and official reporting sour
       ],
     },
     [pricingPostId]: {
-      cover: 'https://pub-450085b0b9f2461588d49e1539d3420b.r2.dev/luna-price-efficiency.png',
+      coverAlt: 'Abstract efficiency chart falling across a dark AI hardware workstation',
       inlineUrls: [
         'https://developers.openai.com/api/docs/models/gpt-5.6-luna',
         'https://openai.com/index/gpt-5-6/',
@@ -392,14 +398,15 @@ check('published stories link their reference covers and official reporting sour
       ],
     },
     [tutorialPostId]: {
-      cover: 'https://pub-450085b0b9f2461588d49e1539d3420b.r2.dev/codex-workspace-cleanup.png',
+      coverAlt: 'Laptop showing an abstract file cleanup workspace beside a tray of sorted documents',
       inlineUrls: [
         'https://help.openai.com/en/articles/11096431',
         'https://openai.com/academy/codex-automations/',
       ],
     },
     [motionPostId]: {
-      cover: 'https://pub-450085b0b9f2461588d49e1539d3420b.r2.dev/motion-claude-launch-video.png',
+      coverAlt:
+        'Product page flowing into a storyboard of launch video frames on a dark studio monitor',
       inlineUrls: [
         'https://motion.so/blog/how-to-turn-a-product-launch-into-a-video',
         'https://motion.so/learn/mcp-video-generation',
@@ -420,8 +427,8 @@ check('published stories link their reference covers and official reporting sour
     // search would prove nothing about this story's own attribution.
     const body = articleBody(dist(`posts/${id}/index.html`), `/posts/${id}/`);
     assert.ok(
-      body.includes(`src="${escapeHtmlAttribute(attribution.cover)}"`),
-      `${id} does not render its reference cover ${attribution.cover}`,
+      body.includes(`alt="${escapeHtmlAttribute(attribution.coverAlt)}"`),
+      `${id} does not render its reference cover (missing alt "${attribution.coverAlt}")`,
     );
     for (const url of attribution.inlineUrls) {
       // Exact href match, so a URL is never satisfied by a longer URL that
