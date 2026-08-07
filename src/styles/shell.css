@@ -1036,7 +1036,7 @@ html[data-navigation-ready='true'] .category-menu-panel {
 }
 
 .footer-wordmark .brand-mark {
-  font-size: clamp(2.7rem, 5vw, 4.8rem);
+  font-size: clamp(1.8rem, 3vw, 2.8rem);
 }
 
 /* The footer inverts the page theme: light mode gets an ink footer, while
