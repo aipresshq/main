@@ -1,27 +1,42 @@
 ---
+import { Image } from 'astro:assets';
+import logoLight from '../assets/brand/aipresshq-logo-light.png';
+import logoDark from '../assets/brand/aipresshq-logo-dark.png';
+
 export interface Props {
   compact?: boolean;
   class?: string;
 }
 
 const { compact = false, class: className } = Astro.props;
+
+// The largest real display context is the footer wordmark at up to ~345px
+// wide (clamp(2.7rem, 5vw, 4.8rem) tall at the site's ~4.5:1 logo aspect
+// ratio) — 700px comfortably covers that at 2x retina, while still being far
+// smaller than the 1333px source. Both light and dark variants load on every
+// page regardless of active theme (CSS toggles which is visible, not which
+// loads), so both need to be small: this is what was blowing up mobile LCP
+// before optimization (each PNG was ~240KB at full 1333x296 resolution).
 ---
 
+{
+  /* compact is only ever passed for the header masthead — the one place this
+     logo is above the fold and part of LCP. The footer usage is always
+     below the fold, where lazy-loading (astro:assets' default) is correct. */
+}
 <span class:list={['brand-mark', className, { 'brand-mark-compact': compact }]} aria-hidden="true">
-  <img
+  <Image
     class="brand-logo brand-logo-light"
-    src="/brand/aipresshq-logo-light.png?v=3"
-    width="1333"
-    height="296"
+    src={logoLight}
+    width={700}
     alt=""
-    decoding="async"
+    loading={compact ? 'eager' : 'lazy'}
   />
-  <img
+  <Image
     class="brand-logo brand-logo-dark"
-    src="/brand/aipresshq-logo-dark.png?v=3"
-    width="1333"
-    height="296"
+    src={logoDark}
+    width={700}
     alt=""
-    decoding="async"
+    loading={compact ? 'eager' : 'lazy'}
   />
 </span>

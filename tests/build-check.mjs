@@ -1162,8 +1162,12 @@ check('the approved aiPressHQ logo and favicon assets are wired across the shell
   assert.match(html, /data-theme-favicon/);
   assert.match(html, /data-theme-favicon-svg/);
   assert.match(html, /href="\/site\.webmanifest"/);
-  assert.match(html, /aipresshq-logo-light\.png\?v=3/);
-  assert.match(html, /aipresshq-logo-dark\.png\?v=3/);
+  // Rendered via astro:assets now (optimized WebP, hashed filename), not the
+  // raw PNG at a fixed path — the raw PNGs themselves are still published
+  // (checked via assetPaths above) since OG/schema/manifest reference them
+  // directly, but the on-page <img> tags no longer do.
+  assert.match(html, /_astro\/aipresshq-logo-light\.[\w-]+\.webp/);
+  assert.match(html, /_astro\/aipresshq-logo-dark\.[\w-]+\.webp/);
   assert.match(html, /aipresshq-favicon-dark\.png\?v=5/);
   assert.match(html, /favicon-dark\.svg\?v=5/);
   assert.match(css, /\.footer-wordmark \.brand-logo-dark\s*\{[\s\S]*?display:\s*block/);
