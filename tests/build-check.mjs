@@ -2398,6 +2398,14 @@ check('responsive CSS: stage collapses and categories use a contained responsive
   );
 });
 
+check('the generated site exposes a route inventory for mobile smoke checks', () => {
+  const smokeScript = src('scripts/mobile-route-smoke.mjs');
+  assert.match(smokeScript, /discoverRoutes/);
+  assert.match(smokeScript, /scrollWidth/);
+  assert.match(smokeScript, /WebSocket/);
+  assert.match(smokeScript, /data-mobile-smoke/);
+});
+
 // --- RUNNER (do not edit below this line) ---
 
 let failed = 0;
