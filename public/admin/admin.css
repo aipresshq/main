@@ -703,6 +703,23 @@ textarea:focus-visible {
   color: var(--admin-ink);
 }
 
+.admin-local-note {
+  display: grid;
+  gap: 8px;
+  margin: 24px 0 0;
+  padding: 16px 18px;
+  border-left: 3px solid var(--admin-rule-strong);
+  background: var(--admin-surface);
+}
+
+.admin-local-note p {
+  max-width: 70ch;
+  margin: 0;
+  color: var(--admin-muted);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
 .admin-release {
   max-width: 780px;
 }

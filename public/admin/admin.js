@@ -285,6 +285,9 @@ function renderFactsEditor() {
 }
 
 function renderAssets() {
+  const localNotice = state.localMode
+    ? `<div class="admin-local-note"><span class="admin-kicker">Local preview</span><p>Cover uploads and bucket listing become available after the Cloudflare Worker is deployed with its R2 binding. You can still edit a cover URL directly in the story editor.</p></div>`
+    : '';
   const cards = state.assets.length
     ? `<div class="admin-asset-grid">${state.assets
         .map(
@@ -296,7 +299,7 @@ function renderAssets() {
         'No covers in the bucket yet.',
         'Upload the next editorial image here, then paste its URL into a story.',
       );
-  content.innerHTML = `${viewHeader('Assets / R2 cover desk', 'Cover desk.', 'Upload, inspect, and remove the images used by story covers. Files are stored under the covers namespace.', '<button class="admin-button" type="button" data-action="refresh-assets">Refresh</button>')}<section class="admin-section"><form class="admin-editor-section" data-asset-form><div class="admin-field-grid"><label class="admin-label">Image file<input type="file" name="file" accept="image/jpeg,image/png,image/webp,image/avif" required></label><label class="admin-label">Safe filename hint<input name="slug" placeholder="terra-comparison"></label></div><div class="admin-form-actions"><button class="admin-button admin-button-primary" type="submit">Upload cover</button><span class="admin-kicker">JPEG, PNG, WebP, or AVIF · 8 MiB maximum</span></div></form>${cards}</section>`;
+  content.innerHTML = `${viewHeader('Assets / R2 cover desk', 'Cover desk.', 'Upload, inspect, and remove the images used by story covers. Files are stored under the covers namespace.', '<button class="admin-button" type="button" data-action="refresh-assets">Refresh</button>')}${localNotice}<section class="admin-section"><form class="admin-editor-section" data-asset-form${state.localMode ? ' data-local-only="true"' : ''}><div class="admin-field-grid"><label class="admin-label">Image file<input type="file" name="file" accept="image/jpeg,image/png,image/webp,image/avif" required${state.localMode ? ' disabled' : ''}></label><label class="admin-label">Safe filename hint<input name="slug" placeholder="terra-comparison"${state.localMode ? ' disabled' : ''}></label></div><div class="admin-form-actions"><button class="admin-button admin-button-primary" type="submit"${state.localMode ? ' disabled' : ''}>Upload cover</button><span class="admin-kicker">JPEG, PNG, WebP, or AVIF · 8 MiB maximum</span></div></form>${cards}</section>`;
 }
 
 function renderRelease() {
@@ -319,6 +322,10 @@ async function loadAuthors() {
 
 async function loadAssets() {
   const response = await api('/admin/api/assets');
+  if (!response.ok && state.localMode && response.status === 404) {
+    state.assets = [];
+    return;
+  }
   if (!response.ok)
     throw new Error(response.json.error || `Assets request failed (${response.status}).`);
   state.assets = response.json.assets || [];

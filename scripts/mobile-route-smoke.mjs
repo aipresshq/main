@@ -205,9 +205,13 @@ async function navigate(client, url, width) {
     deviceScaleFactor: 1,
     mobile: width < 780,
   });
-  const loaded = client.waitForEvent('Page.loadEventFired', 10_000);
+  // Remote R2 images can keep the browser's load event pending while Astro's
+  // dev server probes dimensions. DOMContentLoaded is the meaningful point
+  // for this audit: the route shell and its interactive controls are ready,
+  // while image loading is intentionally outside the responsive contract.
+  const ready = client.waitForEvent('Page.domContentEventFired', 10_000);
   await client.command('Page.navigate', { url });
-  await loaded;
+  await ready;
   await sleep(500);
 }
 
