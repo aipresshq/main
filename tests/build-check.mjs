@@ -2334,6 +2334,7 @@ check('Cloudflare production routing protects admin separately from public asset
   );
   assert.equal(config.main, 'src/worker.ts');
   assert.equal(config.assets.binding, 'ASSETS');
+  assert.deepEqual(config.assets.run_worker_first, ['/admin', '/admin/*']);
   assert.ok(
     config.r2_buckets?.some((binding) => binding.binding === 'IMAGES'),
     'the production Worker must have the images R2 binding',
