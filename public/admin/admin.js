@@ -18,6 +18,7 @@ const state = {
   query: '',
   format: 'all',
 };
+let viewRequestToken = 0;
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -332,6 +333,7 @@ async function loadAssets() {
 }
 
 async function loadView(view = state.view) {
+  const requestToken = ++viewRequestToken;
   state.view = view;
   root
     .querySelectorAll('[data-view]')
@@ -341,22 +343,24 @@ async function loadView(view = state.view) {
     if (view === 'dashboard' || view === 'posts' || view === 'editor') {
       await Promise.all([loadPosts(), loadAuthors()]);
     }
+    let post = {};
+    if (view === 'editor' && state.editingId) {
+      const response = await api(`/admin/api/posts/${encodeURIComponent(state.editingId)}`);
+      if (!response.ok) throw new Error(response.json.error || 'The story could not be loaded.');
+      post = response.json;
+    }
+    if (view === 'assets') {
+      await loadAssets();
+    }
+    if (requestToken !== viewRequestToken) return;
     if (view === 'dashboard') renderDashboard();
     else if (view === 'posts') renderQueue();
-    else if (view === 'editor') {
-      let post = {};
-      if (state.editingId) {
-        const response = await api(`/admin/api/posts/${encodeURIComponent(state.editingId)}`);
-        if (!response.ok) throw new Error(response.json.error || 'The story could not be loaded.');
-        post = response.json;
-      }
-      renderEditor(post);
-    } else if (view === 'assets') {
-      await loadAssets();
-      renderAssets();
-    } else if (view === 'release') renderRelease();
+    else if (view === 'editor') renderEditor(post);
+    else if (view === 'assets') renderAssets();
+    else if (view === 'release') renderRelease();
     setStatus('');
   } catch (error) {
+    if (requestToken !== viewRequestToken) return;
     setStatus(error instanceof Error ? error.message : 'The desk could not load this view.', true);
     content.innerHTML = emptyState(
       'The desk needs another try.',
