@@ -2177,10 +2177,31 @@ check('footer renders editorial navigation, wordmark, columns and base line', ()
   assert.ok(footer.includes('href="/privacy/"'), 'footer should link the privacy policy');
   assert.ok(footer.includes('href="/terms/"'), 'footer should link the terms of service');
   assert.ok(footer.includes('href="/cookies/"'), 'footer should link the cookie policy');
+  assert.ok(footer.includes('href="/contact/"'), 'footer should link the contact page');
+  assert.ok(distExists('contact/index.html'), 'contact page should be generated');
+  const contact = dist('contact/index.html');
+  assert.match(contact, /Contact aiPressHQ/);
+  assert.match(contact, /mailto:hello@aipresshq\.com/);
   const footerRule = css.match(/\.site-footer\s*\{([\s\S]*?)\n\}/);
   assert.ok(footerRule, 'footer styles are missing');
   assert.match(footerRule[1], /background:\s*var\(--text\)/);
   assert.match(footerRule[1], /color:\s*var\(--bg\)/);
+  const footerWordmark = css.match(/\.footer-wordmark \.brand-mark\s*\{([\s\S]*?)\n\}/);
+  assert.ok(footerWordmark, 'footer wordmark sizing rule is missing');
+  assert.match(
+    footerWordmark[1],
+    /font-size:\s*clamp\(1\.45rem,\s*2\.2vw,\s*2\.1rem\)/,
+    'footer wordmark should stay compact',
+  );
+});
+
+check('structured-data organization logos use the square favicon asset', () => {
+  const layout = src('src/layouts/BaseLayout.astro');
+  const article = src('src/pages/posts/[id].astro');
+  assert.match(layout, /\/brand\/aipresshq-favicon-light\.png/);
+  assert.match(article, /\/brand\/aipresshq-favicon-light\.png/);
+  assert.match(article, /width:\s*512/);
+  assert.match(article, /height:\s*512/);
 });
 
 check('footer link rail fills the editorial intro without leaving empty rows', () => {
