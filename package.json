@@ -7,6 +7,7 @@
   },
   "scripts": {
     "dev": "astro dev",
+    "prebuild": "node scripts/generate-admin-manifest.mjs",
     "build": "astro build",
     "check": "astro check",
     "lint": "eslint \"src/**/*.ts\" \"tests/**/*.mjs\" \"admin/**/*.mjs\" \"*.mjs\" --max-warnings=0",
@@ -14,7 +15,7 @@
     "format:check": "prettier --check \"src/**/*.{astro,ts,css}\" \"tests/**/*.{mjs,js}\" \"*.{mjs,json}\"",
     "preview": "astro preview",
     "test": "node tests/build-check.mjs",
-    "test:admin": "node --env-file=.env admin/frontmatter.test.mjs && node --env-file=.env admin/authors-store.test.mjs && node --env-file=.env admin/posts-store.test.mjs && node --env-file=.env admin/validate-post.test.mjs && node --env-file=.env admin/api-handlers.test.mjs && node --env-file=.env admin/ui.test.mjs && node --env-file=.env admin/integration.test.mjs",
+    "test:admin": "node --env-file=.env admin/frontmatter.test.mjs && node --env-file=.env admin/authors-store.test.mjs && node --env-file=.env admin/posts-store.test.mjs && node --env-file=.env admin/validate-post.test.mjs && node --env-file=.env admin/api-handlers.test.mjs && node --env-file=.env admin/worker-auth.test.mjs && node --env-file=.env admin/worker-api.test.mjs && node --env-file=.env admin/ui.test.mjs && node --env-file=.env admin/integration.test.mjs",
     "indexnow": "node scripts/indexnow-ping.mjs",
     "astro": "astro"
   },

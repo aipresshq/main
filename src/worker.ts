@@ -1,12 +1,4 @@
-import { renderAdminPage } from '../admin/ui.mjs';
-import {
-  clearSessionCookie,
-  createSession,
-  readCookie,
-  sessionCookie,
-  verifyPassword,
-  verifySession,
-} from '../admin/worker-auth.mjs';
+import { handleAdminRequest } from '../admin/worker-api.mjs';
 
 export interface AssetFetcher {
   fetch(input: Request | string, init?: RequestInit): Promise<Response>;
@@ -40,59 +32,11 @@ export interface WorkerExecutionContext {
   passThroughOnException?(): void;
 }
 
-function json(body: Record<string, unknown>, status: number, headers: Record<string, string> = {}) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json; charset=utf-8', ...headers },
-  });
-}
-
-async function handleAdminRequest(request: Request, env: WorkerEnv) {
-  const url = new URL(request.url);
-  if (url.pathname.startsWith('/admin/api/')) {
-    if (url.pathname === '/admin/api/auth/login' && request.method === 'POST') {
-      try {
-        const payload = await request.json();
-        const password = typeof payload?.password === 'string' ? payload.password : '';
-        const valid = await verifyPassword(password, env.ADMIN_PASSWORD_HASH ?? '');
-        if (!valid) return json({ error: 'Invalid credentials.' }, 401);
-        const secret = env.ADMIN_SESSION_SECRET ?? '';
-        const token = await createSession(secret);
-        return json({ authenticated: true }, 200, { 'Set-Cookie': sessionCookie(token) });
-      } catch {
-        return json({ error: 'Invalid credentials.' }, 401);
-      }
-    }
-
-    if (url.pathname === '/admin/api/session' && request.method === 'GET') {
-      const authenticated = await verifySession(
-        readCookie(request),
-        env.ADMIN_SESSION_SECRET ?? '',
-      );
-      return authenticated
-        ? json({ authenticated: true }, 200)
-        : json({ authenticated: false }, 401);
-    }
-
-    if (url.pathname === '/admin/api/auth/logout' && request.method === 'POST') {
-      return new Response(null, { status: 204, headers: { 'Set-Cookie': clearSessionCookie() } });
-    }
-
-    return json({ error: 'Admin API is not configured.' }, 503);
-  }
-  if (request.method !== 'GET' && request.method !== 'HEAD') {
-    return json({ error: 'Method not allowed.' }, 405);
-  }
-  return new Response(renderAdminPage(), {
-    headers: { 'Content-Type': 'text/html; charset=utf-8' },
-  });
-}
-
 export default {
-  async fetch(request: Request, env: WorkerEnv, _ctx: WorkerExecutionContext) {
+  async fetch(request: Request, env: WorkerEnv, ctx: WorkerExecutionContext) {
     const url = new URL(request.url);
     if (url.pathname === '/admin' || url.pathname.startsWith('/admin/')) {
-      return handleAdminRequest(request, env);
+      return handleAdminRequest(request, env, ctx);
     }
     return env.ASSETS.fetch(request);
   },

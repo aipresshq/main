@@ -2339,13 +2339,14 @@ check('Cloudflare production routing protects admin separately from public asset
     'the production Worker must have the images R2 binding',
   );
   const worker = src('src/worker.ts');
-  assert.match(worker, /\/admin\/api\//);
+  assert.match(src('admin/worker-api.mjs'), /\/admin\/api\//);
   assert.match(worker, /ASSETS\.fetch/);
 });
 
 check('production admin sessions use signed HttpOnly cookies', () => {
   const auth = src('admin/worker-auth.mjs');
   const worker = src('src/worker.ts');
+  const api = src('admin/worker-api.mjs');
   assert.match(auth, /crypto\.subtle\.sign/);
   assert.match(auth, /crypto\.subtle\.verify/);
   assert.match(auth, /HttpOnly/);
@@ -2353,7 +2354,35 @@ check('production admin sessions use signed HttpOnly cookies', () => {
   assert.match(auth, /Secure/);
   assert.match(worker, /ADMIN_PASSWORD_HASH/);
   assert.match(worker, /ADMIN_SESSION_SECRET/);
-  assert.match(worker, /\/admin\/api\/auth\/login/);
+  assert.match(api, /\/admin\/api\/auth\/login/);
+});
+
+check('production admin assets expose a login-gated Editorial Desk without secrets', () => {
+  const shell = src('admin/ui.mjs');
+  const browser = src('public/admin/admin.js');
+  const api = src('admin/worker-api.mjs');
+  assert.match(shell, /admin-rail/);
+  assert.match(shell, /Today[’']s desk/);
+  assert.match(shell, /data-admin-login/);
+  assert.match(shell, /admin\.css/);
+  assert.match(shell, /admin\.js/);
+  assert.match(browser, /data-admin-login-form/);
+  assert.match(browser, /credentials:\s*['"]same-origin['"]/);
+  assert.doesNotMatch(
+    browser,
+    /PRISMIC_WRITE_TOKEN|ADMIN_SESSION_SECRET|AWS_ACCESS_KEY|process\.env/,
+  );
+  assert.match(api, /PRISMIC_WRITE_TOKEN/);
+  assert.match(api, /MAX_UPLOAD_BYTES/);
+  assert.match(api, /verifySession/);
+  assert.ok(distExists('admin/admin.css'), 'admin CSS was not copied to dist');
+  assert.ok(distExists('admin/admin.js'), 'admin browser module was not copied to dist');
+  assert.ok(distExists('admin/authors.json'), 'admin author manifest was not generated');
+  const publicHtml = filesUnder(new URL('../dist/', import.meta.url))
+    .filter((file) => file.pathname.endsWith('.html'))
+    .map((file) => readFileSync(file, 'utf8'))
+    .join('\n');
+  assert.doesNotMatch(publicHtml, /PRISMIC_WRITE_TOKEN|ADMIN_SESSION_SECRET/);
 });
 
 check('generated pages use the aiPressHQ public identity', () => {
