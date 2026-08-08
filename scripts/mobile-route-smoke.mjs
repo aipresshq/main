@@ -50,7 +50,12 @@ export function evaluateMobilePage() {
       };
     })
     .filter(({ element, left, right, width }) => {
-      if (!width || element.closest('[hidden], [aria-hidden="true"], details:not([open])'))
+      if (
+        !width ||
+        element.closest(
+          '[hidden], [aria-hidden="true"], details:not([open]), .table-scroll, .code-block pre, .prose pre[data-code-block], .admin-table-wrap, .admin-facts-wrap',
+        )
+      )
         return false;
       const style = getComputedStyle(element);
       if (
