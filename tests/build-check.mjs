@@ -2326,6 +2326,23 @@ check('astro.config.mjs preserves site, sitemap, and image.remotePatterns config
   assert.match(config, /remotePatterns/);
 });
 
+check('Cloudflare production routing protects admin separately from public assets', () => {
+  const config = JSON.parse(
+    src('wrangler.jsonc')
+      .replace(/\/\/.*$/gm, '')
+      .replace(/,\s*([}\]])/g, '$1'),
+  );
+  assert.equal(config.main, 'src/worker.ts');
+  assert.equal(config.assets.binding, 'ASSETS');
+  assert.ok(
+    config.r2_buckets?.some((binding) => binding.binding === 'IMAGES'),
+    'the production Worker must have the images R2 binding',
+  );
+  const worker = src('src/worker.ts');
+  assert.match(worker, /\/admin\/api\//);
+  assert.match(worker, /ASSETS\.fetch/);
+});
+
 check('generated pages use the aiPressHQ public identity', () => {
   const htmlFiles = filesUnder(new URL('../dist/', import.meta.url)).filter((file) =>
     file.pathname.endsWith('.html'),
