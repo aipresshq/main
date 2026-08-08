@@ -39,6 +39,35 @@ export async function discoverRoutes(distRoot) {
 
 export function evaluateMobilePage() {
   document.body.setAttribute('data-mobile-smoke', 'ready');
+  const overflowingElements = [...document.querySelectorAll('body *')]
+    .map((element) => {
+      const rect = element.getBoundingClientRect();
+      return {
+        element,
+        left: rect.left,
+        right: rect.right,
+        width: rect.width,
+      };
+    })
+    .filter(({ element, left, right, width }) => {
+      if (!width || element.closest('[hidden], [aria-hidden="true"], details:not([open])'))
+        return false;
+      const style = getComputedStyle(element);
+      if (
+        style.display === 'none' ||
+        style.visibility === 'hidden' ||
+        Number.parseFloat(style.opacity || '1') < 0.01
+      )
+        return false;
+      return left < -1 || right > innerWidth + 1;
+    })
+    .slice(0, 12)
+    .map(({ element, left, right, width }) => ({
+      selector: `${element.tagName.toLowerCase()}${element.id ? `#${element.id}` : ''}${element.className && typeof element.className === 'string' ? `.${element.className.trim().replace(/\s+/g, '.')}` : ''}`,
+      left: Math.round(left),
+      right: Math.round(right),
+      width: Math.round(width),
+    }));
   const internalLinks = [...document.querySelectorAll('a[href]')]
     .map((link) => link.href)
     .filter((href) => href.startsWith(location.origin));
@@ -52,6 +81,7 @@ export function evaluateMobilePage() {
     width: innerWidth,
     scrollWidth: document.documentElement.scrollWidth,
     viewportWidth: document.documentElement.clientWidth,
+    overflowingElements,
     internalLinks,
     controls,
     smokeMarker: document.body.getAttribute('data-mobile-smoke') === 'ready',
@@ -138,13 +168,19 @@ async function createCdpClient(webSocketUrl) {
         const handlers = listeners.get(method) ?? [];
         const timer = setTimeout(() => {
           const current = listeners.get(method) ?? [];
-          listeners.set(method, current.filter((handler) => handler !== onEvent));
+          listeners.set(
+            method,
+            current.filter((handler) => handler !== onEvent),
+          );
           reject(new Error(`Timed out waiting for CDP event ${method}`));
         }, timeout);
         const onEvent = (params) => {
           clearTimeout(timer);
           const current = listeners.get(method) ?? [];
-          listeners.set(method, current.filter((handler) => handler !== onEvent));
+          listeners.set(
+            method,
+            current.filter((handler) => handler !== onEvent),
+          );
           resolve(params);
         };
         handlers.push(onEvent);
@@ -244,6 +280,10 @@ async function checkLink(url, baseUrl) {
   const parsed = new URL(url, baseUrl);
   if (parsed.origin !== new URL(baseUrl).origin) return null;
   if (parsed.pathname.startsWith('/admin')) return null;
+  // Astro's sitemap integration writes these files during the production
+  // build; the dev server intentionally does not serve generated sitemap
+  // artifacts, so validate them from dist separately.
+  if (/^\/sitemap(?:-index|-\d+)?\.xml$/.test(parsed.pathname)) return null;
   const response = await fetch(parsed, { redirect: 'manual' });
   return { url: parsed.href, status: response.status };
 }
@@ -270,9 +310,12 @@ async function runBrowserAudit({ baseUrl, routes, widths, clickControls }) {
   const findings = [];
   try {
     const version = await waitForJson(`http://127.0.0.1:${port}/json/version`);
-    const target = await fetch(`http://127.0.0.1:${port}/json/new?${encodeURIComponent('about:blank')}`, {
-      method: 'PUT',
-    }).then((response) => response.json());
+    const target = await fetch(
+      `http://127.0.0.1:${port}/json/new?${encodeURIComponent('about:blank')}`,
+      {
+        method: 'PUT',
+      },
+    ).then((response) => response.json());
     client = await createCdpClient(target.webSocketDebuggerUrl || version.webSocketDebuggerUrl);
     await client.command('Page.enable');
     await client.command('Runtime.enable');
@@ -285,7 +328,14 @@ async function runBrowserAudit({ baseUrl, routes, widths, clickControls }) {
         const page = await evaluate(client, `(${evaluateMobilePage.toString()})()`);
         if (!page.smokeMarker) findings.push(`${route} @ ${width}: smoke marker missing`);
         if (page.scrollWidth > page.viewportWidth + 1) {
-          findings.push(`${route} @ ${width}: horizontal overflow ${page.scrollWidth}px > ${page.viewportWidth}px`);
+          findings.push(
+            `${route} @ ${width}: horizontal overflow ${page.scrollWidth}px > ${page.viewportWidth}px`,
+          );
+        }
+        for (const element of page.overflowingElements) {
+          findings.push(
+            `${route} @ ${width}: element extends outside viewport (${element.selector}, ${element.left}px..${element.right}px)`,
+          );
         }
         for (const link of page.internalLinks) {
           const checked = await checkLink(link, baseUrl);
@@ -297,7 +347,9 @@ async function runBrowserAudit({ baseUrl, routes, widths, clickControls }) {
           const controls = await clickSafeControls(client);
           for (const control of controls) {
             if (control.action === 'failed') {
-              findings.push(`${route} @ ${width}: control ${control.label} failed: ${control.error}`);
+              findings.push(
+                `${route} @ ${width}: control ${control.label} failed: ${control.error}`,
+              );
             }
           }
         }
@@ -312,7 +364,12 @@ async function runBrowserAudit({ baseUrl, routes, widths, clickControls }) {
 }
 
 function parseArgs(argv) {
-  const args = { baseUrl: DEFAULT_BASE_URL, dist: 'dist', widths: DEFAULT_WIDTHS, clickControls: false };
+  const args = {
+    baseUrl: DEFAULT_BASE_URL,
+    dist: 'dist',
+    widths: DEFAULT_WIDTHS,
+    clickControls: false,
+  };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === '--base-url') args.baseUrl = argv[++index];

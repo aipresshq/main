@@ -399,7 +399,8 @@ check('published stories link their reference covers and official reporting sour
       ],
     },
     [tutorialPostId]: {
-      coverAlt: 'Laptop showing an abstract file cleanup workspace beside a tray of sorted documents',
+      coverAlt:
+        'Laptop showing an abstract file cleanup workspace beside a tray of sorted documents',
       inlineUrls: [
         'https://help.openai.com/en/articles/11096431',
         'https://openai.com/academy/codex-automations/',
@@ -2404,6 +2405,55 @@ check('the generated site exposes a route inventory for mobile smoke checks', ()
   assert.match(smokeScript, /scrollWidth/);
   assert.match(smokeScript, /WebSocket/);
   assert.match(smokeScript, /data-mobile-smoke/);
+});
+
+check('mobile header controls have bounded geometry and safe-area support', () => {
+  const responsive = src('src/styles/responsive.css');
+  const css = sourceStyles();
+  assert.match(responsive, /@media \(max-width: 360px\)/);
+  assert.match(css, /env\(safe-area-inset-bottom/);
+  assert.match(
+    responsive,
+    /\.category-menu-panel[\s\S]*?max-height:\s*[^;]*dvh/,
+    'category menu should use the dynamic viewport height on mobile',
+  );
+  assert.match(
+    css,
+    /\.search-results[\s\S]*?width:\s*[^;]*100vw/,
+    'search results should be bounded to the viewport width',
+  );
+});
+
+check('dense public grids collapse without hiding content on mobile', () => {
+  const css = sourceStyles();
+  assert.match(
+    css,
+    /\.newsroom-grid[\s\S]*?grid-template-columns:\s*1fr/,
+    'newsroom cards should collapse to one column',
+  );
+  assert.match(
+    css,
+    /\.category-story[\s\S]*?grid-template-columns:\s*112px/,
+    'compact category stories should preserve the image/text rhythm',
+  );
+  assert.match(
+    css,
+    /\.footer-columns[\s\S]*?grid-template-columns:\s*1fr/,
+    'footer columns should stack on mobile',
+  );
+  assert.match(
+    css,
+    /\.category-format-filter select[\s\S]*?max-width:/,
+    'category format filters should constrain their select control',
+  );
+});
+
+check('article wide content is contained inside its own scroll surfaces', () => {
+  const article = src('src/styles/article.css');
+  const responsive = src('src/styles/responsive.css');
+  assert.match(article, /\.table-scroll\s*\{[\s\S]*?overflow-x:\s*auto/);
+  assert.match(article, /\.prose pre\[data-code-block\][\s\S]*?overflow-x:\s*auto/);
+  assert.match(responsive, /\.article-actions[\s\S]*?env\(safe-area-inset-bottom/);
 });
 
 // --- RUNNER (do not edit below this line) ---
