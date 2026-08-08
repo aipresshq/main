@@ -407,10 +407,12 @@ const organizationSchema = {
       if (document.querySelector('.article[data-post-id]')) {
         void Promise.all([
           import('../scripts/article-toc'),
+          import('../scripts/code-copy'),
           import('../scripts/reading-progress'),
           import('../scripts/sharing'),
-        ]).then(([toc, progress, sharing]) => {
+        ]).then(([toc, codeCopy, progress, sharing]) => {
           toc.initArticleToc();
+          codeCopy.initCodeCopy();
           progress.initReadingProgress();
           sharing.initSharing();
         });

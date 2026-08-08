@@ -48,13 +48,25 @@ const HEADING_DEPTHS: Record<HeadingSerializerKey, number> = {
   heading6: 6,
 };
 
+const escapeHtml = (value: string) =>
+  value.replace(
+    /[&<>"']/g,
+    (character) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character] ??
+      character,
+  );
+
 export function serializeBodyWithHeadings(
   body: prismic.RichTextField,
 ): { html: string; headings: ExtractedHeading[] } {
   const slugger = new GithubSlugger();
   const headings: ExtractedHeading[] = [];
 
-  const serializer: prismic.HTMLRichTextMapSerializer = {};
+  const serializer: prismic.HTMLRichTextMapSerializer = {
+    // Keep code as literal text (rather than Prismic's inline <br /> form) so
+    // clipboard reads preserve the exact line breaks from the editor.
+    preformatted: ({ node }) => `<pre data-code-block>${escapeHtml(node.text)}</pre>`,
+  };
   for (const [type, depth] of Object.entries(HEADING_DEPTHS) as [HeadingSerializerKey, number][]) {
     serializer[type] = (payload: Record<string, unknown>) => {
       // Prismic's own HTMLRichTextMapSerializer type narrows `text` to

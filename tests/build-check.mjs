@@ -7,6 +7,7 @@ import {
   handleContinuousReaderPageTransition,
   validateArticleFragmentCandidates,
 } from '../src/scripts/continuous-reader.ts';
+import { serializeBodyWithHeadings } from '../src/loaders/prismic-posts.ts';
 import { getSuggestedPosts } from '../src/lib/recommendations.ts';
 import {
   getNextOlderPost,
@@ -1033,11 +1034,12 @@ check('the explicit theme palette defines light and dark tokens', () => {
   );
 });
 
-check('article focus rings use theme-aware marks while dark card tags stay monochrome', () => {
+check('article focus rings and Suggested Reads follow the active theme', () => {
   const css = sourceStyles();
   const bylineFocus = css.match(/a\.byline:focus-visible\s*\{([\s\S]*?)\n\}/);
   const suggestedStory = css.match(/\.suggested-story\s*\{([\s\S]*?)\n\}/);
   const suggestedTag = css.match(/\.suggested-story-tag\s*\{([\s\S]*?)\n\}/);
+  const suggestedMeta = css.match(/\.suggested-story-meta\s*\{([\s\S]*?)\n\}/);
   const suggestedFocus = css.match(/\.suggested-story:focus-visible\s*\{([\s\S]*?)\n\}/);
 
   assert.match(
@@ -1045,23 +1047,42 @@ check('article focus rings use theme-aware marks while dark card tags stay monoc
     /outline:\s*2px solid var\(--mark\)/,
     'byline focus must use the theme-aware mark',
   );
-  assert.ok(
-    !/--mark\s*:/.test(suggestedStory[1]),
-    'dark cards must not override the theme-aware mark token',
-  );
-  // The card is a fixed ink surface regardless of theme, so its tag is a
-  // literal translucent white rather than a token — but it must never be
-  // an accent colour.
-  assert.match(
-    suggestedTag[1],
-    /color:\s*rgba\(255,\s*255,\s*255,\s*0\.7\)/,
-    'dark-card tags should be translucent white',
-  );
+  assert.match(suggestedStory[1], /background:\s*var\(--card-bg\)/);
+  assert.match(suggestedStory[1], /color:\s*var\(--text\)/);
+  assert.match(suggestedTag[1], /color:\s*var\(--text-muted\)/);
+  assert.match(suggestedMeta[1], /color:\s*var\(--text-muted\)/);
+  assert.ok(!/background:\s*#0a0a0a/.test(suggestedStory[1]));
   assert.match(
     suggestedFocus[1],
     /outline:\s*2px solid var\(--mark\)/,
     'suggested-story focus must use the theme-aware mark',
   );
+});
+
+check('preformatted story content is copy-ready without changing other rich text blocks', () => {
+  const { html } = serializeBodyWithHeadings([
+    {
+      type: 'preformatted',
+      text: 'PROMPT="Summarize this"\nrun --safe',
+      spans: [],
+      direction: 'ltr',
+    },
+  ]);
+  assert.match(html, /<pre data-code-block>/, 'preformatted blocks need a stable code hook');
+  assert.ok(html.includes('PROMPT=&quot;Summarize this&quot;'));
+  assert.ok(html.includes('\nrun --safe'), 'code line breaks must remain copyable');
+
+  const layout = src('src/layouts/BaseLayout.astro');
+  const copyScript = src('src/scripts/code-copy.ts');
+  const css = sourceStyles();
+  assert.match(layout, /\.\.\/scripts\/code-copy/);
+  assert.match(copyScript, /data-code-copy/);
+  assert.match(copyScript, /navigator\.clipboard/);
+  assert.match(copyScript, /MutationObserver/);
+  assert.match(css, /\.code-block\s*\{/);
+  assert.match(css, /\.code-copy-button\s*\{/);
+  assert.match(css, /\.prose pre\[data-code-block\]/);
+  assert.match(css, /background:\s*var\(--surface\)/);
 });
 
 check('headlines and the aiPressHQ wordmark use the intended bundled faces', () => {
