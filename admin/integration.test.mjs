@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
-import adminPanel, { createAdminMiddleware, isAllowedOrigin, hasJsonContentType } from './integration.mjs';
+import adminPanel, {
+  createAdminMiddleware,
+  isAllowedOrigin,
+  hasJsonContentType,
+} from './integration.mjs';
 
 async function test(name, fn) {
   try {
@@ -37,7 +41,10 @@ await test('isAllowedOrigin rejects a mismatched cross-origin Origin header', ()
 });
 
 await test('hasJsonContentType accepts application/json with a charset suffix', () => {
-  assert.equal(hasJsonContentType({ headers: { 'content-type': 'application/json; charset=utf-8' } }), true);
+  assert.equal(
+    hasJsonContentType({ headers: { 'content-type': 'application/json; charset=utf-8' } }),
+    true,
+  );
 });
 
 await test('hasJsonContentType rejects text/plain (the no-preflight CORS vector)', () => {
@@ -82,7 +89,11 @@ await test('middleware rejects a cross-origin POST with 403 before touching the 
   const req = makeReq({
     method: 'POST',
     url: '/admin/api/posts',
-    headers: { origin: 'http://evil.example', host: 'localhost:4321', 'content-type': 'application/json' },
+    headers: {
+      origin: 'http://evil.example',
+      host: 'localhost:4321',
+      'content-type': 'application/json',
+    },
     bodyJson: { title: 'x' },
   });
   const res = makeRes();
@@ -121,6 +132,22 @@ await test('middleware allows a same-origin POST with matching Origin and JSON C
   // being rejected at the origin/content-type gate.
   assert.equal(res.statusCode, 400);
   assert.ok(JSON.parse(res.body).errors);
+});
+
+await test('middleware lets the shared admin assets reach Astro static serving', async () => {
+  const middleware = createAdminMiddleware({ error() {} });
+  const req = makeReq({
+    method: 'GET',
+    url: '/admin/admin.css',
+    headers: { host: 'localhost:4321' },
+  });
+  const res = makeRes();
+  let passedThrough = false;
+  await middleware(req, res, () => {
+    passedThrough = true;
+  });
+  assert.equal(passedThrough, true);
+  assert.equal(res.statusCode, null);
 });
 
 if (process.exitCode === 1) {

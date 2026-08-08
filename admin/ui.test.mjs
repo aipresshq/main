@@ -16,21 +16,23 @@ const html = renderAdminPage();
 
 await test('renderAdminPage returns a full HTML document', () => {
   assert.ok(html.startsWith('<!doctype html>'));
-  assert.ok(html.includes('<title>Admin'));
+  assert.ok(html.includes('<title>Editorial Desk'));
 });
 
-await test('renderAdminPage includes the app mount point and inline script', () => {
-  assert.ok(html.includes('id="app"'));
-  assert.ok(html.includes('<script>'));
-  assert.ok(html.includes('renderList()'));
+await test('renderAdminPage includes the Editorial Desk shell and shared assets', () => {
+  assert.ok(html.includes('class="admin-rail"'));
+  assert.ok(html.includes('Today’s desk'));
+  assert.ok(html.includes('data-admin-app'));
+  assert.ok(html.includes('href="/admin/admin.css"'));
+  assert.ok(html.includes('src="/admin/admin.js"'));
 });
 
-await test('renderAdminPage warns that changes are drafts until published', () => {
-  assert.ok(html.includes('Nothing goes live until you publish'));
+await test('renderAdminPage explains the draft and release boundary', () => {
+  assert.ok(html.includes('Prismic drafts stay private until the release is published'));
 });
 
-await test('renderAdminPage warns about stacked unpublished edits', () => {
-  assert.ok(html.includes('Stacked unpublished edits'));
+await test('renderAdminPage exposes an explicit release handoff view', () => {
+  assert.ok(html.includes('data-view="release"'));
 });
 
 if (process.exitCode === 1) {

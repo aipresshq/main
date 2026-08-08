@@ -1,7 +1,8 @@
 import { renderAdminPage } from './ui.mjs';
 import { handleAdminApiRequest } from './api-handlers.mjs';
 
-const MUTATING_METHODS = new Set(['POST', 'PUT']);
+const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+const JSON_BODY_METHODS = new Set(['POST', 'PUT', 'PATCH']);
 
 function readRequestBody(req) {
   return new Promise((resolve, reject) => {
@@ -57,6 +58,19 @@ export function createAdminMiddleware(logger = console) {
       return;
     }
 
+    // CSS, JavaScript, and the generated author manifest live in public/admin.
+    // Let Astro's static middleware serve them instead of turning every asset
+    // request into the HTML shell.
+    const requestPath = req.url.split('?', 1)[0];
+    if (
+      requestPath === '/admin/admin.css' ||
+      requestPath === '/admin/admin.js' ||
+      requestPath === '/admin/authors.json'
+    ) {
+      next();
+      return;
+    }
+
     try {
       if (req.url.startsWith('/admin/api/')) {
         const method = req.method ?? 'GET';
@@ -66,7 +80,7 @@ export function createAdminMiddleware(logger = console) {
             sendJson(res, 403, { error: 'Cross-origin requests are not allowed.' });
             return;
           }
-          if (!hasJsonContentType(req)) {
+          if (JSON_BODY_METHODS.has(method) && !hasJsonContentType(req)) {
             sendJson(res, 400, { error: 'Content-Type must be application/json.' });
             return;
           }
