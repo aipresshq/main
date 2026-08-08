@@ -2343,6 +2343,19 @@ check('Cloudflare production routing protects admin separately from public asset
   assert.match(worker, /ASSETS\.fetch/);
 });
 
+check('production admin sessions use signed HttpOnly cookies', () => {
+  const auth = src('admin/worker-auth.mjs');
+  const worker = src('src/worker.ts');
+  assert.match(auth, /crypto\.subtle\.sign/);
+  assert.match(auth, /crypto\.subtle\.verify/);
+  assert.match(auth, /HttpOnly/);
+  assert.match(auth, /SameSite=Lax/);
+  assert.match(auth, /Secure/);
+  assert.match(worker, /ADMIN_PASSWORD_HASH/);
+  assert.match(worker, /ADMIN_SESSION_SECRET/);
+  assert.match(worker, /\/admin\/api\/auth\/login/);
+});
+
 check('generated pages use the aiPressHQ public identity', () => {
   const htmlFiles = filesUnder(new URL('../dist/', import.meta.url)).filter((file) =>
     file.pathname.endsWith('.html'),
