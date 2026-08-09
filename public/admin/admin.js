@@ -19,6 +19,21 @@ const state = {
   format: 'all',
 };
 let viewRequestToken = 0;
+let entranceTimer;
+
+// Plays the entrance animation in admin.css. Only a view change calls this:
+// searching and filtering re-render the same view on every keystroke, and
+// replaying the entrance there restarts the queue under the typing cursor.
+function playViewEntrance() {
+  if (!content) return;
+  clearTimeout(entranceTimer);
+  content.classList.remove('is-entering');
+  void content.offsetWidth; // Reflow, so re-entering a view restarts the animation.
+  content.classList.add('is-entering');
+  // Drop the marker once the entrance is over. The class has to come off, or
+  // the next in-place re-render would animate its fresh rows all over again.
+  entranceTimer = setTimeout(() => content.classList.remove('is-entering'), 900);
+}
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -29,10 +44,13 @@ function escapeHtml(value) {
     .replace(/'/g, '&#039;');
 }
 
-function setStatus(message, isError = false) {
+function setStatus(message, isError = false, isBusy = false) {
   if (!statusLine) return;
   statusLine.textContent = message;
   statusLine.classList.toggle('is-error', isError);
+  // Drives the sweep under the status line in admin.css. An error is a
+  // finished request, so it always clears the busy state.
+  statusLine.classList.toggle('is-busy', isBusy && !isError);
 }
 
 async function api(path, options = {}) {
@@ -79,7 +97,9 @@ function showApp() {
   state.authenticated = true;
   loginPanel.hidden = true;
   content.hidden = false;
-  logoutButton.hidden = false;
+  // Local mode has no session to end, and no sign-in route to get back in
+  // through — offering "Log out" there strands the desk until a reload.
+  logoutButton.hidden = state.localMode;
   connection.textContent = state.localMode ? 'Local preview' : 'Prismic connected';
   root.querySelectorAll('[data-view]').forEach((button) => {
     button.disabled = false;
@@ -338,7 +358,7 @@ async function loadView(view = state.view) {
   root
     .querySelectorAll('[data-view]')
     .forEach((button) => button.classList.toggle('is-active', button.dataset.view === view));
-  setStatus('Loading…');
+  setStatus('Loading…', false, true);
   try {
     if (view === 'dashboard' || view === 'posts' || view === 'editor') {
       await Promise.all([loadPosts(), loadAuthors()]);
@@ -358,6 +378,7 @@ async function loadView(view = state.view) {
     else if (view === 'editor') renderEditor(post);
     else if (view === 'assets') renderAssets();
     else if (view === 'release') renderRelease();
+    playViewEntrance();
     setStatus('');
   } catch (error) {
     if (requestToken !== viewRequestToken) return;
@@ -366,6 +387,7 @@ async function loadView(view = state.view) {
       'The desk needs another try.',
       'Refresh the view or check the Worker connection.',
     );
+    playViewEntrance();
   }
 }
 
@@ -378,7 +400,7 @@ async function archivePost(id) {
   const post = state.posts.find((item) => item.id === id);
   if (!post || !window.confirm(`Archive “${post.title}”? This hides it from the next edition.`))
     return;
-  setStatus('Archiving…');
+  setStatus('Archiving…', false, true);
   const response = await api(`/admin/api/posts/${encodeURIComponent(id)}`, { method: 'DELETE' });
   if (!response.ok) {
     setStatus(response.json.error || `Archive failed (${response.status}).`, true);
@@ -400,7 +422,7 @@ function addRepeater(name) {
 async function submitEditor(form) {
   for (const node of form.querySelectorAll('[data-error]')) node.textContent = '';
   const payload = serializeEditor(form);
-  setStatus('Saving draft…');
+  setStatus('Saving draft…', false, true);
   const path = state.editingId
     ? `/admin/api/posts/${encodeURIComponent(state.editingId)}`
     : '/admin/api/posts';
@@ -429,13 +451,13 @@ async function previewEditor(form) {
     setStatus('Private preview ready.');
   } else {
     output.innerHTML = `<pre>${escapeHtml(body)}</pre>`;
-    setStatus('Preview API is unavailable locally; showing raw Markdown.', true);
+    setStatus(response.json.error || 'Preview could not be rendered; showing raw Markdown.', true);
   }
 }
 
 async function uploadAsset(form) {
   const body = new FormData(form);
-  setStatus('Uploading cover…');
+  setStatus('Uploading cover…', false, true);
   const response = await api('/admin/api/assets', { method: 'POST', body });
   if (!response.ok) {
     setStatus(response.json.error || 'Cover upload failed.', true);
@@ -554,7 +576,7 @@ root?.addEventListener('submit', async (event) => {
   if (!(form instanceof HTMLFormElement)) return;
   if (form.matches('[data-admin-login-form]')) {
     const password = form.elements.namedItem('password')?.value ?? '';
-    setStatus('Signing in…');
+    setStatus('Signing in…', false, true);
     const response = await api('/admin/api/auth/login', { method: 'POST', body: { password } });
     if (!response.ok) {
       setStatus(response.json.error || 'Sign-in failed.', true);
@@ -574,18 +596,92 @@ logoutButton?.addEventListener('click', async () => {
   setStatus('Signed out.');
 });
 
-root?.querySelector('[data-admin-theme]')?.addEventListener('click', () => {
-  const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+const themeToggle = root?.querySelector('[data-admin-theme]');
+
+function syncThemeToggle() {
+  if (!themeToggle) return;
+  const isDark = document.documentElement.dataset.theme === 'dark';
+  themeToggle.setAttribute('aria-pressed', String(isDark));
+  themeToggle.setAttribute('aria-label', isDark ? 'Switch to light mode' : 'Switch to dark mode');
+}
+
+// The initial theme is resolved by the inline script in admin/ui.mjs before
+// first paint. This only handles switching afterwards, and has to keep the
+// same four things in sync that the pre-paint script sets.
+function applyTheme(next) {
   document.documentElement.dataset.theme = next;
-  localStorage.setItem('aipresshq-admin-theme', next);
+  document.documentElement.style.colorScheme = next;
+
+  const favicon = document.querySelector('[data-admin-favicon]');
+  if (favicon) {
+    favicon.href =
+      next === 'dark'
+        ? '/brand/aipresshq-favicon-dark.png?v=5'
+        : '/brand/aipresshq-favicon-light.png?v=5';
+  }
+  const svgFavicon = document.querySelector('[data-admin-favicon-svg]');
+  if (svgFavicon) {
+    svgFavicon.href = next === 'dark' ? '/favicon-dark.svg?v=5' : '/favicon-light.svg?v=5';
+  }
+  const themeColor = document.querySelector('[data-admin-theme-color]');
+  if (themeColor) themeColor.content = next === 'dark' ? '#0a0a0a' : '#ffffff';
+
+  try {
+    localStorage.setItem('aipresshq-admin-theme', next);
+  } catch {
+    // Private browsing can refuse storage. The desk still switches for this
+    // page load; only persistence is lost.
+  }
+}
+
+themeToggle?.addEventListener('click', (event) => {
+  const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (typeof document.startViewTransition !== 'function' || reduceMotion) {
+    applyTheme(next);
+    syncThemeToggle();
+    return;
+  }
+
+  // Circular reveal from the toggle, matching the public site's theme switch
+  // (src/scripts/theme.ts). Keyboard activation reports clientX/clientY as
+  // zero, so fall back to the button's centre.
+  const rect = themeToggle.getBoundingClientRect();
+  const x = event.clientX || rect.left + rect.width / 2;
+  const y = event.clientY || rect.top + rect.height / 2;
+  const endRadius = Math.hypot(
+    Math.max(x, window.innerWidth - x),
+    Math.max(y, window.innerHeight - y),
+  );
+
+  // The update callback runs asynchronously, so the toggle has to be synced
+  // inside it — syncing after this call reads the pre-toggle theme and leaves
+  // aria-pressed inverted.
+  const transition = document.startViewTransition(() => {
+    applyTheme(next);
+    syncThemeToggle();
+  });
+  void transition.ready
+    .then(() => {
+      document.documentElement.animate(
+        { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${endRadius}px at ${x}px ${y}px)`] },
+        { duration: 500, easing: 'ease-in-out', pseudoElement: '::view-transition-new(root)' },
+      );
+    })
+    .catch(() => {
+      // The theme is already applied. A failed visual transition must not
+      // become an unhandled rejection.
+    });
 });
 
 async function boot() {
-  const savedTheme = localStorage.getItem('aipresshq-admin-theme');
-  if (savedTheme === 'dark' || savedTheme === 'light')
-    document.documentElement.dataset.theme = savedTheme;
+  syncThemeToggle();
   const session = await api('/admin/api/session');
-  if (session.status === 404) state.localMode = true;
+  // The dev middleware answers with localMode so the desk can tell "no Worker
+  // behind me" from "signed out". A 404 stays a local-mode signal for any
+  // older dev server that predates that route.
+  state.localMode = session.json?.localMode === true || session.status === 404;
   if (session.ok || state.localMode) {
     showApp();
     await loadView('dashboard');
