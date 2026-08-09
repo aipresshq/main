@@ -1,30 +1,31 @@
 ---
-import { getCollection, type CollectionEntry } from 'astro:content';
-import AuthorStoryCard from '../../components/AuthorStoryCard.astro';
-import BaseLayout from '../../layouts/BaseLayout.astro';
-import { formatEditionDate } from '../../lib/date';
-import { getAuthorId } from '../../lib/author-reference';
-import { sortPostsNewestFirst } from '../../lib/post-order';
-import { toSafeJsonLd } from '../../lib/json-ld';
+import type { GetStaticPaths } from 'astro';
+import { getCollection } from 'astro:content';
+import AuthorStoryCard from '../../../components/AuthorStoryCard.astro';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import Pagination from '../../../components/Pagination.astro';
+import { formatEditionDate } from '../../../lib/date';
+import { getAuthorId } from '../../../lib/author-reference';
+import { sortPostsNewestFirst } from '../../../lib/post-order';
+import { toSafeJsonLd } from '../../../lib/json-ld';
+import { ARCHIVE_PAGE_SIZE } from '../../../lib/pagination';
 
-export async function getStaticPaths() {
+export const getStaticPaths = (async ({ paginate }) => {
   const [authors, allPosts] = await Promise.all([getCollection('authors'), getCollection('posts')]);
 
-  return authors.map((author) => ({
-    params: { author: author.id },
-    props: { author, allPosts },
-  }));
-}
+  return authors.flatMap((author) => {
+    const posts = sortPostsNewestFirst(
+      allPosts.filter((post) => getAuthorId(post.data.author) === author.id),
+    );
+    return paginate(posts, {
+      params: { author: author.id },
+      props: { author, totalStories: posts.length },
+      pageSize: ARCHIVE_PAGE_SIZE,
+    });
+  });
+}) satisfies GetStaticPaths;
 
-interface Props {
-  author: CollectionEntry<'authors'>;
-  allPosts: CollectionEntry<'posts'>[];
-}
-
-const { author, allPosts } = Astro.props as Props;
-const posts = sortPostsNewestFirst(
-  allPosts.filter((post) => getAuthorId(post.data.author) === author.id),
-);
+const { author, totalStories, page } = Astro.props;
 const site = Astro.site ?? 'https://aipresshq.com';
 const authorUrl = new URL(`/authors/${author.id}/`, site).href;
 const socialLinks = [author.data.website, author.data.x, author.data.linkedin].filter(
@@ -36,18 +37,25 @@ const schema = {
   name: author.data.name,
   description: author.data.bio,
   image: new URL(author.data.avatar, site).href,
+  // Always the unpaginated profile: the Person is not per-page, so page two
+  // must not mint a second identity for the same byline.
   url: authorUrl,
   sameAs: socialLinks,
 };
+const editionPost = page.data[0];
 ---
 
 <BaseLayout
-  title={`${author.data.name} | aiPressHQ`}
+  title={
+    page.currentPage > 1
+      ? `${author.data.name} — page ${page.currentPage} | aiPressHQ`
+      : `${author.data.name} | aiPressHQ`
+  }
   description={author.data.bio}
-  editionDate={posts[0] && formatEditionDate(posts[0].data.pubDate)}
+  editionDate={editionPost && formatEditionDate(editionPost.data.pubDate)}
   image={author.data.avatar}
 >
-  <script is:inline type="application/ld+json" set:html={toSafeJsonLd(schema)} />
+  {page.currentPage === 1 && <script is:inline type="application/ld+json" set:html={toSafeJsonLd(schema)} />}
 
   <main class="author-page">
     <header class="author-profile">
@@ -71,8 +79,8 @@ const schema = {
       <div class="author-profile-aside">
         <span class="label author-profile-count-label">Archive</span>
         <p class="author-story-count">
-          <strong>{posts.length}</strong>
-          <span>published {posts.length === 1 ? 'story' : 'stories'}</span>
+          <strong>{totalStories}</strong>
+          <span>published {totalStories === 1 ? 'story' : 'stories'}</span>
         </p>
         {
           socialLinks.length > 0 && (
@@ -93,20 +101,26 @@ const schema = {
           <h2 id="author-stories-heading">Published stories</h2>
         </div>
         <span class="author-archive-total"
-          >{posts.length} {posts.length === 1 ? 'story' : 'stories'}</span
+          >{totalStories} {totalStories === 1 ? 'story' : 'stories'}</span
         >
       </div>
       {
-        posts.length === 0 ? (
+        page.data.length === 0 ? (
           <p class="author-empty">No published stories yet.</p>
         ) : (
           <div class="author-story-grid">
-            {posts.map((post) => (
+            {page.data.map((post) => (
               <AuthorStoryCard post={post} />
             ))}
           </div>
         )
       }
+      <Pagination
+        currentPage={page.currentPage}
+        lastPage={page.lastPage}
+        basePath={`/authors/${author.id}/`}
+        label={`${author.data.name} stories`}
+      />
     </section>
   </main>
 </BaseLayout>

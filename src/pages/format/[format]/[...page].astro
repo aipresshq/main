@@ -1,0 +1,81 @@
+---
+import type { GetStaticPaths } from 'astro';
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import CategoryFront from '../../../components/CategoryFront.astro';
+import Pagination from '../../../components/Pagination.astro';
+import { formatEditionDate } from '../../../lib/date';
+import { getFormatDefinition, storyFormats } from '../../../lib/formats';
+import { sortPostsNewestFirst } from '../../../lib/post-order';
+import { buildCollectionPageSchema, toSafeJsonLd } from '../../../lib/json-ld';
+import { ARCHIVE_PAGE_SIZE } from '../../../lib/pagination';
+
+export const getStaticPaths = (async ({ paginate }) => {
+  const allPosts = await getCollection('posts');
+
+  return storyFormats.flatMap((definition) => {
+    const posts = sortPostsNewestFirst(
+      allPosts.filter((post) => post.data.format === definition.key),
+    );
+    return paginate(posts, {
+      params: { format: definition.key },
+      props: { format: definition.key },
+      pageSize: ARCHIVE_PAGE_SIZE,
+    });
+  });
+}) satisfies GetStaticPaths;
+
+const { format, page } = Astro.props;
+const definition = getFormatDefinition(format);
+const basePath = `/format/${format}/`;
+const site = Astro.site ?? 'https://aipresshq.com';
+// Schema describes this page's own items, not the whole format.
+const schemas =
+  page.data.length > 0
+    ? buildCollectionPageSchema({
+        site,
+        path: page.currentPage > 1 ? `${basePath}${page.currentPage}/` : basePath,
+        name: definition.label,
+        description: definition.description,
+        postUrls: page.data.map((post) => new URL(`/posts/${post.id}/`, site).href),
+      })
+    : null;
+const editionPost = page.data[0];
+---
+
+<BaseLayout
+  title={
+    page.currentPage > 1
+      ? `${definition.label} — page ${page.currentPage} | aiPressHQ`
+      : `${definition.label} | aiPressHQ`
+  }
+  description={definition.description}
+  activeFormat={format}
+  editionDate={editionPost && formatEditionDate(editionPost.data.pubDate)}
+  noindex={page.data.length === 0}
+>
+  {
+    schemas && (
+      <Fragment>
+        <script
+          is:inline
+          type="application/ld+json"
+          set:html={toSafeJsonLd(schemas.collectionPage)}
+        />
+        <script is:inline type="application/ld+json" set:html={toSafeJsonLd(schemas.breadcrumb)} />
+      </Fragment>
+    )
+  }
+  <CategoryFront
+    title={definition.label}
+    description={definition.description}
+    posts={page.data}
+    emptyNote={`No ${definition.label.toLowerCase()} published yet.`}
+  />
+  <Pagination
+    currentPage={page.currentPage}
+    lastPage={page.lastPage}
+    basePath={basePath}
+    label={`${definition.label}`}
+  />
+</BaseLayout>

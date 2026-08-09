@@ -519,3 +519,104 @@
 .not-found-links a:focus-visible {
   opacity: 0.68;
 }
+
+/* --------------------------------------------------------------------------
+   Archive pagination: a single ruled row that reads as part of the masthead
+   system rather than a widget. Steps sit at the outer edges so the page
+   numbers stay optically centred, and the disabled step keeps its footprint
+   so the numbers do not shift as the reader moves through the archive.
+   -------------------------------------------------------------------------- */
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin: 56px 0 8px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pagination-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  /* Matches the numbered links: a 44px touch target, not the 40px that padding
+     around a 20px line box works out to. */
+  min-height: 44px;
+  padding: 0 4px;
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.pagination-step:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.pagination-step.is-disabled {
+  color: var(--text-muted);
+  opacity: 0.45;
+}
+
+.pagination-pages {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pagination-page,
+.pagination-gap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* Sized so a touch target clears 44px without the row growing taller. */
+  min-width: 44px;
+  min-height: 44px;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.pagination-page:hover {
+  color: var(--text);
+  background: var(--surface);
+}
+
+.pagination-page.is-current {
+  color: var(--text);
+  font-weight: 700;
+  box-shadow: inset 0 -2px 0 var(--mark);
+}
+
+@media (max-width: 640px) {
+  .pagination {
+    /* Steps on one row, numbers centred beneath, rather than three cramped
+       columns fighting for a 360px viewport. */
+    justify-content: center;
+    row-gap: 4px;
+  }
+
+  .pagination-pages {
+    order: -1;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .pagination-step {
+    flex: 1;
+  }
+
+  .pagination-step:last-child {
+    justify-content: flex-end;
+  }
+}

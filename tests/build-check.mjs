@@ -943,7 +943,7 @@ check('author lookups normalize string and object references before resolving', 
     'src/components/Stage.astro',
     'src/pages/posts/[id].astro',
     'src/pages/posts/[id]/fragment.astro',
-    'src/pages/authors/[author].astro',
+    'src/pages/authors/[author]/[...page].astro',
   ]) {
     assert.match(
       src(component),
@@ -2392,6 +2392,49 @@ check('Cloudflare production routing protects admin separately from public asset
     `login limit should be small, got ${limiter.simple.limit}`,
   );
   assert.equal(limiter.simple.period, 60);
+});
+
+check('archives paginate without moving any existing URL', () => {
+  // Every archive used to render every matching post on one page. Paginating
+  // them must not relocate page one, which is where every existing link points.
+  for (const path of [
+    'latest/index.html',
+    'tag/ai/index.html',
+    'tag/openai/index.html',
+    'format/analysis/index.html',
+    'format/explainer/index.html',
+    'authors/tejas-telkar/index.html',
+  ]) {
+    assert.ok(distExists(path), `paginating moved an existing archive URL: /${path}`);
+  }
+
+  // Empty-by-design taxonomy hubs must survive paginate() with an empty list,
+  // since the site deliberately shows its full taxonomy before content lands.
+  assert.ok(distExists('format/comparison/index.html'), 'empty format hub disappeared');
+  assert.ok(distExists('tag/meta/index.html'), 'empty tag hub disappeared');
+
+  for (const route of [
+    'src/pages/latest/[...page].astro',
+    'src/pages/tag/[tag]/[...page].astro',
+    'src/pages/format/[format]/[...page].astro',
+    'src/pages/authors/[author]/[...page].astro',
+  ]) {
+    const source = src(route);
+    assert.match(source, /ARCHIVE_PAGE_SIZE/, `${route} should use the shared page size`);
+    assert.match(source, /paginate\(/, `${route} should paginate`);
+    // Rendering page.data, not the full list, is the whole point.
+    assert.ok(
+      !/posts=\{posts\}/.test(source),
+      `${route} still renders the unpaginated list`,
+    );
+  }
+
+  // At the current content volume every archive is a single page, so the control
+  // must not render at all — an "1" with dead arrows either side is noise.
+  assert.ok(
+    !dist('latest/index.html').includes('class="pagination"'),
+    'pagination should stay hidden while an archive fits on one page',
+  );
 });
 
 check('the public CSP is enforcing and its hashes match the scripts actually shipped', () => {

@@ -1,0 +1,75 @@
+---
+import { buildPaginationItems } from '../lib/pagination';
+
+export interface Props {
+  /** Astro's paginated page object. */
+  currentPage: number;
+  lastPage: number;
+  /**
+   * Canonical path of the archive's first page, with both slashes — `/latest/`,
+   * `/tag/ai/`. Page one lives there; later pages hang off it as `/latest/2/`.
+   */
+  basePath: string;
+  /** Names the control for screen readers, e.g. "Latest stories". */
+  label: string;
+}
+
+const { currentPage, lastPage, basePath, label } = Astro.props;
+
+const items = buildPaginationItems({ currentPage, lastPage });
+const pageHref = (page: number) => (page === 1 ? basePath : `${basePath}${page}/`);
+---
+
+{
+  items.length > 0 && (
+    <nav class="pagination" aria-label={`${label} pagination`}>
+      {currentPage > 1 ? (
+        <a class="pagination-step" href={pageHref(currentPage - 1)} rel="prev">
+          <span aria-hidden="true">←</span> Newer
+        </a>
+      ) : (
+        // Rendered as a disabled span rather than omitted, so the page numbers
+        // do not shift sideways as the reader moves through the archive.
+        <span class="pagination-step is-disabled" aria-hidden="true">
+          <span>←</span> Newer
+        </span>
+      )}
+
+      <ol class="pagination-pages">
+        {items.map((item) =>
+          item.type === 'gap' ? (
+            <li class="pagination-gap" aria-hidden="true">
+              …
+            </li>
+          ) : (
+            <li>
+              {item.current ? (
+                <span class="pagination-page is-current" aria-current="page">
+                  {item.page}
+                </span>
+              ) : (
+                <a
+                  class="pagination-page"
+                  href={pageHref(item.page)}
+                  aria-label={`Page ${item.page}`}
+                >
+                  {item.page}
+                </a>
+              )}
+            </li>
+          ),
+        )}
+      </ol>
+
+      {currentPage < lastPage ? (
+        <a class="pagination-step" href={pageHref(currentPage + 1)} rel="next">
+          Older <span aria-hidden="true">→</span>
+        </a>
+      ) : (
+        <span class="pagination-step is-disabled" aria-hidden="true">
+          Older <span>→</span>
+        </span>
+      )}
+    </nav>
+  )
+}
