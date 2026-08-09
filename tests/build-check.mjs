@@ -2383,6 +2383,14 @@ check('Cloudflare production routing protects admin separately from public asset
   // 500 after the fact.
   assert.equal(config.observability?.enabled, true, 'Worker observability should be enabled');
 
+  // The site shipped with no analytics of any kind. Counted in the Worker, so
+  // this binding is the whole mechanism — without it nothing is recorded.
+  assert.ok(
+    config.analytics_engine_datasets?.some((entry) => entry.binding === 'ANALYTICS'),
+    'the page-view dataset must be bound',
+  );
+  assert.match(src('src/worker.ts'), /recordPageView/);
+
   // Config-only binding (no namespace to provision), so it must be declared
   // here or brute-force protection silently does nothing in production.
   const limiter = config.ratelimits?.find((entry) => entry.name === 'LOGIN_RATE_LIMITER');

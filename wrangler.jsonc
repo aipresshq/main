@@ -32,6 +32,14 @@
       "simple": { "limit": 8, "period": 60 },
     },
   ],
+  // Server-side page-view counting. The site had no analytics of any kind, and
+  // every request already passes through the Worker, so views are recorded here
+  // rather than with a third-party beacon: no client script, no addition to the
+  // CSP, no cookie, and no data leaving Cloudflare. Config-only binding, like
+  // the rate limiter — nothing to provision.
+  "analytics_engine_datasets": [
+    { "binding": "ANALYTICS", "dataset": "aipresshq_pageviews" },
+  ],
   // Without this, Worker logs are dropped and a production 500 leaves no trace.
   "observability": {
     "enabled": true,

@@ -32,6 +32,16 @@ export interface WorkerEnv {
   PUBLIC_R2_PUBLIC_URL?: string;
   /** Optional so local `wrangler dev` and the tests, which have no binding, still work. */
   LOGIN_RATE_LIMITER?: RateLimiter;
+  ANALYTICS?: AnalyticsEngineDataset;
+}
+
+/** Cloudflare's Analytics Engine binding, declared under `analytics_engine_datasets`. */
+export interface AnalyticsEngineDataset {
+  writeDataPoint(point: {
+    blobs?: (string | null)[];
+    doubles?: number[];
+    indexes?: string[];
+  }): void;
 }
 
 export interface WorkerExecutionContext {
@@ -68,6 +78,61 @@ function withNoindex(response: Response): Response {
   });
 }
 
+/** Analytics Engine caps an index at 32 bytes. */
+const MAX_INDEX_LENGTH = 32;
+
+/**
+ * Counts one page view, server-side.
+ *
+ * The site had no analytics at all. Because every request already passes through
+ * this Worker, views are counted here instead of with a third-party beacon:
+ * nothing is added to the page, nothing is added to the CSP, no cookie is set,
+ * and no data leaves Cloudflare. Ad blockers cannot skew it either.
+ *
+ * Only HTML responses count — that excludes stylesheets, images, JSON and the
+ * Pagefind index without a path allowlist to maintain. Deliberately records no
+ * IP, no user agent and no cookie: just path, country and referrer host, which
+ * is enough to answer "what is being read, and who sent them".
+ */
+function recordPageView(
+  request: Request,
+  url: URL,
+  response: Response,
+  env: WorkerEnv,
+  ctx: WorkerExecutionContext,
+): void {
+  const analytics = env.ANALYTICS;
+  if (!analytics || typeof analytics.writeDataPoint !== 'function') return;
+  if (!/^text\/html/i.test(response.headers.get('Content-Type') ?? '')) return;
+
+  // Host only. A full referrer can carry someone's search query or a private
+  // path, and none of that is needed to know where readers came from.
+  let referrerHost = '';
+  const referer = request.headers.get('Referer');
+  if (referer) {
+    try {
+      const host = new URL(referer).host;
+      referrerHost = host === url.host ? '' : host;
+    } catch {
+      referrerHost = '';
+    }
+  }
+
+  const point = {
+    blobs: [url.pathname, request.headers.get('CF-IPCountry') ?? '', referrerHost],
+    doubles: [1],
+    indexes: [url.pathname.slice(0, MAX_INDEX_LENGTH)],
+  };
+
+  // Deferred, and swallowing its own failure: counting a view must never delay a
+  // reader's response or turn an analytics outage into a broken page.
+  ctx.waitUntil(
+    Promise.resolve()
+      .then(() => analytics.writeDataPoint(point))
+      .catch(() => {}),
+  );
+}
+
 export default {
   async fetch(request: Request, env: WorkerEnv, ctx: WorkerExecutionContext) {
     const url = new URL(request.url);
@@ -79,8 +144,11 @@ export default {
 
     // The desk is login-gated, but a gate is not an indexing directive — say so
     // explicitly rather than relying on crawlers being turned away by the 401.
+    // This also keeps editorial, staging and preview traffic out of the audience
+    // numbers recorded below.
     if (isAdmin || !INDEXABLE_HOSTNAMES.has(url.hostname)) return withNoindex(response);
 
+    recordPageView(request, url, response, env, ctx);
     return response;
   },
 };

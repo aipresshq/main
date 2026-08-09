@@ -55,6 +55,35 @@ npx wrangler deploy --dry-run
 npx wrangler deploy
 ```
 
+## Reading traffic numbers
+
+Page views are counted in the Worker, not by a browser beacon, so ad blockers do not skew
+them and nothing is added to the page or the CSP. Each view records the path, the country
+Cloudflare resolved, and the referrer **host** only — no IP, no user agent, no cookie.
+Editorial traffic to `/admin`, and anything on a non-production hostname, is excluded.
+
+Query the `aipresshq_pageviews` dataset with the Analytics Engine SQL API:
+
+```sh
+curl -sS "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/analytics_engine/sql" \
+  -H "Authorization: Bearer $CF_API_TOKEN" \
+  -d "SELECT blob1 AS path, sum(_sample_interval) AS views
+      FROM aipresshq_pageviews
+      WHERE timestamp > now() - INTERVAL '7' DAY
+      GROUP BY path ORDER BY views DESC LIMIT 20"
+```
+
+`blob1` is the path, `blob2` the country, `blob3` the referrer host. Always sum
+`_sample_interval` rather than counting rows — Analytics Engine samples under load, and
+counting rows undercounts exactly when traffic matters most. The token needs *Account
+Analytics: Read*.
+
+This replaces nothing that existed; the Google Search Console and GA4 credentials are still
+unconfigured for this site (they resolve to an unrelated property), and CrUX field data still
+needs the real domain.
+
+## Publishing
+
 Prismic writes create or update a draft in the pending Migration Release. Use the **Release handoff**
 view in the desk to open Prismic, review the draft, publish the release, and then deploy the static
 edition so public pages reflect it.
