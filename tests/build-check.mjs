@@ -2383,13 +2383,25 @@ check('Cloudflare production routing protects admin separately from public asset
   // 500 after the fact.
   assert.equal(config.observability?.enabled, true, 'Worker observability should be enabled');
 
-  // The site shipped with no analytics of any kind. Counted in the Worker, so
-  // this binding is the whole mechanism — without it nothing is recorded.
-  assert.ok(
-    config.analytics_engine_datasets?.some((entry) => entry.binding === 'ANALYTICS'),
-    'the page-view dataset must be bound',
-  );
+  // Page-view counting lives in the Worker, so the dataset binding is the whole
+  // mechanism. It is currently commented out because Analytics Engine is not yet
+  // enabled on the account and `wrangler deploy` rejects the binding until it is.
+  // Accept either state, but require that the code path exists and that the
+  // config still explains how to turn it back on — otherwise this quietly
+  // becomes analytics that nobody remembers were never switched on.
   assert.match(src('src/worker.ts'), /recordPageView/);
+  const rawConfig = src('wrangler.jsonc');
+  const analyticsBound = config.analytics_engine_datasets?.some(
+    (entry) => entry.binding === 'ANALYTICS',
+  );
+  if (!analyticsBound) {
+    assert.match(
+      rawConfig,
+      /PENDING ONE DASHBOARD CLICK/,
+      'if the analytics binding is absent, the config must say why and how to restore it',
+    );
+    assert.match(rawConfig, /analytics_engine_datasets/);
+  }
 
   // Config-only binding (no namespace to provision), so it must be declared
   // here or brute-force protection silently does nothing in production.
