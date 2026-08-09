@@ -15,9 +15,7 @@ const NEIGHBOURS = 1;
 /** At or below this many pages, every page is listed — an ellipsis would be noise. */
 const LIST_ALL_UP_TO = 7;
 
-export type PaginationItem =
-  | { type: 'page'; page: number; current: boolean }
-  | { type: 'gap' };
+export type PaginationItem = { type: 'page'; page: number; current: boolean } | { type: 'gap' };
 
 /**
  * Builds the numbered page list, collapsing long runs behind gaps.

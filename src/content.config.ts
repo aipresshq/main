@@ -3,10 +3,13 @@ import { z } from 'astro/zod';
 import { glob } from 'astro/loaders';
 import { prismicPostsLoader } from './loaders/prismic-posts.ts';
 
-const cover = z.string().min(1).refine(
-  (value) => value.startsWith('/') || z.url().safeParse(value).success,
-  'cover must be a root-relative asset path or an absolute URL',
-);
+const cover = z
+  .string()
+  .min(1)
+  .refine(
+    (value) => value.startsWith('/') || z.url().safeParse(value).success,
+    'cover must be a root-relative asset path or an absolute URL',
+  );
 
 const authors = defineCollection({
   loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/authors' }),

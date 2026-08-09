@@ -2,6 +2,15 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Status: delivered.** Shipped across `64b6cb4` (Worker routing shell), `078c67c`
+> (signed sessions), `870b0c8` (production Prismic + R2 APIs), `f31dd35` (Editorial Desk
+> redesign) and `982f4ab` (secrets + release handoff runbook). The checkboxes below were
+> never ticked as the work landed; they are ticked now to match the committed state.
+>
+> Superseded in places by later work: admin passwords are salted PBKDF2 rather than a bare
+> digest, the login route is rate limited, and the desk serves its own CSP — see
+> `docs/superpowers/runbooks/admin-production.md` for the current shape.
+
 **Goal:** Turn the local Prismic posts tool into an authenticated, mobile-friendly Editorial Desk served by the `main` Cloudflare Worker.
 
 **Architecture:** Add a Worker fetch entrypoint that protects `/admin` and `/admin/api/*`, serves the existing Astro `dist` assets for every public request, and talks to Prismic/R2 only from server-side code. Keep local Astro middleware on the same API contract, while moving the browser UI into public admin assets shared by local and production.
@@ -46,7 +55,7 @@
 
 - Produces: `default.fetch(request: Request, env: WorkerEnv, ctx: ExecutionContext): Promise<Response>` that routes admin requests and forwards public requests to `env.ASSETS.fetch(request)`.
 
-- [ ] **Step 1: Add failing configuration and routing assertions**
+- [x] **Step 1: Add failing configuration and routing assertions**
 
 ```js
 check('Cloudflare production routing protects admin separately from public assets', () => {
@@ -60,13 +69,13 @@ check('Cloudflare production routing protects admin separately from public asset
 });
 ```
 
-- [ ] **Step 2: Run the focused test and verify it fails**
+- [x] **Step 2: Run the focused test and verify it fails**
 
 Run: `node tests/build-check.mjs`
 
 Expected: fail because there is no Worker entrypoint or R2 binding yet.
 
-- [ ] **Step 3: Implement the routing shell**
+- [x] **Step 3: Implement the routing shell**
 
 Use this shape in `src/worker.ts`:
 
@@ -93,11 +102,11 @@ export default {
 
 `handleAdminRequest` will be imported from `admin/worker-api.mjs` after Task 2; until then it returns a deterministic JSON `503` for `/admin/api/*` and the admin shell for `/admin` so the Worker bundle remains testable incrementally.
 
-- [ ] **Step 4: Run `npx wrangler deploy --dry-run`**
+- [x] **Step 4: Run `npx wrangler deploy --dry-run`**
 
 Expected: Wrangler reads the Worker and asset binding without deploying. Any TypeScript/binding error is fixed before continuing.
 
-- [ ] **Step 5: Commit the routing shell**
+- [x] **Step 5: Commit the routing shell**
 
 ```bash
 git add wrangler.jsonc src/worker.ts tests/build-check.mjs
@@ -117,7 +126,7 @@ git commit -m "feat(admin): add Cloudflare Worker routing shell"
 
 - Produces: `hashPassword(password): Promise<string>`, `createSession(secret, now): Promise<string>`, `verifySession(cookie, secret, now): Promise<boolean>`, `readCookie(request, name): string | undefined`, `sessionCookie(value, maxAge): string`, and `clearSessionCookie(): string`.
 
-- [ ] **Step 1: Write failing auth tests**
+- [x] **Step 1: Write failing auth tests**
 
 ```js
 import assert from 'node:assert/strict';
@@ -152,21 +161,21 @@ await run('session verifies before expiry and rejects tampering/expiry', async (
 });
 ```
 
-- [ ] **Step 2: Run `node admin/worker-auth.test.mjs` and verify it fails**
+- [x] **Step 2: Run `node admin/worker-auth.test.mjs` and verify it fails**
 
-- [ ] **Step 3: Implement Web Crypto session primitives**
+- [x] **Step 3: Implement Web Crypto session primitives**
 
 Sign an expiry timestamp with HMAC-SHA-256 over `${expiry}` using `ADMIN_SESSION_SECRET`, compare signatures byte-by-byte, and format the cookie as `aipresshq_admin=${expiry}.${signature}; Path=/admin; HttpOnly; Secure; SameSite=Lax; Max-Age=43200`. Hash the login password with SHA-256 and compare it with `ADMIN_PASSWORD_HASH` using the same byte comparison.
 
-- [ ] **Step 4: Add login/session/logout routing**
+- [x] **Step 4: Add login/session/logout routing**
 
 `POST /admin/api/auth/login` accepts `{ password }`, returns `401 { error: 'Invalid credentials.' }` on mismatch, and sets the session cookie on success. `GET /admin/api/session` returns `{ authenticated: true }` or `401`. `POST /admin/api/auth/logout` returns `204` with the clearing cookie. Login responses never distinguish missing users, wrong passwords, or malformed payloads.
 
-- [ ] **Step 5: Run auth tests and `npm run check`**
+- [x] **Step 5: Run auth tests and `npm run check`**
 
 Expected: auth tests pass and Astro type-check remains clean.
 
-- [ ] **Step 6: Commit authentication**
+- [x] **Step 6: Commit authentication**
 
 ```bash
 git add admin/worker-auth.mjs admin/worker-auth.test.mjs src/worker.ts tests/build-check.mjs
@@ -188,13 +197,13 @@ git commit -m "feat(admin): protect the production desk with signed sessions"
 
 - Produces: `handleAdminRequest(request, env, ctx): Promise<Response>`, `handlePostsApi(request, env, pathname): Promise<Response>`, `handleAssetsApi(request, env, pathname): Promise<Response>`, and `handlePreviewApi(request, env): Promise<Response>`.
 
-- [ ] **Step 1: Write failing API contract tests with injected fakes**
+- [x] **Step 1: Write failing API contract tests with injected fakes**
 
 Test that unauthenticated requests return `401`, invalid post payloads return `400` with field errors, a valid list response is an array with `id/title/pubDate/format/postType/featured`, and R2 upload rejects `text/plain` and bodies larger than 8 MiB. Use injected fake Prismic/R2 adapters so tests make no network calls.
 
-- [ ] **Step 2: Run `node admin/worker-api.test.mjs` and verify it fails**
+- [x] **Step 2: Run `node admin/worker-api.test.mjs` and verify it fails**
 
-- [ ] **Step 3: Generate the author manifest before every build**
+- [x] **Step 3: Generate the author manifest before every build**
 
 Implement `scripts/generate-admin-manifest.mjs` to read `src/content/authors/*.md` through `admin/frontmatter.mjs`, write `public/admin/authors.json` as `{ "authors": [{ "id": "...", "name": "..." }] }`, and add:
 
@@ -204,21 +213,21 @@ Implement `scripts/generate-admin-manifest.mjs` to read `src/content/authors/*.m
 
 to `package.json`.
 
-- [ ] **Step 4: Implement the Prismic adapter**
+- [x] **Step 4: Implement the Prismic adapter**
 
 Import the repository, locale, and custom-type constants from `src/loaders/prismic-fields.ts`; create the read/write clients from those constants plus `env.PRISMIC_WRITE_TOKEN`; reuse the existing field mapping and validation shape without reading `process.env` in the Worker. Return stable JSON errors and never serialize client/token internals.
 
-- [ ] **Step 5: Implement R2 asset endpoints**
+- [x] **Step 5: Implement R2 asset endpoints**
 
 `GET /admin/api/assets` lists objects under the cover namespace and returns key, size, uploaded timestamp, and `${PUBLIC_R2_PUBLIC_URL}/${key}`. `POST` accepts a multipart image upload, permits `image/jpeg`, `image/png`, `image/webp`, and `image/avif`, rejects bodies over 8 MiB, generates `covers/<safe-slug>-<random>.<ext>`, and writes HTTP metadata. `DELETE` only accepts a key matching the generated cover-key pattern.
 
-- [ ] **Step 6: Implement authenticated request routing and origin checks**
+- [x] **Step 6: Implement authenticated request routing and origin checks**
 
 Require a valid session for `/admin/api/posts`, `/admin/api/authors`, `/admin/api/assets`, and `/admin`. Require same-origin `Origin` or `Referer` for mutating requests, reject cross-origin requests with `403`, and forward public paths to `env.ASSETS.fetch`.
 
 Implement `POST /admin/api/preview` with the existing Markdown-to-rich-text serializer and a sanitized HTML response or JSON fragment. It accepts body text only, applies no write operation, and caps the preview input at 100 KiB.
 
-- [ ] **Step 7: Run API tests and dry-run the Worker**
+- [x] **Step 7: Run API tests and dry-run the Worker**
 
 ```bash
 node admin/worker-api.test.mjs
@@ -228,7 +237,7 @@ npx wrangler deploy --dry-run
 
 Expected: all API tests pass, author manifest exists in `dist/admin/authors.json`, and Wrangler bundles the Worker.
 
-- [ ] **Step 8: Commit the production API**
+- [x] **Step 8: Commit the production API**
 
 ```bash
 git add admin/worker-api.mjs admin/worker-api.test.mjs scripts/generate-admin-manifest.mjs public/admin/authors.json package.json package-lock.json src/worker.ts
@@ -250,7 +259,7 @@ git commit -m "feat(admin): add Prismic and R2 production APIs"
 
 - Produces: shared `/admin` HTML shell plus browser modules that call the API contract from Task 3 in local and production environments.
 
-- [ ] **Step 1: Add failing UI contracts**
+- [x] **Step 1: Add failing UI contracts**
 
 ```js
 const html = renderAdminPage();
@@ -263,25 +272,25 @@ assert.match(html, /data-admin-app/);
 
 Also assert local middleware falls through for `/admin/admin.css`, `/admin/admin.js`, and `/admin/authors.json` instead of returning the HTML shell.
 
-- [ ] **Step 2: Run `npm run test:admin` and verify the new contracts fail**
+- [x] **Step 2: Run `npm run test:admin` and verify the new contracts fail**
 
-- [ ] **Step 3: Implement the shared HTML shell**
+- [x] **Step 3: Implement the shared HTML shell**
 
 Render a semantic header with wordmark/status, a desktop rail, a main `data-admin-app` mount, live region for status/errors, and links to `/admin/admin.css` and `/admin/admin.js`. Keep the shell free of third-party scripts and keep all data/action labels sentence-case and explicit.
 
-- [ ] **Step 4: Implement the themed CSS**
+- [x] **Step 4: Implement the themed CSS**
 
 Use the public tokens with admin fallbacks: paper background, ink rail, Source Serif headings, Inter labels, hairline rules, zero-radius surfaces, clear focus rings, and no hard-coded color that breaks light/dark mode. At `max-width: 780px`, turn the rail into a horizontal scroll strip; at `max-width: 620px`, stack metrics/fields and add safe-area bottom padding to the sticky save bar.
 
-- [ ] **Step 5: Implement the browser application**
+- [x] **Step 5: Implement the browser application**
 
 Add login state, dashboard metrics, searchable/filterable queue, edit/create views, grouped editor sections, cover preview, repeatable takeaways/tags, facts-table row/column controls, Markdown preview, asset picker/upload/delete, archive confirmation, logout, and explicit Prismic release handoff. Use event delegation and abort stale fetches when switching stories. Never render server errors as raw HTML.
 
-- [ ] **Step 6: Update local middleware and run admin tests**
+- [x] **Step 6: Update local middleware and run admin tests**
 
 Make local `/admin` serve the shared shell and let public admin assets pass through. `npm run test:admin` must pass without writing a production post or touching the SEO audit directory.
 
-- [ ] **Step 7: Commit the Editorial Desk UI**
+- [x] **Step 7: Commit the Editorial Desk UI**
 
 ```bash
 git add admin/ui.mjs admin/integration.mjs admin/ui.test.mjs admin/integration.test.mjs public/admin/admin.css public/admin/admin.js
@@ -297,7 +306,7 @@ git commit -m "feat(admin): redesign the production desk in the aiPressHQ style"
 - Modify: `README.md` or create `docs/superpowers/runbooks/admin-production.md`
 - Modify: `tests/build-check.mjs`
 
-- [ ] **Step 1: Add the final Worker/R2 configuration**
+- [x] **Step 1: Add the final Worker/R2 configuration**
 
 Use this binding shape with the existing bucket name:
 
@@ -311,7 +320,7 @@ Use this binding shape with the existing bucket name:
 }
 ```
 
-- [ ] **Step 2: Document secret setup without committing values**
+- [x] **Step 2: Document secret setup without committing values**
 
 Document these commands with non-secret prompts only:
 
@@ -324,11 +333,11 @@ npx wrangler secret put PUBLIC_R2_PUBLIC_URL
 
 The documentation must explicitly state that Moz/GSC/GA4 keys are not part of the Worker secret set.
 
-- [ ] **Step 3: Add final source/build contracts**
+- [x] **Step 3: Add final source/build contracts**
 
 Assert that the built HTML contains no `PRISMIC_WRITE_TOKEN`, no password/hash value, the Worker config has the `ASSETS`/`IMAGES` bindings, and the admin shell has a login gate rather than rendering post data before authentication.
 
-- [ ] **Step 4: Run every test and build command**
+- [x] **Step 4: Run every test and build command**
 
 ```bash
 npm run check
@@ -339,11 +348,11 @@ npm test
 npx wrangler deploy --dry-run
 ```
 
-- [ ] **Step 5: Run the authenticated browser smoke pass**
+- [x] **Step 5: Run the authenticated browser smoke pass**
 
 At desktop and 390px widths, log in, open the dashboard, filter the queue, open a story, add/remove a takeaway, preview the body, open the asset picker, cancel without saving, and log out. Confirm unauthenticated `/admin/api/posts` returns `401` and public pages still return `200`.
 
-- [ ] **Step 6: Deploy and verify live behavior**
+- [x] **Step 6: Deploy and verify live behavior**
 
 ```bash
 npx wrangler deploy
@@ -353,7 +362,7 @@ curl -fsSIL https://main.aipresshq.workers.dev/admin
 
 The public root must return `200`; `/admin` must redirect/show the login gate rather than expose content; the authenticated browser pass must succeed against the deployed Worker.
 
-- [ ] **Step 7: Commit the release configuration and documentation**
+- [x] **Step 7: Commit the release configuration and documentation**
 
 ```bash
 git add wrangler.jsonc .env.example README.md docs/superpowers/runbooks/admin-production.md tests/build-check.mjs

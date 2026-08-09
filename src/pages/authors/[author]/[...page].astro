@@ -46,16 +46,18 @@ const editionPost = page.data[0];
 ---
 
 <BaseLayout
-  title={
-    page.currentPage > 1
-      ? `${author.data.name} — page ${page.currentPage} | aiPressHQ`
-      : `${author.data.name} | aiPressHQ`
-  }
+  title={page.currentPage > 1
+    ? `${author.data.name} — page ${page.currentPage} | aiPressHQ`
+    : `${author.data.name} | aiPressHQ`}
   description={author.data.bio}
   editionDate={editionPost && formatEditionDate(editionPost.data.pubDate)}
   image={author.data.avatar}
 >
-  {page.currentPage === 1 && <script is:inline type="application/ld+json" set:html={toSafeJsonLd(schema)} />}
+  {
+    page.currentPage === 1 && (
+      <script is:inline type="application/ld+json" set:html={toSafeJsonLd(schema)} />
+    )
+  }
 
   <main class="author-page">
     <header class="author-profile">

@@ -4,7 +4,11 @@ import sitemap from '@astrojs/sitemap';
 import pagefind from 'astro-pagefind';
 import * as prismic from '@prismicio/client';
 import adminPanel from './admin/integration.mjs';
-import { PRISMIC_REPOSITORY_NAME, PRISMIC_LOCALE, PRISMIC_POST_TYPE } from './src/loaders/prismic-fields.ts';
+import {
+  PRISMIC_REPOSITORY_NAME,
+  PRISMIC_LOCALE,
+  PRISMIC_POST_TYPE,
+} from './src/loaders/prismic-fields.ts';
 
 // Read-only, best-effort lastmod lookup for the sitemap's <lastmod> tags. Reuses
 // the same public Prismic client the content loader already fetches with during

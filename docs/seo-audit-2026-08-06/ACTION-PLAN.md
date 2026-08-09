@@ -2,17 +2,24 @@
 
 Prioritized from the 2026-08-06 audit ([full report](./FULL-AUDIT-REPORT.md)).
 
-**Status as of 2026-08-09.** The Performance and Visual re-runs are done (see "Re-run status" at the bottom). Every remaining code-actionable item is now closed: two turned out to be already satisfied and were verified rather than re-done, and two new image-weight defects the original audit missed were found and fixed during the performance re-run — a 148KB favicon loading on every page, and an `og:image` whose aspect ratio was outside the range `summary_large_image` accepts.
+**Status as of 2026-08-10.** The Performance and Visual re-runs are done (see "Re-run status" at the bottom).
 
-What is left is **not code**: publishing the pending Prismic release, rotating the Moz key, fixing the Google API credentials, and the editorial rewrites. Those are listed under "Needs your action".
+Since the 2026-08-09 pass, three items that had been closed as descoped or partial are now actually done, and one turned out to be hiding a real defect:
+
+- The **staging-host noindex**, descoped as architecturally impossible, is done — a per-request Worker exists now.
+- The **CSP is enforcing**, not report-only. Promoting it surfaced that the Editorial Desk had no security headers at all, because `_headers` only covers static assets and the desk is Worker-generated.
+- **Traffic is now measurable**, counted server-side in the Worker rather than not at all.
+- The **Prismic release has been published** — `/posts/gpt-5-6-terra/` is live, so item 1 under "Needs your action" is closed.
+
+What is left is **not code**: rotating the Moz key, fixing the Google API credentials, the domain-launch checklist, and the editorial rewrites. Those are listed under "Needs your action".
 
 ---
 
 ## Critical — fix immediately
 
 - [ ] **Rotate the Moz API key.** A subagent printed it to a local transcript file while debugging during this audit. Not published anywhere, but treat as compromised out of caution. _(Security, ~2 min — only you can do this, no dashboard access)_
-- [x] ~~Stop the interim staging host from being indexable~~ — **descoped.** A blanket `X-Robots-Tag`/noindex via `public/_headers` can't be scoped to only the workers.dev host on a static-assets-only deploy (no per-request Worker script to check the hostname), and would accidentally noindex production forever once the real domain is attached to the same deploy. Doing this properly needs a small Worker script — a real architecture change, not a header tweak. Left as-is; the practical risk today is low (brand-new site, no known inbound links to the staging host).
-- [x] **Fixed the `/posts/luna-max-vs-sol-medium/` slug/title/format mismatch.** Renamed to `/posts/gpt-5-6-terra/` with a 301 redirect from the old path. Checked the actual body content first — it's genuinely explainer-shaped (positions one model, not a full comparison table), so format stays `explainer` rather than being retagged to `comparison` without the substance to back it up. **Queued in Prismic, needs you to publish the release.**
+- [x] **Stopped the interim staging host from being indexable** — **previously descoped, now done (2026-08-10).** The original reasoning was right at the time: `public/_headers` can't test the hostname, and a blanket noindex there would have followed the real domain into production forever. What changed is that there *is* a per-request Worker now (`src/worker.ts`, added for the admin desk). Non-production hostnames get `X-Robots-Tag: noindex, nofollow` from an allowlist of indexable hosts, so a new preview URL shape defaults to unindexable rather than leaking a duplicate site. Cost: `run_worker_first: true`, so every request is a Worker invocation rather than a pure asset hit.
+- [x] **Fixed the `/posts/luna-max-vs-sol-medium/` slug/title/format mismatch.** Renamed to `/posts/gpt-5-6-terra/` with a 301 redirect from the old path. Checked the actual body content first — it's genuinely explainer-shaped (positions one model, not a full comparison table), so format stays `explainer` rather than being retagged to `comparison` without the substance to back it up. **Published — live in the built output.**
 - [x] **Noindexed the 12 empty, nav-linked taxonomy hub pages** (and `/saved/`) instead of suppressing them from nav — keeps the site's own deliberate "show the full taxonomy even before content catches up" design, removes the indexing liability.
 
 ## High — fix within 1 week
@@ -23,7 +30,7 @@ What is left is **not code**: publishing the pending Prismic release, rotating t
 - [x] Made `image-sitemap.xml` discoverable — added a second `Sitemap:` line to `robots.txt`.
 - [x] Fixed `NewsArticle.publisher` — now includes `logo`/`url`.
 - [x] Added `BreadcrumbList` schema to article templates (Home → Format → Post).
-- [x] **Added contextual in-body links** between the GPT-5.6 tier pair and the Codex pair. Appended one new closing paragraph to each rather than splicing into existing sentences, to avoid corrupting already-published body content. **Queued in Prismic, needs you to publish the release.**
+- [x] **Added contextual in-body links** between the GPT-5.6 tier pair and the Codex pair. Appended one new closing paragraph to each rather than splicing into existing sentences, to avoid corrupting already-published body content. **Published — live in the built output.**
 - [x] **Expanded the author bio** with real, already-true detail (the site's own documented editorial method). Did **not** fabricate credentials or a `sameAs` profile link — I have no way to verify what your real social/professional profiles are, and inventing one would be actively wrong. If you have a real LinkedIn/X/etc. to link, add it to `src/content/authors/tejas-telkar.md`'s `website`/`x`/`linkedin` fields.
 - [ ] **De-duplicate the GPT-5.6 tier explanation** repeated near-verbatim across 3 articles. Not attempted — this needs an editorial judgment call about which framing becomes canonical, not a mechanical fix. _(Content, ~1–2 hrs)_
 
@@ -35,7 +42,8 @@ What is left is **not code**: publishing the pending Prismic release, rotating t
 - [x] Populated `NewsArticle`/`Article`'s `keywords`/`articleSection` from each post's real tags/format.
 - [x] Wired up `lastmod` in the sitemap, sourced from `updated_date ?? pub_date` via a build-time Prismic read.
 - [x] Added IndexNow — **opt-in, not automatic.** Wiring it into `npm run build` would ping IndexNow on every local dev build for a domain that doesn't resolve yet. Run `npm run indexnow` manually after a real publish, once `aipresshq.com` is live.
-- [x] Rolled out `Content-Security-Policy-Report-Only` — verified via `wrangler dev` against the real built output (`astro dev` doesn't apply `_headers`, it's Cloudflare-specific) plus real browser interactions (theme toggle, save-story, TOC click, a live Pagefind search that returned real results). Zero violations. Still report-only, not enforced.
+- [x] Rolled out `Content-Security-Policy-Report-Only` — verified via `wrangler dev` against the real built output (`astro dev` doesn't apply `_headers`, it's Cloudflare-specific) plus real browser interactions (theme toggle, save-story, TOC click, a live Pagefind search that returned real results). Zero violations.
+- [x] **Promoted the CSP to enforcing (2026-08-10)**, and found two things report-only had hidden. First, `public/_headers` only applies to *static asset* responses — so the Editorial Desk, which the Worker generates as an HTML string, had no CSP, no `X-Frame-Options` and no `nosniff` at all, despite being the only page that can publish. It now sends its own policy with `frame-ancestors 'none'`, and its inline script hash is derived at request time from the exact bytes served, so no hash can go stale. Second, the ~40 JSON-LD blocks are `<script type="application/ld+json">` — HTML *data blocks*, never executed and never subject to `script-src`, which is why report-only recorded zero violations for them; hashing them would have added churn no browser checks. A build check now matches CSP hashes against the executable inline scripts the build emits, in both directions.
 - [ ] **Confirm Cloudflare's "Always Use HTTPS" is enabled** once the real `aipresshq.com` zone is live. Dashboard-only setting, I don't have access.
 - [ ] Add a literal step-by-step MCP setup sequence to `/posts/motion-claude-launch-video/`. Not attempted — editorial rewrite of published content, deferred to you.
 - [ ] Add a "what's actually in `~/.codex`" section to `/posts/codex-workspace-cleanup/`. Same reason.
@@ -56,6 +64,14 @@ What is left is **not code**: publishing the pending Prismic release, rotating t
 
 ---
 
+## Added 2026-08-10 (beyond the audit's scope, found while closing it)
+
+- [x] **Admin passwords were an unsalted, single-round SHA-256 digest.** Brute-forceable at billions of guesses per second if the hash ever leaked, and one rainbow table would have covered any deployment sharing a password. Now salted PBKDF2-HMAC-SHA256 at 100,000 iterations, with a non-short-circuiting digest comparison. The old format still verifies, so deploying could not lock the desk out; rotation steps are in the runbook.
+- [x] **Nothing throttled password guessing** against `/admin/api/auth/login`. Now 8 attempts per minute per client address, checked before the password is read so a flood costs no PBKDF2 work, and failing open so a limiter outage cannot take the desk offline.
+- [x] **Worker observability was off**, so a production 500 left no trace. Enabled.
+- [x] **Archives had no pagination** — `/latest`, every tag, every format and every author rendered every matching post on one page. Now 12 per page, with page one staying at its existing URL.
+- [x] **Nothing ran the test suites.** The repo had four working quality commands and no CI, and two loader test suites were wired into no npm script at all. GitHub Actions now runs lint, formatting, types, unit suites, the build, the build checks, and a Worker dry-run on every push.
+
 ## Content Cluster Roadmap (near-term publishing priority — unchanged, still applies)
 
 1. **GPT-5.6 Model Family** — pillar comparing Terra/Sol/Luna + one new spoke (dedicated Sol piece). Fills the Comparison-format gap directly. (The mismatched article itself is now fixed — this is the bigger content-strategy follow-up.)
@@ -74,11 +90,12 @@ What is left is **not code**: publishing the pending Prismic release, rotating t
 
 ## Needs your action
 
-1. **Publish the pending Prismic release** — contains the Terra slug/format fix and the 4 internal-link additions. The test suite will show ~32 failures until you do (all cascading from one file not existing yet at the new slug — expected, not a new bug).
+1. ~~**Publish the pending Prismic release.**~~ **Done** — `/posts/gpt-5-6-terra/` is in the built output, so the release carrying the slug fix and the four internal-link additions has been published.
 2. **Rotate the Moz API key.**
-3. **Your Google API credentials aren't configured for this site at all** — they resolve to `sc-domain:trackparcel.in` and an unrelated GA4 property, an unrelated Indian parcel-tracking site, not aiPressHQ. No verified GSC or GA4 property exists for aiPressHQ under these credentials. This needs a property verified from whichever Google account should own aiPressHQ's Search Console/GA4 data — separate from just "wait for the domain to launch."
-4. **Once the real domain launches:** verify a Domain property (`sc-domain:aipresshq.com`) via DNS TXT, submit both sitemaps, confirm "Always Use HTTPS" in the Cloudflare dashboard, verify the site in Bing Webmaster Tools. A URL-prefix property for the current `main.aipresshq.workers.dev` staging URL can be verified today via HTML meta tag if you want GSC data before the domain is live.
-5. **If you have real social/professional profiles** for the byline or the site, add them (author frontmatter's `x`/`linkedin`/`website` fields feed `Person.sameAs`; there's currently nothing to link since none were provided).
+3. **Traffic visibility, partly solved (2026-08-10).** Page views are now counted server-side in the Worker into the `aipresshq_pageviews` Analytics Engine dataset — path, country and referrer host, no IP, no user agent, no cookie, no client script and no CSP change. Query it with the SQL snippet in `docs/superpowers/runbooks/admin-production.md`. This does **not** replace Search Console or GA4: it can tell you what is being read and who linked to it, but not what people searched to get there. Items 4 and 5 below still stand.
+4. **Your Google API credentials aren't configured for this site at all** — they resolve to `sc-domain:trackparcel.in` and an unrelated GA4 property, an unrelated Indian parcel-tracking site, not aiPressHQ. No verified GSC or GA4 property exists for aiPressHQ under these credentials. This needs a property verified from whichever Google account should own aiPressHQ's Search Console/GA4 data — separate from just "wait for the domain to launch."
+5. **Once the real domain launches:** verify a Domain property (`sc-domain:aipresshq.com`) via DNS TXT, submit both sitemaps, confirm "Always Use HTTPS" in the Cloudflare dashboard, verify the site in Bing Webmaster Tools. A URL-prefix property for the current `main.aipresshq.workers.dev` staging URL can be verified today via HTML meta tag if you want GSC data before the domain is live.
+6. **If you have real social/professional profiles** for the byline or the site, add them (author frontmatter's `x`/`linkedin`/`website` fields feed `Person.sameAs`; there's currently nothing to link since none were provided).
 
 ## Re-run status
 

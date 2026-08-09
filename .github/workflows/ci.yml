@@ -1,0 +1,64 @@
+name: CI
+
+# The repo had four working quality commands and nothing running them. Every
+# push and pull request now runs the same sequence a release does, in the same
+# order, so a red main is visible immediately rather than at deploy time.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A second push to the same branch cancels the first: the older result is about
+# to be irrelevant anyway.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - run: npm ci
+
+      # Cheapest signals first, so an obvious mistake fails in seconds rather
+      # than after a full build.
+      - name: Lint
+        run: npm run lint
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Type-check Astro and TypeScript
+        run: npm run check
+
+      # No credentials needed: these suites use injected fakes. The two suites
+      # that talk to the live Prismic write API (`npm run test:prismic`) are
+      # deliberately excluded — they need a production token and they create
+      # real documents, which is not something CI should do on every push.
+      - name: Unit and contract tests
+        run: npm run test:units
+
+      # The read-only Prismic loader needs no token, so this builds the real site.
+      - name: Build
+        run: npm run build
+
+      # Asserts against the built output, so it has to follow the build.
+      - name: Verify build output
+        run: npm test
+
+      # Catches a malformed wrangler.jsonc or a missing binding before a deploy
+      # rather than during one.
+      - name: Validate the Worker bundle
+        run: npx wrangler deploy --dry-run

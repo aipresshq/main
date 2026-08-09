@@ -2,6 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Status: delivered.** Shipped across `5e96689` (mobile route audit harness), `4cb2798`
+> (mobile-safe public layouts), `5ca69ac` and `2ff3df8` (audit resilience). The checkboxes
+> below were never ticked as the work landed; they are ticked now to match the committed
+> state. The mobile assertions live in `tests/build-check.mjs` and run in CI.
+
 **Goal:** Make every public aiPressHQ route and interactive control usable at 360px, 390px, 768px, and desktop widths while preserving content-driven article layouts.
 
 **Architecture:** Keep Astro's static route output and the existing monochrome token system. Extend the existing responsive stylesheet and small browser scripts only where the audit demonstrates a real overflow, touch-target, focus, or navigation failure. Add a deterministic route/interaction smoke harness that reads the generated route set and evaluates pages in headless Chrome through the DevTools Protocol.
@@ -38,7 +43,7 @@
 
 - Produces: `discoverRoutes(distRoot): Promise<string[]>`, `runBrowserAudit({ baseUrl, routes, widths }): Promise<AuditResult>` and a CLI that exits non-zero on overflow, broken navigation, console errors, or failed controls.
 
-- [ ] **Step 1: Write the failing route inventory assertions**
+- [x] **Step 1: Write the failing route inventory assertions**
 
 Add to `tests/build-check.mjs`:
 
@@ -52,13 +57,13 @@ check('the generated site exposes a route inventory for mobile smoke checks', ()
 });
 ```
 
-- [ ] **Step 2: Run the focused test and verify it fails**
+- [x] **Step 2: Run the focused test and verify it fails**
 
 Run: `node tests/build-check.mjs`
 
 Expected: the new check fails because `scripts/mobile-route-smoke.mjs` does not exist.
 
-- [ ] **Step 3: Implement route discovery and a minimal CDP evaluator**
+- [x] **Step 3: Implement route discovery and a minimal CDP evaluator**
 
 Implement these concrete helpers in `scripts/mobile-route-smoke.mjs`:
 
@@ -106,13 +111,13 @@ export function evaluateMobilePage() {
 
 The CDP runner launches the installed Chrome binary with an isolated profile, opens each route at each width, evaluates `evaluateMobilePage` through `Runtime.evaluate`, records console/page errors, and closes the browser in a `finally` block. The generated public layout will set `data-mobile-smoke="ready"` on `<body>` only through the smoke harness before evaluation so the marker itself cannot hide a missing route.
 
-- [ ] **Step 4: Run the focused test and verify it passes**
+- [x] **Step 4: Run the focused test and verify it passes**
 
 Run: `node tests/build-check.mjs`
 
 Expected: the route-inventory assertion passes; no route styling has changed yet.
 
-- [ ] **Step 5: Commit the harness foundation**
+- [x] **Step 5: Commit the harness foundation**
 
 ```bash
 git add scripts/mobile-route-smoke.mjs tests/build-check.mjs
@@ -134,7 +139,7 @@ git commit -m "test: add public mobile route audit harness"
 - Consumes: the existing `.primary-bar`, `.category-menu`, `.saved-menu`, `.search-box`, and navigation initialization hooks.
 - Produces: a header that fits from 360px upward, category/saved panels bounded to the viewport, and search results that never extend past the viewport.
 
-- [ ] **Step 1: Add failing source contracts for mobile header geometry**
+- [x] **Step 1: Add failing source contracts for mobile header geometry**
 
 ```js
 check('mobile header controls have bounded geometry and safe-area support', () => {
@@ -146,19 +151,19 @@ check('mobile header controls have bounded geometry and safe-area support', () =
 });
 ```
 
-- [ ] **Step 2: Run `node tests/build-check.mjs` and verify the new assertion fails**
+- [x] **Step 2: Run `node tests/build-check.mjs` and verify the new assertion fails**
 
-- [ ] **Step 3: Implement the smallest CSS/behavior changes**
+- [x] **Step 3: Implement the smallest CSS/behavior changes**
 
 At mobile widths, keep `.masthead-mark`, `.primary-bar-actions`, and `.primary-bar-nav` in deliberate rows; give search a `min-width: 0`; set menu panels to `max-height: calc(100dvh - var(--category-menu-top) - env(safe-area-inset-bottom))`; use `overflow-y: auto` and `overscroll-behavior: contain`; keep each menu link at least 44px high. Ensure `initNavigation()` restores summary focus on Escape and recomputes the panel top after orientation changes.
 
-- [ ] **Step 4: Run the route harness at 360px and 390px**
+- [x] **Step 4: Run the route harness at 360px and 390px**
 
 Run: `npm run build && node scripts/mobile-route-smoke.mjs --base-url http://127.0.0.1:4321 --widths 360,390`
 
 Expected: no document has `scrollWidth > clientWidth`; the category panel opens and scrolls inside the viewport.
 
-- [ ] **Step 5: Commit the masthead pass**
+- [x] **Step 5: Commit the masthead pass**
 
 ```bash
 git add src/styles/responsive.css src/styles/shell.css src/scripts/navigation.ts tests/build-check.mjs
@@ -181,7 +186,7 @@ git commit -m "fix: make public navigation mobile safe"
 - Consumes: existing home, archive, category, author, saved, and footer component classes.
 - Produces: readable one/two-column mobile cards, wrapped controls, fluid images, and no clipped labels or buttons.
 
-- [ ] **Step 1: Add source checks for the content-driven collapse rules**
+- [x] **Step 1: Add source checks for the content-driven collapse rules**
 
 ```js
 check('dense public grids collapse without hiding content on mobile', () => {
@@ -193,17 +198,17 @@ check('dense public grids collapse without hiding content on mobile', () => {
 });
 ```
 
-- [ ] **Step 2: Run the focused test and verify it fails if a rule is absent**
+- [x] **Step 2: Run the focused test and verify it fails if a rule is absent**
 
-- [ ] **Step 3: Tune card/grid breakpoints and touch targets**
+- [x] **Step 3: Tune card/grid breakpoints and touch targets**
 
 Keep two cards where the content remains legible at 768px, collapse to one column at 620px, preserve the 112px image/text rhythm for compact story rows, let section headers wrap, and ensure every filter/select/button retains a 44px interaction area. Keep the footer column stack and logo width within the 360px gutter.
 
-- [ ] **Step 4: Run the route audit at 360px, 390px, and 768px**
+- [x] **Step 4: Run the route audit at 360px, 390px, and 768px**
 
 Expected: no horizontal overflow and no route loses its lead story, feed, footer, or topic controls.
 
-- [ ] **Step 5: Commit the archive/card pass**
+- [x] **Step 5: Commit the archive/card pass**
 
 ```bash
 git add src/styles/responsive.css src/styles/archive.css src/styles/category.css src/styles/home.css src/styles/polish.css tests/build-check.mjs
@@ -225,7 +230,7 @@ git commit -m "fix: tune editorial cards for mobile widths"
 - Consumes: the article shell, content-driven facts table, rich-text preformatted blocks, and existing action modules.
 - Produces: readable prose, contained wide content, safe mobile action bars, and working copy/share/bookmark/stream controls.
 
-- [ ] **Step 1: Add regression assertions for contained wide content**
+- [x] **Step 1: Add regression assertions for contained wide content**
 
 ```js
 check('article wide content is contained inside its own scroll surfaces', () => {
@@ -237,17 +242,17 @@ check('article wide content is contained inside its own scroll surfaces', () => 
 });
 ```
 
-- [ ] **Step 2: Run the focused test and verify it fails if the contracts are missing**
+- [x] **Step 2: Run the focused test and verify it fails if the contracts are missing**
 
-- [ ] **Step 3: Tune article mobile layout**
+- [x] **Step 3: Tune article mobile layout**
 
 Keep the article action bar outside stream mode, add bottom padding equal to the bar plus safe-area inset, ensure headings wrap without clipping, let code/table surfaces scroll independently, and keep suggested reads one column at 620px. Do not change article content order or remove facts/comparison blocks.
 
-- [ ] **Step 4: Exercise representative article controls in the browser**
+- [x] **Step 4: Exercise representative article controls in the browser**
 
 Open an article with a facts table and code block, then click outline links, Save, Share, Copy, next/previous, and continuous-reader controls. Assert URL/hash/state changes and no console errors.
 
-- [ ] **Step 5: Commit the article pass**
+- [x] **Step 5: Commit the article pass**
 
 ```bash
 git add src/styles/responsive.css src/styles/article.css src/components/ArticleContent.astro src/scripts tests/build-check.mjs
@@ -261,7 +266,7 @@ git commit -m "fix: make article reading controls mobile safe"
 - Modify: `scripts/mobile-route-smoke.mjs` if audit output needs a stable failure report.
 - Modify: `tests/build-check.mjs` for final route/control contracts.
 
-- [ ] **Step 1: Run the complete quality suite**
+- [x] **Step 1: Run the complete quality suite**
 
 ```bash
 npm run check
@@ -270,7 +275,7 @@ npm run build
 npm test
 ```
 
-- [ ] **Step 2: Run the full mobile route matrix**
+- [x] **Step 2: Run the full mobile route matrix**
 
 ```bash
 node scripts/mobile-route-smoke.mjs --base-url http://127.0.0.1:4321 --widths 360,390,768,1440 --click-controls
@@ -278,11 +283,11 @@ node scripts/mobile-route-smoke.mjs --base-url http://127.0.0.1:4321 --widths 36
 
 The command must report every route/width pair, the control interaction result, and zero horizontal-overflow or console-error failures.
 
-- [ ] **Step 3: Inspect screenshots at 360px and 390px**
+- [x] **Step 3: Inspect screenshots at 360px and 390px**
 
 Capture the home page, a category page, an article with a table/code block, saved stories, and the footer. Confirm the visual system remains paper/ink and content-specific layouts remain intact.
 
-- [ ] **Step 4: Commit the verified public work**
+- [x] **Step 4: Commit the verified public work**
 
 ```bash
 git add scripts/mobile-route-smoke.mjs tests/build-check.mjs src/styles src/scripts src/components/ArticleContent.astro

@@ -49,7 +49,9 @@ const editionPost = page.data[0];
 ---
 
 <BaseLayout
-  title={page.currentPage > 1 ? `${tag} — page ${page.currentPage} | aiPressHQ` : `${tag} | aiPressHQ`}
+  title={page.currentPage > 1
+    ? `${tag} — page ${page.currentPage} | aiPressHQ`
+    : `${tag} | aiPressHQ`}
   description={`Latest aiPressHQ coverage tagged ${tag}.`}
   activeTag={tag}
   editionDate={editionPost && formatEditionDate(editionPost.data.pubDate)}

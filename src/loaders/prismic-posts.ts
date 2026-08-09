@@ -37,7 +37,8 @@ interface ExtractedHeading {
   text: string;
 }
 
-type HeadingSerializerKey = 'heading1' | 'heading2' | 'heading3' | 'heading4' | 'heading5' | 'heading6';
+type HeadingSerializerKey =
+  'heading1' | 'heading2' | 'heading3' | 'heading4' | 'heading5' | 'heading6';
 
 const HEADING_DEPTHS: Record<HeadingSerializerKey, number> = {
   heading1: 1,
@@ -56,9 +57,10 @@ const escapeHtml = (value: string) =>
       character,
   );
 
-export function serializeBodyWithHeadings(
-  body: prismic.RichTextField,
-): { html: string; headings: ExtractedHeading[] } {
+export function serializeBodyWithHeadings(body: prismic.RichTextField): {
+  html: string;
+  headings: ExtractedHeading[];
+} {
   const slugger = new GithubSlugger();
   const headings: ExtractedHeading[] = [];
 

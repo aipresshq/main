@@ -3,7 +3,7 @@
   "type": "module",
   "version": "0.0.1",
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=22.18.0"
   },
   "scripts": {
     "dev": "astro dev",
@@ -15,7 +15,9 @@
     "format:check": "prettier --check \"src/**/*.{astro,ts,css}\" \"tests/**/*.{mjs,js}\" \"*.{mjs,json}\"",
     "preview": "astro preview",
     "test": "node tests/build-check.mjs",
-    "test:admin": "node --env-file=.env admin/frontmatter.test.mjs && node --env-file=.env admin/authors-store.test.mjs && node --env-file=.env admin/posts-store.test.mjs && node --env-file=.env admin/validate-post.test.mjs && node --env-file=.env admin/api-handlers.test.mjs && node --env-file=.env admin/worker-auth.test.mjs && node --env-file=.env admin/worker-api.test.mjs && node --env-file=.env admin/ui.test.mjs && node --env-file=.env admin/integration.test.mjs",
+    "test:units": "node admin/frontmatter.test.mjs && node admin/authors-store.test.mjs && node admin/validate-post.test.mjs && node admin/worker-auth.test.mjs && node admin/worker-api.test.mjs && node admin/ui.test.mjs && node admin/integration.test.mjs && node src/worker.test.mjs && node src/lib/pagination.test.mjs && node src/loaders/prismic-fields.test.mjs && node src/loaders/prismic-posts.test.mjs",
+    "test:prismic": "node --env-file=.env admin/posts-store.test.mjs && node --env-file=.env admin/api-handlers.test.mjs",
+    "test:admin": "npm run test:units && npm run test:prismic",
     "indexnow": "node scripts/indexnow-ping.mjs",
     "astro": "astro"
   },

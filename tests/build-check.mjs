@@ -2431,10 +2431,7 @@ check('archives paginate without moving any existing URL', () => {
     assert.match(source, /ARCHIVE_PAGE_SIZE/, `${route} should use the shared page size`);
     assert.match(source, /paginate\(/, `${route} should paginate`);
     // Rendering page.data, not the full list, is the whole point.
-    assert.ok(
-      !/posts=\{posts\}/.test(source),
-      `${route} still renders the unpaginated list`,
-    );
+    assert.ok(!/posts=\{posts\}/.test(source), `${route} still renders the unpaginated list`);
   }
 
   // At the current content volume every archive is a single page, so the control
@@ -2479,11 +2476,12 @@ check('the public CSP is enforcing and its hashes match the scripts actually shi
   // executed, and so never subject to script-src. Hashing those would demand
   // ~40 hashes in the policy that no browser ever checks, and each one would
   // change whenever a headline did.
-  const executableInlineScript =
-    /<script(?![^>]*\bsrc=)([^>]*)>([\s\S]*?)<\/script>/g;
+  const executableInlineScript = /<script(?![^>]*\bsrc=)([^>]*)>([\s\S]*?)<\/script>/g;
   const isExecutable = (attributes) => {
     const type = attributes.match(/\btype\s*=\s*["']?([^"'\s>]+)/i)?.[1]?.toLowerCase();
-    return !type || type === 'module' || type === 'text/javascript' || type === 'application/javascript';
+    return (
+      !type || type === 'module' || type === 'text/javascript' || type === 'application/javascript'
+    );
   };
 
   const shipped = new Set();
