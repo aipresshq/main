@@ -185,6 +185,94 @@ await run('a failing rate limiter does not take the login route down with it', a
   assert.equal(response.status, 401, 'should fall through to normal credential checking');
 });
 
+// public/_headers only applies to static-asset responses, so the desk — a
+// Worker-generated HTML string — was the one page on the site shipping with no
+// CSP at all, despite being the only page that can publish.
+await run('the desk document ships its own security headers', async () => {
+  const response = await handleAdminRequest(
+    new Request('https://aipresshq.com/admin'),
+    env,
+    undefined,
+    { adapters },
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('X-Content-Type-Options'), 'nosniff');
+  assert.equal(response.headers.get('Referrer-Policy'), 'strict-origin-when-cross-origin');
+
+  const csp = response.headers.get('Content-Security-Policy');
+  assert.ok(csp, 'the desk document must carry an enforcing CSP');
+  assert.match(csp, /default-src 'self'/);
+  // The desk is never legitimately framed, and it holds a publish button.
+  assert.match(csp, /frame-ancestors 'none'/);
+  assert.match(csp, /object-src 'none'/);
+  assert.match(csp, /base-uri 'self'/);
+  assert.match(csp, /form-action 'self'/);
+  assert.ok(!csp.includes("'unsafe-inline'"), 'the desk CSP must not allow inline script or style');
+  assert.ok(!csp.includes('*'), `the desk CSP must not use a wildcard source: ${csp}`);
+});
+
+await run('the desk CSP hash matches the inline script actually served', async () => {
+  const response = await handleAdminRequest(
+    new Request('https://aipresshq.com/admin'),
+    env,
+    undefined,
+    { adapters },
+  );
+  const html = await response.text();
+  const csp = response.headers.get('Content-Security-Policy');
+
+  const inline = html.match(/<script>([\s\S]*?)<\/script>/);
+  assert.ok(inline, 'the desk should still have exactly the one inline theme script');
+
+  // Derived from the served markup, so editing the theme script can never
+  // silently leave a stale hash behind and break the desk under an enforced CSP.
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(inline[1]));
+  const expected = btoa(String.fromCharCode(...new Uint8Array(digest)));
+  assert.ok(
+    csp.includes(`'sha256-${expected}'`),
+    `CSP is missing the hash of the script it serves (expected sha256-${expected})`,
+  );
+});
+
+await run('the desk CSP allows the configured R2 origin for cover images', async () => {
+  const response = await handleAdminRequest(
+    new Request('https://aipresshq.com/admin'),
+    env,
+    undefined,
+    { adapters },
+  );
+  const csp = response.headers.get('Content-Security-Policy');
+
+  // The cover desk and the editor's cover preview render images straight from
+  // the bucket's public origin; img-src 'self' alone would blank them out.
+  assert.match(csp, /img-src [^;]*https:\/\/images\.aipresshq\.com/);
+});
+
+await run('the desk CSP omits an R2 origin that is not configured', async () => {
+  const envWithoutR2 = { ...env, PUBLIC_R2_PUBLIC_URL: undefined };
+  const response = await handleAdminRequest(
+    new Request('https://aipresshq.com/admin'),
+    envWithoutR2,
+    undefined,
+    { adapters },
+  );
+  const csp = response.headers.get('Content-Security-Policy');
+  assert.match(csp, /img-src 'self'/);
+  assert.ok(!csp.includes('undefined'), `unset origin leaked into the CSP: ${csp}`);
+});
+
+await run('admin API responses are marked nosniff', async () => {
+  const response = await handleAdminRequest(
+    new Request('https://aipresshq.com/admin/api/posts'),
+    env,
+    undefined,
+    { adapters },
+  );
+  assert.equal(response.status, 401);
+  assert.equal(response.headers.get('X-Content-Type-Options'), 'nosniff');
+});
+
 await run('unauthenticated API requests are rejected', async () => {
   const response = await handleAdminRequest(
     new Request('https://aipresshq.com/admin/api/posts'),

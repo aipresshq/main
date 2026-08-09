@@ -15,24 +15,17 @@ function brandMark(className) {
         /></span>`;
 }
 
-export function renderAdminPage() {
-  return `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Editorial Desk · aiPressHQ</title>
-    <link rel="icon" type="image/png" href="/brand/aipresshq-favicon-light.png?v=5" sizes="512x512" data-admin-favicon />
-    <link rel="alternate icon" type="image/svg+xml" href="/favicon-light.svg?v=5" sizes="any" data-admin-favicon-svg />
-    <link rel="alternate icon" href="/favicon.ico?v=5" sizes="any" />
-    <meta name="theme-color" content="#ffffff" data-admin-theme-color />
-    <link rel="stylesheet" href="/admin/admin.css" />
-    <!-- Runs before first paint so the desk never flashes light artwork at an
-         editor working in dark mode. admin.js is a deferred module, so doing
-         this there would land after the first frame. Mirrors the inline theme
-         script in src/layouts/BaseLayout.astro; if you edit this script's
-         content, regenerate its sha256 hash in public/_headers. -->
-    <script>
+/**
+ * The desk's theme bootstrap, kept as its own export so the CSP hash can be
+ * derived from the exact bytes that get served (see adminSecurityHeaders in
+ * admin/worker-api.mjs). Editing this string re-derives the hash automatically —
+ * there is no constant to keep in sync.
+ *
+ * It has to be inline and blocking: admin.js is a deferred module, so resolving
+ * the theme there would land after the first frame and flash light artwork at an
+ * editor working in dark mode.
+ */
+export const ADMIN_THEME_SCRIPT = `
       (() => {
         let theme = 'light';
 
@@ -81,7 +74,24 @@ export function renderAdminPage() {
           themeColor.setAttribute('content', theme === 'dark' ? '#0a0a0a' : '#ffffff');
         }
       })();
-    </script>
+    `;
+
+export function renderAdminPage() {
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Editorial Desk · aiPressHQ</title>
+    <link rel="icon" type="image/png" href="/brand/aipresshq-favicon-light.png?v=5" sizes="512x512" data-admin-favicon />
+    <link rel="alternate icon" type="image/svg+xml" href="/favicon-light.svg?v=5" sizes="any" data-admin-favicon-svg />
+    <link rel="alternate icon" href="/favicon.ico?v=5" sizes="any" />
+    <meta name="theme-color" content="#ffffff" data-admin-theme-color />
+    <link rel="stylesheet" href="/admin/admin.css" />
+    <!-- Mirrors the inline theme script in src/layouts/BaseLayout.astro. Its CSP
+         hash is derived from ADMIN_THEME_SCRIPT at request time, so there is no
+         hash to regenerate by hand when this changes. -->
+    <script>${ADMIN_THEME_SCRIPT}</script>
   </head>
   <body>
     <div class="admin-shell" data-admin-app>

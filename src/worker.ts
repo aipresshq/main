@@ -39,12 +39,48 @@ export interface WorkerExecutionContext {
   passThroughOnException?(): void;
 }
 
+/**
+ * Hosts allowed to be indexed. Everything else — the `*.workers.dev` staging
+ * host, per-deployment preview URLs — serves `X-Robots-Tag: noindex`.
+ *
+ * This is deliberately an allowlist rather than a denylist of known staging
+ * hosts: a new preview URL shape should default to being unindexable, not
+ * default to leaking a duplicate of the whole site into search results.
+ */
+const INDEXABLE_HOSTNAMES = new Set(['aipresshq.com', 'www.aipresshq.com']);
+
+const NOINDEX = 'noindex, nofollow';
+
+/**
+ * Re-emits a response with `X-Robots-Tag` attached.
+ *
+ * Built as a new Response because the static-asset binding hands back
+ * immutable headers; mutating them in place throws. Status, statusText and the
+ * body stream are all carried through unchanged.
+ */
+function withNoindex(response: Response): Response {
+  const headers = new Headers(response.headers);
+  headers.set('X-Robots-Tag', NOINDEX);
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 export default {
   async fetch(request: Request, env: WorkerEnv, ctx: WorkerExecutionContext) {
     const url = new URL(request.url);
-    if (url.pathname === '/admin' || url.pathname.startsWith('/admin/')) {
-      return handleAdminRequest(request, env, ctx);
-    }
-    return env.ASSETS.fetch(request);
+    const isAdmin = url.pathname === '/admin' || url.pathname.startsWith('/admin/');
+
+    const response = isAdmin
+      ? await handleAdminRequest(request, env, ctx)
+      : await env.ASSETS.fetch(request);
+
+    // The desk is login-gated, but a gate is not an indexing directive — say so
+    // explicitly rather than relying on crawlers being turned away by the 401.
+    if (isAdmin || !INDEXABLE_HOSTNAMES.has(url.hostname)) return withNoindex(response);
+
+    return response;
   },
 };

@@ -1,6 +1,7 @@
 // Lightweight build-output verification harness — no test framework needed
 // for a static-only Astro site. Run `npm run build` first, then this script.
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import assert from 'node:assert';
 import {
   canStartContinuousLoad,
@@ -2366,7 +2367,10 @@ check('Cloudflare production routing protects admin separately from public asset
   );
   assert.equal(config.main, 'src/worker.ts');
   assert.equal(config.assets.binding, 'ASSETS');
-  assert.deepEqual(config.assets.run_worker_first, ['/admin', '/admin/*']);
+  // Every request has to reach the Worker now, not just /admin: non-production
+  // hostnames get an X-Robots-Tag they cannot get from the static _headers file,
+  // which has no way to test the hostname. See src/worker.ts.
+  assert.equal(config.assets.run_worker_first, true);
   assert.ok(
     config.r2_buckets?.some((binding) => binding.binding === 'IMAGES'),
     'the production Worker must have the images R2 binding',
@@ -2388,6 +2392,67 @@ check('Cloudflare production routing protects admin separately from public asset
     `login limit should be small, got ${limiter.simple.limit}`,
   );
   assert.equal(limiter.simple.period, 60);
+});
+
+check('the public CSP is enforcing and its hashes match the scripts actually shipped', () => {
+  const headers = src('public/_headers');
+  const directive = headers.match(/^\s*(Content-Security-Policy(?:-Report-Only)?):\s*(.+)$/m);
+  assert.ok(directive, 'public/_headers should define a CSP');
+
+  // Report-only recorded zero violations across the whole site, so it has
+  // earned enforcement — a policy nothing enforces stops nothing.
+  assert.equal(
+    directive[1],
+    'Content-Security-Policy',
+    'the CSP should be enforcing, not Report-Only',
+  );
+
+  const policy = directive[2];
+  assert.ok(!policy.includes("'unsafe-inline'"), 'CSP must not allow inline script or style');
+  assert.ok(!policy.includes("'unsafe-eval'"), 'CSP must not allow eval');
+
+  // Every inline <script> the build emits, across every page, has to be covered
+  // by a hash in the policy — otherwise enforcement silently breaks the site.
+  // Equally, a hash left behind after its script changed is dead weight that
+  // hides the drift, so the two sets must match exactly.
+  const pages = readdirSync(new URL('../dist', import.meta.url), {
+    recursive: true,
+    withFileTypes: true,
+  })
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.html'))
+    .map((entry) => `${entry.parentPath}/${entry.name}`);
+  assert.ok(pages.length > 10, `expected the built site, found ${pages.length} pages`);
+
+  // Only scripts the browser will actually execute. A <script> with a non-JS
+  // type — every JSON-LD block on this site — is an HTML "data block": never
+  // executed, and so never subject to script-src. Hashing those would demand
+  // ~40 hashes in the policy that no browser ever checks, and each one would
+  // change whenever a headline did.
+  const executableInlineScript =
+    /<script(?![^>]*\bsrc=)([^>]*)>([\s\S]*?)<\/script>/g;
+  const isExecutable = (attributes) => {
+    const type = attributes.match(/\btype\s*=\s*["']?([^"'\s>]+)/i)?.[1]?.toLowerCase();
+    return !type || type === 'module' || type === 'text/javascript' || type === 'application/javascript';
+  };
+
+  const shipped = new Set();
+  for (const page of pages) {
+    const html = readFileSync(page, 'utf-8');
+    for (const [, attributes, body] of html.matchAll(executableInlineScript)) {
+      if (body.trim().length === 0 || !isExecutable(attributes)) continue;
+      shipped.add(createHash('sha256').update(body, 'utf8').digest('base64'));
+    }
+  }
+  assert.ok(shipped.size > 0, 'expected at least the inline theme script to be found');
+
+  const allowed = new Set([...policy.matchAll(/'sha256-([A-Za-z0-9+/=]+)'/g)].map((m) => m[1]));
+
+  for (const hash of shipped) {
+    assert.ok(allowed.has(hash), `an inline script is not allowed by the CSP: sha256-${hash}`);
+  }
+  for (const hash of allowed) {
+    assert.ok(shipped.has(hash), `CSP allows a script that is no longer shipped: sha256-${hash}`);
+  }
 });
 
 check('admin passwords are stored as salted PBKDF2, not a bare digest', () => {

@@ -1,6 +1,6 @@
 import * as prismic from '@prismicio/client';
 import { marked } from 'marked';
-import { renderAdminPage } from './ui.mjs';
+import { renderAdminPage, ADMIN_THEME_SCRIPT } from './ui.mjs';
 import { postPayloadToPrismicData } from './prismic-write-mapping.mjs';
 import { validatePost } from './validate-post.mjs';
 import {
@@ -30,10 +30,22 @@ const IMAGE_TYPES = new Map([
 const COVER_KEY_PATTERN =
   /^covers\/[a-z0-9][a-z0-9-]{0,80}-[0-9a-f-]{8,80}\.(?:jpg|png|webp|avif)$/i;
 
+// Applied to every admin response. public/_headers covers static assets only,
+// so anything the Worker generates itself — the desk document, every API reply —
+// would otherwise ship with no security headers at all.
+const ADMIN_BASE_SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+};
+
 function json(body, status = 200, headers = {}) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json; charset=utf-8', ...headers },
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      ...ADMIN_BASE_SECURITY_HEADERS,
+      ...headers,
+    },
   });
 }
 
@@ -372,6 +384,58 @@ export async function handlePreviewApi(request) {
   return json({ html });
 }
 
+let cachedThemeScriptHash;
+
+async function themeScriptHash() {
+  // Derived from the served bytes and cached per isolate, so editing the theme
+  // script cannot leave a stale hash behind and break the desk under an
+  // enforced CSP.
+  if (!cachedThemeScriptHash) {
+    const digest = await crypto.subtle.digest(
+      'SHA-256',
+      new TextEncoder().encode(ADMIN_THEME_SCRIPT),
+    );
+    let binary = '';
+    for (const byte of new Uint8Array(digest)) binary += String.fromCharCode(byte);
+    cachedThemeScriptHash = btoa(binary);
+  }
+  return cachedThemeScriptHash;
+}
+
+async function adminDocumentHeaders(env) {
+  // The cover desk and the editor's cover preview render straight from the
+  // bucket's public origin, so img-src has to name it. Omitted entirely when
+  // unset rather than interpolating "undefined" into the policy.
+  const r2Origin = (() => {
+    try {
+      return env?.PUBLIC_R2_PUBLIC_URL ? new URL(env.PUBLIC_R2_PUBLIC_URL).origin : '';
+    } catch {
+      return '';
+    }
+  })();
+
+  const csp = [
+    "default-src 'self'",
+    `script-src 'self' 'sha256-${await themeScriptHash()}'`,
+    "style-src 'self'",
+    `img-src 'self' data:${r2Origin ? ` ${r2Origin}` : ''}`,
+    "font-src 'self'",
+    "connect-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    // The desk holds a publish button; it is never legitimately framed.
+    "frame-ancestors 'none'",
+  ].join('; ');
+
+  return {
+    ...ADMIN_BASE_SECURITY_HEADERS,
+    'Content-Type': 'text/html; charset=utf-8',
+    'Content-Security-Policy': csp,
+    'X-Frame-Options': 'DENY',
+  };
+}
+
 const LOGIN_RETRY_AFTER_SECONDS = 60;
 
 /**
@@ -403,9 +467,7 @@ export async function handleAdminRequest(request, env, _ctx, dependencies = {}) 
 
   if (url.pathname === '/admin' || url.pathname === '/admin/') {
     if (request.method !== 'GET' && request.method !== 'HEAD') return methodNotAllowed();
-    return new Response(renderAdminPage(), {
-      headers: { 'Content-Type': 'text/html; charset=utf-8' },
-    });
+    return new Response(renderAdminPage(), { headers: await adminDocumentHeaders(env) });
   }
 
   if (!url.pathname.startsWith('/admin/api/')) {

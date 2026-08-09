@@ -5,7 +5,13 @@
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
-    "run_worker_first": ["/admin", "/admin/*"],
+    // `true`, not just the /admin paths, because src/worker.ts has to see every
+    // request to noindex non-production hostnames — the static _headers file
+    // cannot test the hostname, and a blanket noindex there would follow the
+    // real domain into production forever. The tradeoff is that every request
+    // now bills as a Worker invocation instead of being served by the asset
+    // layer alone; at this site's traffic that is far inside the free tier.
+    "run_worker_first": true,
     "not_found_handling": "404-page",
   },
   "r2_buckets": [
