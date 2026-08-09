@@ -18,6 +18,11 @@ export interface ImageBucket {
   delete(key: string): Promise<void>;
 }
 
+/** Cloudflare's rate-limiting binding, declared under `ratelimits` in wrangler.jsonc. */
+export interface RateLimiter {
+  limit(options: { key: string }): Promise<{ success: boolean }>;
+}
+
 export interface WorkerEnv {
   ASSETS: AssetFetcher;
   IMAGES: ImageBucket;
@@ -25,6 +30,8 @@ export interface WorkerEnv {
   ADMIN_PASSWORD_HASH?: string;
   ADMIN_SESSION_SECRET?: string;
   PUBLIC_R2_PUBLIC_URL?: string;
+  /** Optional so local `wrangler dev` and the tests, which have no binding, still work. */
+  LOGIN_RATE_LIMITER?: RateLimiter;
 }
 
 export interface WorkerExecutionContext {

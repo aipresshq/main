@@ -2374,6 +2374,36 @@ check('Cloudflare production routing protects admin separately from public asset
   const worker = src('src/worker.ts');
   assert.match(src('admin/worker-api.mjs'), /\/admin\/api\//);
   assert.match(worker, /ASSETS\.fetch/);
+
+  // Worker logs are off by default, which left production with no way to see a
+  // 500 after the fact.
+  assert.equal(config.observability?.enabled, true, 'Worker observability should be enabled');
+
+  // Config-only binding (no namespace to provision), so it must be declared
+  // here or brute-force protection silently does nothing in production.
+  const limiter = config.ratelimits?.find((entry) => entry.name === 'LOGIN_RATE_LIMITER');
+  assert.ok(limiter, 'the admin login rate limiter must be bound');
+  assert.ok(
+    limiter.simple.limit > 0 && limiter.simple.limit <= 20,
+    `login limit should be small, got ${limiter.simple.limit}`,
+  );
+  assert.equal(limiter.simple.period, 60);
+});
+
+check('admin passwords are stored as salted PBKDF2, not a bare digest', () => {
+  const auth = src('admin/worker-auth.mjs');
+
+  assert.match(auth, /PBKDF2/);
+  assert.match(auth, /getRandomValues/, 'each password record needs a random salt');
+  assert.match(auth, /timingSafeEqual/, 'digest comparison must not short-circuit');
+  assert.match(auth, /100_000/, 'iterations should be at the platform maximum');
+
+  // That the throttle runs *before* PBKDF2 is asserted behaviourally in
+  // admin/worker-api.test.mjs ("a throttled login is refused before the
+  // password is checked"). All that is worth checking from the source here is
+  // that the route reads the binding at all — a config-only binding is easy to
+  // declare in wrangler.jsonc and then never actually consult.
+  assert.match(src('admin/worker-api.mjs'), /env\?\.LOGIN_RATE_LIMITER/);
 });
 
 check('production admin sessions use signed HttpOnly cookies', () => {

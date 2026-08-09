@@ -372,6 +372,32 @@ export async function handlePreviewApi(request) {
   return json({ html });
 }
 
+const LOGIN_RETRY_AFTER_SECONDS = 60;
+
+/**
+ * Consumes one token from the Worker rate-limit binding for this client.
+ *
+ * Without this, nothing throttled password guessing against the login route.
+ * Keyed on the client address so one attacker cannot lock the real editor out,
+ * and checked *before* the password is read so a flood costs no PBKDF2 work.
+ *
+ * Deliberately fails open: `wrangler dev` and the test suite have no binding,
+ * and a limiter outage should not be able to take the desk offline. The
+ * credential check still stands behind it either way.
+ */
+async function loginThrottled(request, env) {
+  const limiter = env?.LOGIN_RATE_LIMITER;
+  if (!limiter || typeof limiter.limit !== 'function') return false;
+
+  const key = request.headers.get('CF-Connecting-IP') ?? 'unknown';
+  try {
+    const { success } = await limiter.limit({ key });
+    return success === false;
+  } catch {
+    return false;
+  }
+}
+
 export async function handleAdminRequest(request, env, _ctx, dependencies = {}) {
   const url = new URL(request.url);
 
@@ -391,6 +417,11 @@ export async function handleAdminRequest(request, env, _ctx, dependencies = {}) 
   }
 
   if (url.pathname === '/admin/api/auth/login' && request.method === 'POST') {
+    if (await loginThrottled(request, env)) {
+      return json({ error: 'Too many login attempts. Try again shortly.' }, 429, {
+        'Retry-After': String(LOGIN_RETRY_AFTER_SECONDS),
+      });
+    }
     const parsed = await readJson(request);
     if (parsed.error) return json({ error: 'Invalid credentials.' }, 401);
     const password = typeof parsed.value?.password === 'string' ? parsed.value.password : '';

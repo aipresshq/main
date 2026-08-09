@@ -82,6 +82,109 @@ async function authenticatedRequest(path, init = {}) {
   });
 }
 
+// A stand-in for Cloudflare's rate-limiting binding, which exposes a single
+// `limit({ key })` returning `{ success }`. Records the keys it was asked about
+// so the tests can assert the limiter is scoped per client, not globally.
+function fakeLimiter({ allow = true } = {}) {
+  return {
+    keys: [],
+    calls: 0,
+    async limit({ key }) {
+      this.calls += 1;
+      this.keys.push(key);
+      return { success: allow };
+    },
+  };
+}
+
+function loginRequest(password, headers = {}) {
+  return new Request('https://aipresshq.com/admin/api/auth/login', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Origin: 'https://aipresshq.com',
+      'CF-Connecting-IP': '203.0.113.7',
+      ...headers,
+    },
+    body: JSON.stringify({ password }),
+  });
+}
+
+await run('login attempts are rate limited per client address', async () => {
+  const limiter = fakeLimiter({ allow: true });
+  const response = await handleAdminRequest(
+    loginRequest('whatever'),
+    { ...env, LOGIN_RATE_LIMITER: limiter },
+    undefined,
+    { adapters },
+  );
+
+  assert.equal(limiter.calls, 1, 'login should consult the rate limiter');
+  assert.deepEqual(limiter.keys, ['203.0.113.7'], 'limiter should be keyed by client IP');
+  // Wrong password, so still 401 — the point is that the limiter ran.
+  assert.equal(response.status, 401);
+});
+
+await run('a throttled login is refused before the password is checked', async () => {
+  const limiter = fakeLimiter({ allow: false });
+  let verifications = 0;
+  const countingEnv = {
+    ...env,
+    LOGIN_RATE_LIMITER: limiter,
+    // Any read of the hash means the expensive verification path was reached.
+    get ADMIN_PASSWORD_HASH() {
+      verifications += 1;
+      return 'not-used-by-authenticated-tests';
+    },
+  };
+
+  const response = await handleAdminRequest(loginRequest('whatever'), countingEnv, undefined, {
+    adapters,
+  });
+
+  assert.equal(response.status, 429);
+  assert.equal(verifications, 0, 'throttled logins must not run PBKDF2 at all');
+  assert.ok(response.headers.get('Retry-After'), 'a 429 should tell the client when to retry');
+  assert.match((await response.json()).error, /too many/i);
+});
+
+await run('login still works when no rate-limit binding is configured', async () => {
+  // Local `wrangler dev` and the test suite have no binding; the desk must stay
+  // usable rather than failing closed on a missing platform feature.
+  const response = await handleAdminRequest(loginRequest('whatever'), env, undefined, { adapters });
+  assert.equal(response.status, 401);
+});
+
+await run('rate limiting falls back to a shared key when no client IP is present', async () => {
+  const limiter = fakeLimiter({ allow: true });
+  const request = new Request('https://aipresshq.com/admin/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: 'https://aipresshq.com' },
+    body: JSON.stringify({ password: 'whatever' }),
+  });
+
+  await handleAdminRequest(request, { ...env, LOGIN_RATE_LIMITER: limiter }, undefined, {
+    adapters,
+  });
+
+  assert.deepEqual(limiter.keys, ['unknown'], 'a missing IP must still consume a bucket');
+});
+
+await run('a failing rate limiter does not take the login route down with it', async () => {
+  const brokenLimiter = {
+    async limit() {
+      throw new Error('rate limiter unavailable');
+    },
+  };
+  const response = await handleAdminRequest(
+    loginRequest('whatever'),
+    { ...env, LOGIN_RATE_LIMITER: brokenLimiter },
+    undefined,
+    { adapters },
+  );
+  assert.equal(response.status, 401, 'should fall through to normal credential checking');
+});
+
 await run('unauthenticated API requests are rejected', async () => {
   const response = await handleAdminRequest(
     new Request('https://aipresshq.com/admin/api/posts'),

@@ -14,4 +14,20 @@
       "bucket_name": "aipresshq-images",
     },
   ],
+  // Brute-force protection for /admin/api/auth/login. This binding needs no
+  // provisioned resource — the namespace_id just has to be unique and stable
+  // within the account, since changing it resets every counter. 8 attempts per
+  // minute per client address leaves room for a mistyped password and nothing
+  // like room for guessing. Enforced in admin/worker-api.mjs (loginThrottled).
+  "ratelimits": [
+    {
+      "name": "LOGIN_RATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": { "limit": 8, "period": 60 },
+    },
+  ],
+  // Without this, Worker logs are dropped and a production 500 leaves no trace.
+  "observability": {
+    "enabled": true,
+  },
 }
