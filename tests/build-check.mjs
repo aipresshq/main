@@ -21,6 +21,8 @@ import { topicGroups, knownTopics } from '../src/lib/topics.ts';
 
 const dist = (path) => readFileSync(new URL(`../dist/${path}`, import.meta.url), 'utf-8');
 const distExists = (path) => existsSync(new URL(`../dist/${path}`, import.meta.url));
+// Raw bytes, for assertions about binary assets (e.g. PNG header dimensions).
+const distBuffer = (path) => readFileSync(new URL(`../dist/${path}`, import.meta.url));
 const src = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf-8');
 const sourceStyles = () =>
   [...src('src/styles/global.css').matchAll(/@import ['"]\.\/([^'"]+)['"];?/g)]
@@ -1185,9 +1187,11 @@ check('the approved aiPressHQ logo and favicon assets are wired across the shell
   assert.match(html, /data-theme-favicon-svg/);
   assert.match(html, /href="\/site\.webmanifest"/);
   // Rendered via astro:assets now (optimized WebP, hashed filename), not the
-  // raw PNG at a fixed path — the raw PNGs themselves are still published
-  // (checked via assetPaths above) since OG/schema/manifest reference them
-  // directly, but the on-page <img> tags no longer do.
+  // raw PNG at a fixed path. The raw wordmark PNGs are still published
+  // (checked via assetPaths above) as the brand source of truth, but nothing
+  // in the deploy points at them any more: og:image/twitter:image use the
+  // dedicated 1200x630 /brand/aipresshq-og-default.png, and schema plus the
+  // web manifest use the square favicon PNGs.
   assert.match(html, /_astro\/aipresshq-logo-light\.[\w-]+\.webp/);
   assert.match(html, /_astro\/aipresshq-logo-dark\.[\w-]+\.webp/);
   assert.match(html, /aipresshq-favicon-dark\.png\?v=5/);
@@ -1212,6 +1216,34 @@ check('the approved aiPressHQ logo and favicon assets are wired across the shell
         type: 'image/png',
       },
     ],
+  );
+});
+
+check('the default social preview image is sized for the cards that consume it', () => {
+  const html = dist('index.html');
+
+  // twitter:card="summary_large_image" only accepts aspect ratios between 2:1
+  // and 1:1, and Facebook/LinkedIn/Slack hard-crop anything wider. The old
+  // fallback was the raw wordmark at 1333x296 (4.5:1), which failed both.
+  assert.match(html, /<meta name="twitter:card" content="summary_large_image"/);
+  assert.match(html, /<meta property="og:image" content="[^"]*\/brand\/aipresshq-og-default\.png"/);
+  assert.match(
+    html,
+    /<meta name="twitter:image" content="[^"]*\/brand\/aipresshq-og-default\.png"/,
+  );
+  assert.ok(distExists('brand/aipresshq-og-default.png'), 'missing default OG image');
+
+  // Guard the dimensions, not just the path: a re-export at the wrong size
+  // would keep every assertion above passing while breaking the cards.
+  const png = distBuffer('brand/aipresshq-og-default.png');
+  assert.equal(png.readUInt32BE(8 + 8), 1200, 'OG image width should be 1200');
+  assert.equal(png.readUInt32BE(8 + 12), 630, 'OG image height should be 630');
+
+  // Articles pass their own cover, so the fallback must not leak onto them.
+  const article = dist('posts/gpt-5-6-terra/index.html');
+  assert.ok(
+    !article.includes('aipresshq-og-default.png'),
+    'article pages should use their own cover as og:image, not the site default',
   );
 });
 

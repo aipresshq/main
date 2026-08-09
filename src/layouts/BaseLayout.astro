@@ -23,7 +23,7 @@ export interface Props {
    * after it was built.
    */
   editionDate?: string;
-  /** Absolute or site-relative image URL for social share cards. Falls back to the wordmark. */
+  /** Absolute or site-relative image URL for social share cards. Falls back to the 1200x630 default card. */
   image?: string;
   /** OG type — 'article' for individual stories, 'website' for everything else. */
   type?: 'website' | 'article';
@@ -55,7 +55,11 @@ const sections = [
 
 const site = Astro.site ?? 'https://aipresshq.com';
 const canonicalUrl = new URL(Astro.url.pathname, site).href;
-const ogImageUrl = new URL(image ?? '/brand/aipresshq-logo-light.png', site).href;
+// 1200x630 (1.91:1). The previous fallback was the raw wordmark at 1333x296 —
+// a 4.5:1 strip, outside the 2:1..1:1 range twitter:card="summary_large_image"
+// accepts, and hard-cropped by Facebook/LinkedIn/Slack. Pages that pass their
+// own `image` (articles pass their cover) are unaffected.
+const ogImageUrl = new URL(image ?? '/brand/aipresshq-og-default.png', site).href;
 
 const websiteSchema = {
   '@context': 'https://schema.org',
@@ -154,12 +158,16 @@ const organizationSchema = {
     {description && <meta property="og:description" content={description} />}
     <meta property="og:url" content={canonicalUrl} />
     <meta property="og:image" content={ogImageUrl} />
-    {type === 'article' && publishedTime && (
-      <meta property="article:published_time" content={publishedTime.toISOString()} />
-    )}
-    {type === 'article' && updatedTime && (
-      <meta property="article:modified_time" content={updatedTime.toISOString()} />
-    )}
+    {
+      type === 'article' && publishedTime && (
+        <meta property="article:published_time" content={publishedTime.toISOString()} />
+      )
+    }
+    {
+      type === 'article' && updatedTime && (
+        <meta property="article:modified_time" content={updatedTime.toISOString()} />
+      )
+    }
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
