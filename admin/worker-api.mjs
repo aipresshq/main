@@ -439,11 +439,43 @@ async function adminDocumentHeaders(env) {
 const LOGIN_RETRY_AFTER_SECONDS = 60;
 
 /**
+ * Reduces a client address to the unit worth rate limiting.
+ *
+ * IPv6 collapses to its /64, because that is what a single subscriber is
+ * normally handed: keying on the full address would give one attacker ~18
+ * quintillion fresh buckets, which is no limit at all. IPv4 is kept whole —
+ * a /24 is a real network, often a shared NAT, and collapsing it would punish
+ * everyone behind one.
+ */
+function rateLimitKey(address) {
+  if (!address) return 'unknown';
+  if (!address.includes(':')) return address;
+
+  // Expand the :: elision just far enough to read the first four hextets.
+  const [head, tail = ''] = address.split('::');
+  const headParts = head ? head.split(':') : [];
+  const tailParts = tail ? tail.split(':') : [];
+  const missing = 8 - headParts.length - tailParts.length;
+  const hextets = address.includes('::')
+    ? [...headParts, ...Array(Math.max(missing, 0)).fill('0'), ...tailParts]
+    : headParts;
+
+  const prefix = hextets.slice(0, 4);
+  if (prefix.length < 4) return address;
+  return `${prefix.join(':')}::/64`;
+}
+
+/**
  * Consumes one token from the Worker rate-limit binding for this client.
  *
  * Without this, nothing throttled password guessing against the login route.
- * Keyed on the client address so one attacker cannot lock the real editor out,
- * and checked *before* the password is read so a flood costs no PBKDF2 work.
+ * Checked *before* the password is read, so a flood costs no PBKDF2 work.
+ *
+ * Note that Cloudflare's counter is approximate and enforced per location, not
+ * globally: verified against production, 429s begin well after the nominal
+ * eighth request in a minute rather than exactly on it. So treat this as
+ * something that makes sustained guessing impractical, not as a hard cap — the
+ * salted PBKDF2 hash behind it is what makes a slow trickle useless.
  *
  * Deliberately fails open: `wrangler dev` and the test suite have no binding,
  * and a limiter outage should not be able to take the desk offline. The
@@ -453,9 +485,10 @@ async function loginThrottled(request, env) {
   const limiter = env?.LOGIN_RATE_LIMITER;
   if (!limiter || typeof limiter.limit !== 'function') return false;
 
-  const key = request.headers.get('CF-Connecting-IP') ?? 'unknown';
   try {
-    const { success } = await limiter.limit({ key });
+    const { success } = await limiter.limit({
+      key: rateLimitKey(request.headers.get('CF-Connecting-IP')),
+    });
     return success === false;
   } catch {
     return false;

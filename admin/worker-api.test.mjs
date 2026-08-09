@@ -125,6 +125,73 @@ await run('login attempts are rate limited per client address', async () => {
   assert.equal(response.status, 401);
 });
 
+await run('IPv6 clients are limited by /64 subnet, not by single address', async () => {
+  // A single IPv6 allocation is normally a /64 — 18 quintillion addresses. Keying
+  // on the full address would let one attacker have a fresh bucket per request,
+  // which is no limit at all. Collapsing to the /64 keys the network instead.
+  const limiter = fakeLimiter({ allow: true });
+  const addresses = [
+    '2402:e280:3e1a:96:ec47:69f8:b86f:6ae',
+    '2402:e280:3e1a:96:aaaa:bbbb:cccc:dddd',
+    '2402:e280:3e1a:96::1',
+  ];
+
+  for (const address of addresses) {
+    await handleAdminRequest(
+      loginRequest('whatever', { 'CF-Connecting-IP': address }),
+      { ...env, LOGIN_RATE_LIMITER: limiter },
+      undefined,
+      { adapters },
+    );
+  }
+
+  assert.deepEqual(
+    [...new Set(limiter.keys)],
+    ['2402:e280:3e1a:96::/64'],
+    'every address in one /64 should share a bucket',
+  );
+});
+
+await run('a different IPv6 subnet gets its own bucket', async () => {
+  const limiter = fakeLimiter({ allow: true });
+  for (const address of ['2001:db8:1:1::5', '2001:db8:1:2::5']) {
+    await handleAdminRequest(
+      loginRequest('whatever', { 'CF-Connecting-IP': address }),
+      { ...env, LOGIN_RATE_LIMITER: limiter },
+      undefined,
+      { adapters },
+    );
+  }
+  assert.equal(new Set(limiter.keys).size, 2, 'distinct /64s must not share a bucket');
+});
+
+await run('IPv4 addresses are keyed in full', async () => {
+  // A /24 of IPv4 is a real network boundary, not a single subscriber, so
+  // collapsing IPv4 the way IPv6 is collapsed would punish shared NATs.
+  const limiter = fakeLimiter({ allow: true });
+  for (const address of ['198.51.100.10', '198.51.100.11']) {
+    await handleAdminRequest(
+      loginRequest('whatever', { 'CF-Connecting-IP': address }),
+      { ...env, LOGIN_RATE_LIMITER: limiter },
+      undefined,
+      { adapters },
+    );
+  }
+  assert.deepEqual(limiter.keys, ['198.51.100.10', '198.51.100.11']);
+});
+
+await run('a malformed client address still consumes a bucket', async () => {
+  const limiter = fakeLimiter({ allow: true });
+  await handleAdminRequest(
+    loginRequest('whatever', { 'CF-Connecting-IP': 'not-an-address' }),
+    { ...env, LOGIN_RATE_LIMITER: limiter },
+    undefined,
+    { adapters },
+  );
+  assert.equal(limiter.calls, 1);
+  assert.equal(limiter.keys[0].length > 0, true, 'a junk address must not become an empty key');
+});
+
 await run('a throttled login is refused before the password is checked', async () => {
   const limiter = fakeLimiter({ allow: false });
   let verifications = 0;
