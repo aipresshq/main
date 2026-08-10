@@ -1528,8 +1528,13 @@ check('category pages separate featured stories from latest updates', () => {
       feed.includes('class="category-feed-toolbar"'),
       `${path} is missing the latest-updates toolbar`,
     );
+    // Bounded by the rail rather than by </main>: the feed used to be its own
+    // <main>, which made two landmarks per document once BaseLayout gained a
+    // real one, so it is a <div> now and </main> no longer marks the feed's end.
+    const feedOnly = feed.slice(0, feed.indexOf('class="category-rail"'));
+    assert.ok(feedOnly.length > 0, `${path} is missing the category rail boundary`);
     assert.ok(
-      !feed.slice(0, feed.indexOf('</main>')).includes(lead[1]),
+      !feedOnly.includes(lead[1]),
       `${path} should not repeat its featured lead in the latest feed`,
     );
   }
@@ -2440,6 +2445,15 @@ check('every page exposes a main landmark and leads its outline with the H1', ()
     const headings = [...html.matchAll(/<(h[1-6])\b[^>]*>/g)].map((m) => m[1]);
     assert.equal(headings[0], 'h1', `${path}: first heading is <${headings[0]}>, expected <h1>`);
     assert.equal(html.match(/<h1\b/g)?.length, 1, `${path}: expected exactly one h1`);
+
+    // Exactly one. The archive feed and the author profile were each their own
+    // <main>, which produced two landmarks per document the moment BaseLayout
+    // gained a real one — worse for a screen reader than having none at all.
+    assert.equal(
+      html.match(/<main\b/g)?.length,
+      1,
+      `${path}: expected exactly one <main> landmark`,
+    );
   }
 
   // The menu labels must still be present and styled — demoting them must not

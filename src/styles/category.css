@@ -584,3 +584,26 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+
+/* The format filter runs over the stories on this page only, which since
+   archives paginated is a subset of the archive. When a filter matches more
+   stories than this page holds, say so and link to the route that has them all,
+   rather than letting the count imply the archive is smaller than it is. */
+.category-feed-scope {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin: 18px 0 0;
+  padding: 12px 14px;
+  border-left: 2px solid var(--text);
+  background: var(--surface);
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.category-feed-scope a {
+  color: var(--text);
+  font-weight: 600;
+  white-space: nowrap;
+}

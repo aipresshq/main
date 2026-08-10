@@ -4,19 +4,32 @@ import { formatPostDate } from '../lib/date';
 import { formatLabel } from '../lib/formats';
 import { readMinutes } from '../lib/read-time';
 import CoverImage from './CoverImage.astro';
+import { buildFormatFacets } from '../lib/facets';
 
 export interface Props {
   title: string;
   description: string;
   posts: CollectionEntry<'posts'>[];
   emptyNote: string;
+  /**
+   * Every post in the archive, not just this page's. Used so the format filter
+   * offers the same choices on every page and can say how many matches lie
+   * beyond the one you are looking at. Defaults to `posts` for the unpaginated
+   * callers (the homepage sections).
+   */
+  archivePosts?: CollectionEntry<'posts'>[];
+  /**
+   * False on page two and beyond. A continuation page is not a new front page,
+   * so it must not promote its first story to lead treatment.
+   */
+  showLead?: boolean;
 }
 
-const { title, description, posts, emptyNote } = Astro.props;
+const { title, description, posts, emptyNote, archivePosts = posts, showLead = true } = Astro.props;
 const categoryId = `category-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
-const featuredPost = posts.find((post) => post.data.featured) ?? posts[0];
-const latestPosts = posts.filter((post) => post.id !== featuredPost?.id);
-const formatOptions = [...new Set(latestPosts.map((post) => post.data.format))];
+const featuredPost = showLead ? (posts.find((post) => post.data.featured) ?? posts[0]) : undefined;
+const latestPosts = featuredPost ? posts.filter((post) => post.id !== featuredPost.id) : posts;
+const formatFacets = buildFormatFacets(archivePosts, latestPosts);
 const latestDate = posts[0] ? formatPostDate(posts[0].data.pubDate) : '';
 const initialVisible = 6;
 ---
@@ -85,7 +98,7 @@ const initialVisible = 6;
       )}
 
       <div class="category-layout">
-        <main class="category-feed">
+        <div class="category-feed">
           <div class="category-feed-toolbar">
             <div class="category-feed-heading">
               <span class="label">Latest updates</span>
@@ -98,8 +111,10 @@ const initialVisible = 6;
                 <span>Format</span>
                 <select data-category-format aria-label="Filter by story format">
                   <option value="all">All formats</option>
-                  {formatOptions.map((format) => (
-                    <option value={format}>{formatLabel(format)}</option>
+                  {formatFacets.map((facet) => (
+                    <option value={facet.key} data-facet-total={facet.total}>
+                      {facet.label} ({facet.total})
+                    </option>
                   ))}
                 </select>
               </label>
@@ -157,12 +172,18 @@ const initialVisible = 6;
               published.
             </p>
           )}
+          <p class="category-feed-scope" data-category-scope hidden>
+            <span data-category-scope-text />{' '}
+            <a data-category-scope-link href="/latest/">
+              See all
+            </a>
+          </p>
           {latestPosts.length > 0 && (
             <p class="category-feed-empty" data-category-filter-empty hidden>
               No stories match this filter. Try another format or show all formats.
             </p>
           )}
-        </main>
+        </div>
 
         <aside class="category-rail" aria-label={`${title} editorial rail`}>
           <section class="category-signal">
@@ -224,11 +245,46 @@ const initialVisible = 6;
     const filterEmpty = categoryFront.querySelector<HTMLElement>('[data-category-filter-empty]');
     const loadMore = categoryFront.querySelector<HTMLButtonElement>('[data-category-load-more]');
     const storyList = categoryFront.querySelector<HTMLElement>('[data-category-list]');
+    const scope = categoryFront.querySelector<HTMLElement>('[data-category-scope]');
+    const scopeText = categoryFront.querySelector<HTMLElement>('[data-category-scope-text]');
+    const scopeLink = categoryFront.querySelector<HTMLAnchorElement>('[data-category-scope-link]');
     const initialVisible = Number(categoryFront.dataset.categoryVisible ?? 6);
     const stories = storyList
       ? [...storyList.querySelectorAll<HTMLElement>('.category-story')]
       : [];
     let expanded = false;
+
+    /**
+     * Keeps the chosen format in the URL.
+     *
+     * This filter only ever sees the stories in the DOM, which since archives
+     * paginated is one page of them. Putting the choice in the query string means
+     * a narrowed view can be shared and restored; `updateScopeNote` covers the
+     * other half by admitting when matches exist beyond this page.
+     */
+    const syncUrl = (format: string) => {
+      const url = new URL(window.location.href);
+      if (format === 'all') url.searchParams.delete('format');
+      else url.searchParams.set('format', format);
+      window.history.replaceState({}, '', url);
+    };
+
+    const updateScopeNote = (format: string, visibleMatches: number) => {
+      if (!scope || !scopeText || !scopeLink) return;
+      const option = formatFilter?.selectedOptions[0];
+      const total = Number(option?.dataset.facetTotal ?? 0);
+
+      // Only worth saying when the archive holds more than this page can show.
+      if (format === 'all' || !total || total <= visibleMatches) {
+        scope.hidden = true;
+        return;
+      }
+      const label = option?.textContent?.replace(/\s*\(\d+\)\s*$/, '').trim() ?? format;
+      scopeText.textContent = `Showing ${visibleMatches} of ${total} ${label} stories on this page.`;
+      scopeLink.href = `/format/${format}/`;
+      scopeLink.textContent = `See all ${total}`;
+      scope.hidden = false;
+    };
 
     const updateFilters = () => {
       const selectedFormat = formatFilter?.value ?? 'all';
@@ -253,10 +309,18 @@ const initialVisible = 6;
         'category-front--headlines-only',
         categoryToggle?.checked ?? false,
       );
+      updateScopeNote(selectedFormat, matchingStories.length);
     };
+
+    // Restore a shared or bookmarked filter before the first paint of the list.
+    const requested = new URL(window.location.href).searchParams.get('format');
+    if (requested && formatFilter?.querySelector(`option[value="${CSS.escape(requested)}"]`)) {
+      formatFilter.value = requested;
+    }
 
     formatFilter?.addEventListener('change', () => {
       expanded = false;
+      syncUrl(formatFilter.value);
       updateFilters();
     });
     categoryToggle?.addEventListener('change', updateFilters);

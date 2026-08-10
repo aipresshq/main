@@ -19,13 +19,13 @@ export const getStaticPaths = (async ({ paginate }) => {
     );
     return paginate(posts, {
       params: { format: definition.key },
-      props: { format: definition.key },
+      props: { format: definition.key, archivePosts: posts },
       pageSize: ARCHIVE_PAGE_SIZE,
     });
   });
 }) satisfies GetStaticPaths;
 
-const { format, page } = Astro.props;
+const { format, page, archivePosts } = Astro.props;
 const definition = getFormatDefinition(format);
 const basePath = `/format/${format}/`;
 const site = Astro.site ?? 'https://aipresshq.com';
@@ -68,6 +68,8 @@ const editionPost = page.data[0];
     title={definition.label}
     description={definition.description}
     posts={page.data}
+    archivePosts={archivePosts}
+    showLead={page.currentPage === 1}
     emptyNote={`No ${definition.label.toLowerCase()} published yet.`}
   />
   <Pagination

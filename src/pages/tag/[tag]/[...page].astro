@@ -24,13 +24,13 @@ export const getStaticPaths = (async ({ paginate }) => {
     const posts = sortPostsNewestFirst(allPosts.filter((p) => p.data.tags.includes(tag)));
     return paginate(posts, {
       params: { tag: slugify(tag) },
-      props: { tag },
+      props: { tag, archivePosts: posts },
       pageSize: ARCHIVE_PAGE_SIZE,
     });
   });
 }) satisfies GetStaticPaths;
 
-const { tag, page } = Astro.props;
+const { tag, page, archivePosts } = Astro.props;
 const basePath = `/tag/${Astro.params.tag}/`;
 const site = Astro.site ?? 'https://aipresshq.com';
 // Schema describes this page's own items, not the whole tag, so page two does
@@ -73,6 +73,8 @@ const editionPost = page.data[0];
     title={tag}
     description={getTopicDescription(tag)}
     posts={page.data}
+    archivePosts={archivePosts}
+    showLead={page.currentPage === 1}
     emptyNote={`No stories tagged ${tag} yet.`}
   />
   <Pagination
