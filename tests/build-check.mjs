@@ -1464,8 +1464,8 @@ check(
 
     for (const group of topicGroups) {
       assert.ok(
-        topicPanel.includes(`<h3>${group.label}</h3>`),
-        `category panel is missing the "${group.label}" group heading`,
+        topicPanel.includes(`class="menu-group-title">${group.label}</p>`),
+        `category panel is missing the "${group.label}" group label`,
       );
       for (const tag of group.topics) {
         assert.ok(
@@ -2412,6 +2412,56 @@ check('Cloudflare production routing protects admin separately from public asset
     `login limit should be small, got ${limiter.simple.limit}`,
   );
   assert.equal(limiter.simple.period, 60);
+});
+
+check('every page exposes a main landmark and leads its outline with the H1', () => {
+  for (const path of [
+    'index.html',
+    'posts/gpt-5-6-terra/index.html',
+    'latest/index.html',
+    'tag/ai/index.html',
+    'authors/tejas-telkar/index.html',
+    'search/index.html',
+  ]) {
+    const html = dist(path);
+
+    // The skip link has to land on a real landmark. It previously targeted a
+    // <div id="main-content">, so screen readers had no main region to jump to.
+    assert.match(html, /<a class="skip-link" href="#main-content"/, `${path}: skip link missing`);
+    assert.match(
+      html,
+      /<main id="main-content"/,
+      `${path}: #main-content must be a <main> landmark, not a div`,
+    );
+
+    // The dropdown menus label their own contents; they are not document
+    // sections. As headings they put six entries ahead of the page H1, so a
+    // reader navigating by heading heard the whole taxonomy before the story.
+    const headings = [...html.matchAll(/<(h[1-6])\b[^>]*>/g)].map((m) => m[1]);
+    assert.equal(headings[0], 'h1', `${path}: first heading is <${headings[0]}>, expected <h1>`);
+    assert.equal(html.match(/<h1\b/g)?.length, 1, `${path}: expected exactly one h1`);
+  }
+
+  // The menu labels must still be present and styled — demoting them must not
+  // have quietly deleted them.
+  const home = dist('index.html');
+  assert.match(home, /class="menu-panel-title">Browse categories</);
+  assert.match(home, /class="menu-panel-title">Browse by format</);
+  assert.match(home, /class="menu-panel-title">Saved for later</);
+  assert.match(home, /class="menu-group-title">Companies</);
+  const styles = sourceStyles();
+  assert.match(styles, /\.menu-panel-title\s*\{/, 'menu label styling lost its selector');
+  assert.match(styles, /\.menu-group-title\s*\{/, 'menu group styling lost its selector');
+});
+
+check('search degrades to browsable links without JavaScript', () => {
+  const html = dist('search/index.html');
+  // Pagefind is JS + WASM only, so with scripting off the page rendered a search
+  // box that silently did nothing.
+  const noscript = html.match(/<noscript>([\s\S]*?)<\/noscript>/);
+  assert.ok(noscript, 'the search page needs a noscript fallback');
+  assert.match(noscript[1], /href="\/latest\//, 'the fallback should offer the full archive');
+  assert.match(noscript[1], /JavaScript/i, 'the fallback should say why search is unavailable');
 });
 
 check('archives paginate without moving any existing URL', () => {

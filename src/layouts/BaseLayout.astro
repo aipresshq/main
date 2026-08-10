@@ -226,14 +226,14 @@ const organizationSchema = {
             </summary>
             <div class="category-menu-panel">
               <div class="category-menu-panel-head">
-                <h2>Browse categories</h2>
+                <p class="menu-panel-title">Browse categories</p>
                 <span class="category-menu-panel-count">{knownTopics.length} categories</span>
               </div>
               <div class="category-menu-groups">
                 {
                   topicGroups.map((group) => (
                     <div class="category-menu-group">
-                      <h3>{group.label}</h3>
+                      <p class="menu-group-title">{group.label}</p>
                       <ul>
                         {group.topics.map((tag) => (
                           <li>
@@ -254,7 +254,7 @@ const organizationSchema = {
               </div>
               <div class="category-menu-formats">
                 <div class="category-menu-panel-head">
-                  <h2>Browse by format</h2>
+                  <p class="menu-panel-title">Browse by format</p>
                   <span class="category-menu-panel-count">{storyFormats.length} formats</span>
                 </div>
                 <div class="category-menu-format-links">
@@ -336,7 +336,7 @@ const organizationSchema = {
             </summary>
             <div class="saved-menu-panel">
               <div class="saved-menu-heading">
-                <h2>Saved for later</h2>
+                <p class="menu-panel-title">Saved for later</p>
                 <span data-saved-summary>0 stories</span>
               </div>
               <div class="saved-list" data-saved-list>
@@ -388,9 +388,9 @@ const organizationSchema = {
         </div>
       </nav>
 
-      <div id="main-content" class="page-main">
+      <main id="main-content" class="page-main">
         <slot />
-      </div>
+      </main>
 
       <Footer />
     </div>

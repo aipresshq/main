@@ -647,7 +647,7 @@ html[data-navigation-ready='true'] .category-menu-panel {
   border-bottom: 1px solid var(--band-ink-muted);
 }
 
-.category-menu-panel h2 {
+.category-menu-panel .menu-panel-title {
   margin: 0;
   font-family: var(--font-display);
   font-size: 1.5rem;
@@ -733,7 +733,7 @@ html[data-navigation-ready='true'] .category-menu-panel {
   transform: translateX(4px);
 }
 
-.category-menu-group h3 {
+.category-menu-group .menu-group-title {
   margin: 0 0 14px;
   font-size: 0.72rem;
   font-weight: 700;
@@ -887,7 +887,7 @@ html[data-navigation-ready='true'] .category-menu-panel {
   border-bottom: 1px solid var(--band-ink-muted);
 }
 
-.saved-menu-heading h2 {
+.saved-menu-heading .menu-panel-title {
   margin: 0;
   font-family: var(--font-display);
   font-size: 1.5rem;
