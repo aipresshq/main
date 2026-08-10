@@ -67,7 +67,26 @@ const posts = defineCollection({
       .optional(),
 
     // Fixed tag taxonomy drives related-story matching at render time.
-    tags: z.array(z.string()).min(1),
+    //
+    // Bounded, and slug-safe: every tag mints a permanent /tag/<slug>/ route, so
+    // a typo at the desk becomes a URL and a one-post taxonomy page. The cap
+    // keeps a story from claiming half the taxonomy. Membership of the canonical
+    // vocabulary is enforced by tests/build-check.mjs rather than here, so adding
+    // a genuinely new topic is a deliberate edit to src/lib/topics.ts instead of a
+    // build failure with no explanation.
+    tags: z
+      .array(
+        z
+          .string()
+          .min(2)
+          .max(40)
+          .refine(
+            (tag) => /^[\p{L}\p{N}][\p{L}\p{N} &.+'-]*$/u.test(tag),
+            'a tag must start alphanumeric and avoid punctuation that breaks its slug',
+          ),
+      )
+      .min(1)
+      .max(6),
 
     // §2/§3: evergreen/tracker content is the traffic backbone, daily
     // digest posts are supporting volume: this flag lets templates and

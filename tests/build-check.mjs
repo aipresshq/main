@@ -2468,6 +2468,51 @@ check('every page exposes a main landmark and leads its outline with the H1', ()
   assert.match(styles, /\.menu-group-title\s*\{/, 'menu group styling lost its selector');
 });
 
+check('every published tag belongs to the canonical taxonomy', () => {
+  // Each tag mints a permanent /tag/<slug>/ route, so an ad-hoc tag becomes a
+  // URL and a one-post taxonomy page nobody chose to create. The schema bounds
+  // the shape and count; this bounds the vocabulary, and fails with instructions
+  // rather than silently accepting whatever the desk typed.
+  const known = new Map(knownTopics.map((topic) => [slugify(topic), topic]));
+  const offenders = [];
+
+  for (const entry of readdirSync(new URL('../dist/posts', import.meta.url), {
+    withFileTypes: true,
+  }).filter((item) => item.isDirectory())) {
+    const html = dist(`posts/${entry.name}/index.html`);
+    const keywords = html.match(/"keywords":\[([^\]]*)\]/);
+    if (!keywords) continue;
+    for (const raw of keywords[1].split(',')) {
+      const tag = raw.trim().replace(/^"|"$/g, '');
+      if (!tag) continue;
+      if (!known.has(slugify(tag))) offenders.push(`${entry.name}: "${tag}"`);
+    }
+  }
+
+  assert.deepEqual(
+    offenders,
+    [],
+    `tags outside the canonical taxonomy. Either fix the tag at the desk or add it\n` +
+      `to topicGroups in src/lib/topics.ts if it is a topic worth its own page:\n  ` +
+      offenders.join('\n  '),
+  );
+});
+
+check('an archive lead is the newest story, not the trending flag', () => {
+  // `featured` decides what appears on /trending/. It also used to pick the lead
+  // of every archive, so an editor could not express one intent without the
+  // other. The lead is derived from recency now.
+  const source = src('src/components/CategoryFront.astro');
+  assert.ok(
+    !/posts\.find\(\(post\) => post\.data\.featured\)/.test(source),
+    'the archive lead must not be chosen by the trending flag',
+  );
+  assert.match(source, /showLead \? posts\[0\] : undefined/);
+
+  // /trending/ must still be the one place the flag decides anything.
+  assert.match(src('src/pages/trending/[...page].astro'), /post\.data\.featured/);
+});
+
 check('the hero declares one grid track per column it actually renders', () => {
   const html = dist('index.html');
   // Picks and Just In are both conditional. A fixed three-track grid left an

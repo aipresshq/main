@@ -27,7 +27,11 @@ export interface Props {
 
 const { title, description, posts, emptyNote, archivePosts = posts, showLead = true } = Astro.props;
 const categoryId = `category-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
-const featuredPost = showLead ? (posts.find((post) => post.data.featured) ?? posts[0]) : undefined;
+// The newest story in this archive, not the `featured` one. That flag's job is
+// deciding what appears on /trending/; using it here too meant an editor could
+// not express one intent without the other, so the flag would eventually get set
+// for the wrong reason. An archive's lead is now derived, and predictable.
+const featuredPost = showLead ? posts[0] : undefined;
 const latestPosts = featuredPost ? posts.filter((post) => post.id !== featuredPost.id) : posts;
 const formatFacets = buildFormatFacets(archivePosts, latestPosts);
 const latestDate = posts[0] ? formatPostDate(posts[0].data.pubDate) : '';

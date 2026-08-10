@@ -76,6 +76,13 @@ const schema = {
   mainEntityOfPage: { '@type': 'WebPage', '@id': postUrl },
   articleSection: formatDefinition.label,
   keywords: tags,
+  // Cheap properties that were simply absent. `url` saves consumers inferring
+  // the canonical from @id, `inLanguage` matters for a publisher that could add
+  // translations, and `isAccessibleForFree` states plainly that nothing here sits
+  // behind a paywall — which is the kind of thing aggregators check for.
+  url: postUrl,
+  inLanguage: 'en',
+  isAccessibleForFree: true,
 };
 
 const breadcrumbSchema = {
