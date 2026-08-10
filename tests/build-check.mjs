@@ -2819,6 +2819,24 @@ check('the public CSP is enforcing and its hashes match the scripts actually shi
   }
   assert.ok(shipped.size > 0, 'expected at least the inline theme script to be found');
 
+  // Styles, not just scripts. style-src is enforcing with no hashes and no
+  // 'unsafe-inline', so a single inline <style> or style attribute is a silently
+  // unstyled component in production. Astro's default inlines any stylesheet
+  // under ~4kB, which is how a new component quietly broke its own styling —
+  // astro.config.mjs sets inlineStylesheets: 'never' to prevent it.
+  assert.match(policy, /style-src 'self'/);
+  for (const page of pages) {
+    const html = readFileSync(page, 'utf-8');
+    const relative = page.replace(/^.*\/dist\//, '');
+    assert.ok(!/<style[^>]*>/.test(html), `${relative} ships an inline <style> the CSP will block`);
+    const attributes = html.match(/\sstyle="[^"]*"/g) ?? [];
+    assert.deepEqual(
+      attributes,
+      [],
+      `${relative} has inline style attributes the CSP will block: ${attributes.slice(0, 2).join(' ')}`,
+    );
+  }
+
   const allowed = new Set([...policy.matchAll(/'sha256-([A-Za-z0-9+/=]+)'/g)].map((m) => m[1]));
 
   for (const hash of shipped) {

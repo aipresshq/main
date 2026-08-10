@@ -30,6 +30,14 @@ try {
 // https://astro.build/config
 export default defineConfig({
   site: 'https://aipresshq.com',
+  build: {
+    // Astro's default ('auto') inlines any stylesheet under ~4kB as a <style>
+    // tag. The CSP is enforcing with style-src 'self', which blocks inline
+    // styles — so a component small enough to be inlined silently lost its
+    // styling in production. Keeping every stylesheet external means style-src
+    // needs no hashes and no 'unsafe-inline'.
+    inlineStylesheets: 'never',
+  },
   integrations: [
     sitemap({
       filter: (page) => {
