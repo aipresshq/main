@@ -7,9 +7,24 @@
 
 .hero {
   display: grid;
-  grid-template-columns: minmax(220px, 0.85fr) minmax(0, 1.3fr) minmax(260px, 0.9fr);
   gap: 40px;
   align-items: start;
+}
+
+/* One track per column that actually renders. Picks and Just In are both
+   conditional, so a fixed three-track grid left an empty column on the page and
+   pushed the lead story into the narrow track meant for picks — the most
+   important headline on the site got the least room. */
+.hero--columns-3 {
+  grid-template-columns: minmax(220px, 0.85fr) minmax(0, 1.3fr) minmax(260px, 0.9fr);
+}
+
+.hero--columns-2 {
+  grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.85fr);
+}
+
+.hero--columns-1 {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .hero-column-head {
@@ -536,7 +551,9 @@ a.byline:focus-visible {
 
 .latest-story-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* auto-fit, not a fixed three: with two stories published a fixed grid left a
+     third of the row empty, which reads as a failed load rather than a design. */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
   gap: 40px 24px;
 }
 
@@ -655,9 +672,14 @@ a.byline:focus-visible {
   color: var(--band-ink);
 }
 
+/* The two rail panels sit in the same stack at the same level of importance, but
+   one was a bordered box and the other was flat, which implied a hierarchy that
+   does not exist. Both are flat now, separated by the same hairline rule the rest
+   of the site uses to divide sections — a box would be the only rounded-off
+   container in an otherwise ruled, zero-radius layout. */
+.latest-focus-card,
 .latest-edition-card {
-  border: 1px solid var(--border);
-  background: var(--surface-raised);
+  border-top: 1px solid var(--border);
 }
 
 .latest-edition-card > .label {

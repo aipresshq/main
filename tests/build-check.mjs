@@ -913,8 +913,8 @@ check('post listings resolve author references into display names', () => {
 
   const home = dist('index.html');
   const hero = home.slice(
-    home.indexOf('class="hero"'),
-    home.indexOf('</section>', home.indexOf('class="hero"')),
+    home.indexOf('class="hero hero--columns'),
+    home.indexOf('</section>', home.indexOf('class="hero hero--columns')),
   );
   assert.ok(hero.includes('By Tejas Telkar'), 'hero byline should use the author profile name');
   assert.ok(!home.includes('class="newsroom-section'), 'empty newsroom section should be hidden');
@@ -1617,8 +1617,8 @@ check('homepage hero surfaces the current lead story', () => {
   const html = dist('index.html');
   assert.ok(linksTo(html, primaryPostId), 'current story is missing from the homepage');
   const hero = html.slice(
-    html.indexOf('class="hero"'),
-    html.indexOf('</section>', html.indexOf('class="hero"')),
+    html.indexOf('class="hero hero--columns'),
+    html.indexOf('</section>', html.indexOf('class="hero hero--columns')),
   );
   assert.ok(hero.includes('class="hero-lead"'), 'lead story is not rendered');
   assert.ok(!hero.includes('class="hero-picks"'), "empty Editor's Pick rail should be hidden");
@@ -1660,7 +1660,7 @@ check('homepage renders only editorial layouts with available stories', () => {
     !html.includes('class="split-lead"'),
     'removed Explainers & comparisons layout returned',
   );
-  assert.ok(html.includes('class="hero"'), 'homepage hero is missing');
+  assert.match(html, /class="hero hero--columns-[123]"/, 'homepage hero is missing');
   assert.ok(html.includes('class="topic-directory"'), 'topic directory should remain available');
   assert.ok(!html.includes('class="band-lead"'), 'empty tracker band should be hidden');
   assert.ok(!html.includes('class="headline-item"'), 'empty closing grid should be hidden');
@@ -1668,7 +1668,7 @@ check('homepage renders only editorial layouts with available stories', () => {
 
 check('homepage hides low-density modules without duplicating stories', () => {
   const html = dist('index.html');
-  assert.ok(html.includes('class="hero"'), 'homepage hero should remain visible');
+  assert.match(html, /class="hero hero--columns-[123]"/, 'homepage hero should remain visible');
   assert.ok(!html.includes('class="desk-index"'), 'low-density desk index should be hidden');
   assert.ok(!html.includes('class="desk-showcase"'), 'low-density showcase should be hidden');
   assert.ok(!html.includes('class="briefing-board"'), 'low-density briefing should be hidden');
@@ -2466,6 +2466,74 @@ check('every page exposes a main landmark and leads its outline with the H1', ()
   const styles = sourceStyles();
   assert.match(styles, /\.menu-panel-title\s*\{/, 'menu label styling lost its selector');
   assert.match(styles, /\.menu-group-title\s*\{/, 'menu group styling lost its selector');
+});
+
+check('the hero declares one grid track per column it actually renders', () => {
+  const html = dist('index.html');
+  // Picks and Just In are both conditional. A fixed three-track grid left an
+  // empty column on the page and pushed the lead into the narrow track meant for
+  // picks, so the lead headline rendered at 361px of 1376px available.
+  const columns = html.match(/class="hero hero--columns-(\d)"/);
+  assert.ok(columns, 'the hero must declare how many columns it renders');
+
+  const hero = html.slice(html.indexOf('class="hero hero--columns'));
+  const heroEnd = hero.indexOf('</section>');
+  const rendered =
+    1 +
+    (hero.slice(0, heroEnd).includes('class="hero-picks"') ? 1 : 0) +
+    (hero.slice(0, heroEnd).includes('class="hero-just-in"') ? 1 : 0);
+  assert.equal(
+    Number(columns[1]),
+    rendered,
+    'the hero column count must match the columns actually present',
+  );
+
+  const styles = sourceStyles();
+  for (const count of [1, 2, 3]) {
+    assert.match(
+      styles,
+      new RegExp(`\\.hero--columns-${count}\\s*\\{[^}]*grid-template-columns`),
+      `no track definition for a ${count}-column hero`,
+    );
+  }
+});
+
+check('no two components fight over the same class name', () => {
+  // .latest-story-meta was declared in both home.css and article.css for two
+  // different components. article.css is imported later, so its display:block
+  // silently flattened the homepage card's flex row, collapsing the gap between
+  // a story's tag and its date into "AI3 August 2026".
+  const files = ['home.css', 'category.css', 'article.css', 'archive.css', 'shell.css'];
+  const owners = new Map();
+  for (const file of files) {
+    const css = src(`src/styles/${file}`).replace(/\/\*[\s\S]*?\*\//g, '');
+    // Top-level single-class selectors only — those are the ones that collide
+    // without any scoping to disambiguate them.
+    for (const [, cls] of css.matchAll(/^\.([a-z][a-z0-9-]*)\s*\{/gm)) {
+      if (!owners.has(cls)) owners.set(cls, new Set());
+      owners.get(cls).add(file);
+    }
+  }
+  const collisions = [...owners.entries()]
+    .filter(([, where]) => where.size > 1)
+    .map(([cls, where]) => `.${cls} in ${[...where].join(' + ')}`);
+  assert.deepEqual(
+    collisions,
+    [],
+    `unscoped class declared in more than one stylesheet:\n  ${collisions.join('\n  ')}`,
+  );
+});
+
+check('arrow affordances use one glyph, not a typed approximation', () => {
+  // The site sets Source Serif display type over hairline rules and then rendered
+  // "->" as two literal characters in 36 places, at a different optical weight
+  // from the real arrow "Just In" already used.
+  for (const path of ['index.html', 'latest/index.html', 'posts/gpt-5-6-terra/index.html']) {
+    const html = dist(path);
+    assert.ok(!html.includes('-&gt;'), `${path} still renders an ASCII arrow`);
+    assert.ok(!/>\s*->\s*</.test(html), `${path} still renders an ASCII arrow`);
+  }
+  assert.ok(dist('index.html').includes('→'), 'the real arrow glyph should be in use');
 });
 
 check('search degrades to browsable links without JavaScript', () => {

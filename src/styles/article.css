@@ -267,7 +267,11 @@
 }
 
 .prose p {
-  max-width: 68ch;
+  /* 60ch, not 68ch. The `ch` unit is the advance width of "0", which in Source
+     Serif is far wider than the average lowercase glyph — 68ch measured 82 real
+     characters per line, above the comfortable 60-75 range. Counted with Range
+     rects on rendered lines, not estimated from font-size. */
+  max-width: 60ch;
   margin: 0 0 26px;
 }
 
@@ -623,7 +627,11 @@
   line-clamp: 2;
 }
 
-.latest-story-meta {
+/* Scoped to the article sidebar. This shares a class name with the homepage's
+   .latest-story-meta in home.css, and because article.css is imported later it
+   was overriding that component's flex row with display: block — collapsing the
+   gap between a card's tag and its date into "AI3 August 2026". */
+.sidebar-latest .latest-story-meta {
   display: block;
   margin-top: 7px;
   overflow: hidden;
@@ -1024,4 +1032,20 @@
 .article-page-link:focus-visible strong {
   text-decoration: underline;
   text-underline-offset: 4px;
+}
+
+/* --------------------------------------------------------------------------
+   Dark-mode cover plates. Editorial artwork is often near-white (a product
+   screenshot, a wordmark on paper), and against #0a0a0a that renders as a
+   glaring rectangle. A hairline frame reads the image as a mounted plate
+   without touching the artwork itself — no filters, no brightness changes,
+   nothing that would misrepresent what the image shows.
+   -------------------------------------------------------------------------- */
+
+html[data-theme='dark'] .cover-image,
+html[data-theme='dark'] .article-figure img,
+html[data-theme='dark'] .latest-story-card img,
+html[data-theme='dark'] .category-story img,
+html[data-theme='dark'] .headline-item img {
+  box-shadow: inset 0 0 0 1px var(--border);
 }

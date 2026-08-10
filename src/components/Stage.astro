@@ -34,7 +34,16 @@ const picksWithAuthors = await Promise.all(editorPicks.map(withAuthor));
 
 {
   leadWithAuthor ? (
-    <section class="hero" aria-label="Top stories">
+    <section
+      class:list={[
+        'hero',
+        // The grid declares one track per optional column. Without this the lead
+        // dropped into the narrow track reserved for picks and the unused track
+        // stayed on the page as empty space.
+        `hero--columns-${1 + (picksWithAuthors.length > 0 ? 1 : 0) + (justIn.length > 0 ? 1 : 0)}`,
+      ]}
+      aria-label="Top stories"
+    >
       {picksWithAuthors.length > 0 && (
         <div class="hero-picks">
           <div class="hero-column-head">

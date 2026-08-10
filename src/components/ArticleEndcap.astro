@@ -19,9 +19,7 @@ const { author, previousPost, nextPost } = Astro.props;
         <h2 id="article-endcap-heading">{author.data.name}</h2>
         <span class="article-endcap-author-role">{author.data.role}</span>
         <p>{author.data.bio}</p>
-        <span class="article-endcap-more"
-          >View author page <span aria-hidden="true">-&gt;</span></span
-        >
+        <span class="article-endcap-more">View author page <span aria-hidden="true">→</span></span>
       </span>
     </a>
   </div>
@@ -33,14 +31,14 @@ const { author, previousPost, nextPost } = Astro.props;
           <a class="article-page-link" href={`/posts/${previousPost.id}/`}>
             <span class="label">Previous story</span>
             <strong>{previousPost.data.title}</strong>
-            <span aria-hidden="true">-&gt;</span>
+            <span aria-hidden="true">→</span>
           </a>
         )}
         {nextPost && (
           <a class="article-page-link" href={`/posts/${nextPost.id}/`}>
             <span class="label">Next story</span>
             <strong>{nextPost.data.title}</strong>
-            <span aria-hidden="true">-&gt;</span>
+            <span aria-hidden="true">→</span>
           </a>
         )}
       </nav>
