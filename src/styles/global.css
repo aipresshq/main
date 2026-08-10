@@ -8,6 +8,7 @@
 @import './responsive.css';
 @import './polish.css';
 @import './motion.css';
+@import './print.css';
 
 /* Hover states use color, weight, and active rails instead of link underlines. */
 html body a:hover,

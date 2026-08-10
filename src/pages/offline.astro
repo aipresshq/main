@@ -1,0 +1,73 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+// Served by the service worker when a navigation fails and nothing for that URL
+// is in the cache. Noindexed: it is a fallback state, not a page anyone should
+// find in search results.
+---
+
+<BaseLayout
+  title="Offline | aiPressHQ"
+  description="You appear to be offline. Stories you have already opened are still available."
+  noindex={true}
+>
+  <section class="offline-page">
+    <span class="label">aiPressHQ / offline</span>
+    <h1>No connection.</h1>
+    <p>
+      This page has not been read on this device yet, so there is no saved copy to show you. Stories
+      you have already opened are still available offline.
+    </p>
+    <p class="offline-actions">
+      <a href="/">Front page</a>
+      <a href="/latest/">Latest stories</a>
+      <a href="/saved/">Saved stories</a>
+    </p>
+    <p class="offline-note">
+      Saved stories are kept in this browser, so they do not need a connection.
+    </p>
+  </section>
+</BaseLayout>
+
+<style>
+  .offline-page {
+    max-width: 46ch;
+    margin: 96px 0 120px;
+    display: grid;
+    gap: 18px;
+  }
+
+  .offline-page h1 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(2.2rem, 6vw, 3.2rem);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+  }
+
+  .offline-page p {
+    margin: 0;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  .offline-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 24px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+  }
+
+  .offline-actions a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .offline-note {
+    font-size: 0.85rem;
+  }
+</style>

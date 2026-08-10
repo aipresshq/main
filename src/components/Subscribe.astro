@@ -1,0 +1,102 @@
+---
+/**
+ * End-of-story subscription prompt.
+ *
+ * Every reader arriving from search previously left with no way back, which for a
+ * publication whose value compounds across a topic cluster is the difference
+ * between traffic and readership.
+ *
+ * A link, not an embedded form: an iframe or third-party script would mean adding
+ * hosts to the CSP and shipping someone else's JavaScript on every article, to
+ * collect a field the destination already collects. It renders only when
+ * PUBLIC_SUBSTACK_URL is configured, so an unconfigured build shows nothing
+ * rather than a dead promo — which is what the site was carrying before.
+ */
+const subscribeUrl = import.meta.env.PUBLIC_SUBSTACK_URL;
+---
+
+{
+  subscribeUrl && (
+    <aside class="subscribe" aria-labelledby="subscribe-heading">
+      <div class="subscribe-copy">
+        <span class="label">Keep reading aiPressHQ</span>
+        <h2 id="subscribe-heading">One email when a story is worth your time.</h2>
+        <p>
+          New explainers, comparisons and tracker updates, sent as they publish. No daily digest of
+          everything, and no summaries of announcements you have already read.
+        </p>
+      </div>
+      <a class="subscribe-action" href={subscribeUrl} rel="noopener">
+        Subscribe <span aria-hidden="true">→</span>
+      </a>
+    </aside>
+  )
+}
+
+<style>
+  .subscribe {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 28px 40px;
+    margin: 56px 0 0;
+    padding: 32px 0 0;
+    border-top: 2px solid var(--text);
+  }
+
+  .subscribe-copy {
+    display: grid;
+    gap: 10px;
+    max-width: 52ch;
+  }
+
+  .subscribe h2 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    font-weight: 500;
+    line-height: 1.12;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+
+  .subscribe p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.55;
+  }
+
+  .subscribe-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 48px;
+    padding: 0 26px;
+    background: var(--text);
+    color: var(--bg);
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .subscribe-action:hover,
+  .subscribe-action:focus-visible {
+    background: var(--mark);
+  }
+
+  @media (max-width: 720px) {
+    .subscribe {
+      grid-template-columns: minmax(0, 1fr);
+      align-items: start;
+    }
+
+    .subscribe-action {
+      justify-content: center;
+      width: 100%;
+    }
+  }
+</style>

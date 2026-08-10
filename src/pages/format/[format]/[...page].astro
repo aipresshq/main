@@ -51,6 +51,7 @@ const editionPost = page.data[0];
   activeFormat={format}
   editionDate={editionPost && formatEditionDate(editionPost.data.pubDate)}
   noindex={page.data.length === 0}
+  feed={{ href: `${basePath}rss.xml`, title: `aiPressHQ — ${definition.label}` }}
 >
   {
     schemas && (

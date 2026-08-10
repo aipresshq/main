@@ -1,0 +1,151 @@
+/* --------------------------------------------------------------------------
+   Print and PDF.
+
+   Tutorials and comparison tables get printed and saved, and without any print
+   rules the output carried the masthead, the search box, both dropdown panels,
+   the sidebar and the whole footer rail — several wasted pages before the story
+   even started. This strips the page to the story and its sources, forces the
+   ink-on-paper palette regardless of the reader's theme, and expands link
+   destinations so a printed copy stays checkable, which is the entire editorial
+   premise of the site.
+   -------------------------------------------------------------------------- */
+
+@media print {
+  /* The dark theme would otherwise flood the page with toner and render light
+     text invisible. Print is always ink on paper. */
+  :root,
+  html[data-theme='dark'] {
+    --bg: #ffffff;
+    --surface: #ffffff;
+    --surface-strong: #ffffff;
+    --surface-raised: #ffffff;
+    --card-bg: #ffffff;
+    --card-bg-hover: #ffffff;
+    --band-bg: #ffffff;
+    --band-ink: #000000;
+    --band-ink-muted: #444444;
+    --panel-bg: #ffffff;
+    --text: #000000;
+    --text-muted: #333333;
+    --mark: #000000;
+    --border: #999999;
+    --shadow-raised: none;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  @page {
+    margin: 18mm 16mm;
+  }
+
+  /* Navigation, controls and cross-promotion are all noise on paper. */
+  .site-header,
+  .primary-bar,
+  .reading-progress,
+  .skip-link,
+  .search-box,
+  .category-menu,
+  .saved-menu,
+  .theme-toggle,
+  .article-sidebar,
+  .article-toc,
+  .article-share,
+  .article-save,
+  .pagination,
+  .category-feed-filters,
+  .category-load-more,
+  .suggested-reads,
+  .continuous-reader,
+  .article-endcap,
+  .related-news,
+  .latest-section-rail,
+  .site-footer,
+  footer {
+    display: none !important;
+  }
+
+  .frame {
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Body copy set for paper rather than for a screen's viewing distance. */
+  .prose p,
+  .prose li {
+    max-width: none;
+    font-size: 11pt;
+    line-height: 1.45;
+    orphans: 3;
+    widows: 3;
+  }
+
+  .article-title {
+    font-size: 22pt;
+    line-height: 1.1;
+  }
+
+  .prose h2,
+  .prose h3 {
+    /* Never leave a heading stranded at the foot of a page. */
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  .prose figure,
+  .prose img,
+  .facts-table,
+  .prose table,
+  .prose pre {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    max-width: 100%;
+  }
+
+  /* A facts table is the point of a comparison piece; it has to survive the
+     page break with its header row intact. */
+  .prose table {
+    border-collapse: collapse;
+    font-size: 9.5pt;
+  }
+
+  .prose thead {
+    display: table-header-group;
+  }
+
+  .prose tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .prose th,
+  .prose td {
+    border: 1px solid #999999;
+    padding: 4pt 6pt;
+  }
+
+  /* The whole premise is "follow the source", so a printed copy has to carry the
+     destinations. Internal links are already in the reader's hand; external ones
+     are not. */
+  .prose a[href^='http']::after {
+    content: ' (' attr(href) ')';
+    font-size: 8.5pt;
+    word-break: break-all;
+  }
+
+  .prose a {
+    text-decoration: underline;
+  }
+
+  /* Stamp the canonical URL so a printed page can be traced back. */
+  .article-header::after {
+    content: 'aiPressHQ · aipresshq.com';
+    display: block;
+    margin-top: 6pt;
+    font-size: 8.5pt;
+    color: #333333;
+  }
+}

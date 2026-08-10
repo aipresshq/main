@@ -7,6 +7,7 @@ import ArticleToc from '../../components/ArticleToc.astro';
 import ArticleEndcap from '../../components/ArticleEndcap.astro';
 import ContinuousReader from '../../components/ContinuousReader.astro';
 import SuggestedReads from '../../components/SuggestedReads.astro';
+import Subscribe from '../../components/Subscribe.astro';
 import { formatEditionDate } from '../../lib/date';
 import { getNextOlderPost, getPreviousNewerPost, sortPostsNewestFirst } from '../../lib/post-order';
 import { getSuggestedPosts } from '../../lib/recommendations';
@@ -123,4 +124,5 @@ const breadcrumbSchema = {
 
   <ArticleEndcap author={author} previousPost={previousPost} nextPost={nextPost} />
   <SuggestedReads posts={suggested} articleId={post.id} />
+  <Subscribe />
 </BaseLayout>

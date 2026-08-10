@@ -1203,21 +1203,51 @@ check('the approved aiPressHQ logo and favicon assets are wired across the shell
     /html\[data-theme=['"]dark['"]\] \.footer-wordmark \.brand-logo-light\s*\{[\s\S]*?display:\s*block/,
   );
   assert.equal(manifest.name, 'aiPressHQ');
+
+  // The manifest declares `display: standalone`, so it has to actually be
+  // installable. Android needs both 192 and 512, and without a maskable variant
+  // the launcher's shape mask clips the wordmark. Previously it shipped two
+  // 512px icons both marked purpose "any" — a duplicate, and neither usable as a
+  // mask.
+  const byPurpose = (purpose) =>
+    manifest.icons.filter((icon) => (icon.purpose ?? 'any').split(' ').includes(purpose));
+
   assert.deepEqual(
-    manifest.icons.map(({ src, sizes, type }) => ({ src, sizes, type })),
-    [
-      {
-        src: '/brand/aipresshq-favicon-light.png',
-        sizes: '512x512',
-        type: 'image/png',
-      },
-      {
-        src: '/brand/aipresshq-favicon-dark.png',
-        sizes: '512x512',
-        type: 'image/png',
-      },
-    ],
+    byPurpose('any')
+      .map((icon) => icon.sizes)
+      .sort(),
+    ['192x192', '512x512'],
+    'an installable manifest needs a 192px and a 512px icon',
   );
+  assert.equal(byPurpose('maskable').length, 1, 'exactly one maskable icon is expected');
+  assert.equal(byPurpose('maskable')[0].sizes, '512x512');
+
+  for (const icon of manifest.icons) {
+    assert.ok(distExists(icon.src.replace(/^\//, '')), `manifest icon is missing: ${icon.src}`);
+    const png = distBuffer(icon.src.replace(/^\//, ''));
+    const [width, height] = icon.sizes.split('x').map(Number);
+    assert.equal(png.readUInt32BE(16), width, `${icon.src} is not ${icon.sizes}`);
+    assert.equal(png.readUInt32BE(20), height, `${icon.src} is not ${icon.sizes}`);
+    // A launcher mask cuts to its own shape, so a maskable icon with transparent
+    // corners shows the page through them.
+    if ((icon.purpose ?? '').includes('maskable')) {
+      assert.equal(png[25], 2, `${icon.src} must be opaque RGB, not RGBA`);
+    }
+  }
+
+  // `display: standalone` without a service worker promises an app that cannot
+  // be installed as one.
+  assert.equal(manifest.display, 'standalone');
+  assert.ok(distExists('sw.js'), 'a standalone manifest needs a service worker');
+  const sw = dist('sw.js');
+  // A worker must never store the authenticated desk, and must never let a
+  // cached copy of a story stand in for a fresh one unless the network failed.
+  assert.match(sw, /\/admin/, 'the service worker must exclude /admin');
+  assert.match(sw, /request\.mode === 'navigate'/);
+  assert.match(sw, /handleDocument/);
+  assert.ok(distExists('offline/index.html'), 'the offline fallback page is missing');
+  assert.match(dist('offline/index.html'), /name="robots" content="noindex/);
+  assert.match(src('src/scripts/offline.ts'), /serviceWorker\.register/);
 });
 
 check('the default social preview image is sized for the cards that consume it', () => {
@@ -2277,23 +2307,42 @@ check('footer link rail fills the editorial intro without leaving empty rows', (
   assert.match(css, /\.footer-cta-links\s*\{[\s\S]*?grid-template-rows:\s*none/);
 });
 
-check('inactive subscription and event promos are absent from the public site', () => {
+check('subscription messaging is real and configured, never inherited template copy', () => {
   const htmlFiles = readdirSync(new URL('../dist/', import.meta.url), { recursive: true }).filter(
     (file) => typeof file === 'string' && file.endsWith('.html'),
   );
   const publicHtml = htmlFiles
     .map((file) => readFileSync(new URL(file, new URL('../dist/', import.meta.url)), 'utf-8'))
     .join('\n');
+  // The original rule banned the word "newsletter" outright, because what the
+  // site carried was dead template copy promoting a channel that did not exist.
+  // The ban on that copy stands; the ban on the concept does not, now that there
+  // is a configured destination behind it.
   assert.ok(
-    !/Join the edition|Join our community|Subscribe free|daily briefing|newsletter|substack/i.test(
-      publicHtml,
-    ),
+    !/Join the edition|Join our community|Subscribe free|daily briefing/i.test(publicHtml),
     'inactive subscription messaging leaked into built HTML',
   );
   assert.ok(
     !/AI &amp; Big Data Expo|register here|October 13\s*[–-]\s*15/i.test(publicHtml),
     'event promotion leaked into built HTML',
   );
+
+  // Any subscribe affordance must point somewhere real. A promo with a dead or
+  // placeholder href is exactly what this check exists to prevent.
+  const article = dist('posts/gpt-5-6-terra/index.html');
+  const subscribeLinks = [...article.matchAll(/<a class="subscribe-action" href="([^"]*)"/g)].map(
+    (match) => match[1],
+  );
+  for (const href of subscribeLinks) {
+    assert.match(href, /^https:\/\//, `subscribe link is not a real URL: ${href}`);
+    assert.ok(!/example\.com|#$|^$/.test(href), `subscribe link is a placeholder: ${href}`);
+  }
+  // Rendered only when configured, so absence is valid — but if it renders, it
+  // must carry real copy rather than a bare button.
+  if (subscribeLinks.length > 0) {
+    assert.match(article, /class="subscribe"/);
+    assert.match(article, /One email when a story is worth your time/);
+  }
 });
 
 check('Pagefind index is generated and the custom search box is rendered', () => {
@@ -2466,6 +2515,93 @@ check('every page exposes a main landmark and leads its outline with the H1', ()
   const styles = sourceStyles();
   assert.match(styles, /\.menu-panel-title\s*\{/, 'menu label styling lost its selector');
   assert.match(styles, /\.menu-group-title\s*\{/, 'menu group styling lost its selector');
+});
+
+check('every topic and format has a discoverable feed', () => {
+  // The main feed is well built but all-or-nothing. A reader who wants OpenAI
+  // coverage without the tutorials had no way to express that.
+  for (const path of ['tag/ai/rss.xml', 'tag/openai/rss.xml', 'format/tutorial/rss.xml']) {
+    assert.ok(distExists(path), `missing feed: /${path}`);
+    const xml = dist(path);
+    assert.match(xml, /^<\?xml version="1\.0" encoding="UTF-8"\?>/);
+    assert.match(xml, /<atom:link href="[^"]+" rel="self"/, `${path} lacks an atom:self link`);
+    assert.match(xml, /<language>en<\/language>/);
+    assert.match(xml, /<content:encoded><!\[CDATA\[/, `${path} should carry full article HTML`);
+  }
+
+  // A topic feed must contain only that topic, or it is just the main feed again.
+  const tutorialFeed = dist('format/tutorial/rss.xml');
+  const tutorialItems = (tutorialFeed.match(/<item>/g) ?? []).length;
+  const allItems = (dist('rss.xml').match(/<item>/g) ?? []).length;
+  assert.ok(tutorialItems > 0, 'the tutorial feed is empty');
+  assert.ok(
+    tutorialItems < allItems,
+    `a format feed should be narrower than the site feed (${tutorialItems} vs ${allItems})`,
+  );
+
+  // And it has to be advertised, or nobody finds it.
+  assert.match(
+    dist('tag/ai/index.html'),
+    /<link rel="alternate" type="application\/rss\+xml" title="aiPressHQ — AI" href="\/tag\/ai\/rss\.xml"/,
+  );
+});
+
+check('month archives give the site a dated way in', () => {
+  // The one route into a news archive that does not depend on the tag taxonomy
+  // being correct.
+  assert.ok(distExists('archive/2026/08/index.html'), 'missing /archive/2026/08/');
+  const html = dist('archive/2026/08/index.html');
+  assert.match(html, /August 2026/);
+  assert.match(html, /<main id="main-content"/);
+  assert.equal(html.match(/<main\b/g)?.length, 1);
+  // Zero-padded, so the paths sort and never collide with a single-digit form.
+  assert.ok(!distExists('archive/2026/8/index.html'), 'month segment must be zero-padded');
+});
+
+check('the site prints as a document, not as a screenshot of a website', () => {
+  const styles = sourceStyles();
+  const printBlock = styles.match(/@media print\s*\{([\s\S]*)$/);
+  assert.ok(printBlock, 'no print styles found');
+  const rules = printBlock[1];
+
+  // Without these, a printed tutorial wasted pages on the masthead, the search
+  // box, the sidebar and the footer rail before the story began.
+  for (const hidden of ['.site-header', '.primary-bar', '.article-sidebar', 'footer']) {
+    assert.ok(rules.includes(hidden), `print styles should hide ${hidden}`);
+  }
+  // Dark mode would otherwise flood the page with toner and hide light text.
+  assert.match(rules, /html\[data-theme='dark'\]/);
+  // "Follow the source" only survives printing if the destinations come with it.
+  assert.match(rules, /attr\(href\)/);
+  // A comparison table is the point of a comparison piece.
+  assert.match(rules, /table-header-group/);
+});
+
+check('every test file is actually run by an npm script', () => {
+  // Two loader suites sat in the repo passing and referenced by nothing for
+  // weeks, and two more were added the same way while fixing that. A test
+  // nothing runs is worse than no test: it reads as coverage that does not exist.
+  const scripts = Object.values(JSON.parse(src('package.json')).scripts).join(' && ');
+
+  const suites = [];
+  const walk = (dir) => {
+    for (const entry of readdirSync(new URL(`../${dir}/`, import.meta.url), {
+      withFileTypes: true,
+    })) {
+      if (entry.isDirectory()) walk(`${dir}/${entry.name}`);
+      else if (entry.name.endsWith('.test.mjs')) suites.push(`${dir}/${entry.name}`);
+    }
+  };
+  walk('src');
+  walk('admin');
+
+  assert.ok(suites.length > 8, `expected to find the test suites, found ${suites.length}`);
+  const orphans = suites.filter((suite) => !scripts.includes(suite));
+  assert.deepEqual(
+    orphans,
+    [],
+    `test files no npm script runs — add them to test:units:\n  ${orphans.join('\n  ')}`,
+  );
 });
 
 check('every published tag belongs to the canonical taxonomy', () => {

@@ -31,6 +31,12 @@ export interface Props {
   updatedTime?: Date;
   /** Set true for pages with no unique server-rendered content to index (e.g. a client-only reading list). */
   noindex?: boolean;
+  /**
+   * A more specific feed for this page, advertised alongside the site feed. A
+   * reader on /tag/openai/ wants that topic's feed, and a feed nobody can
+   * discover is a feed nobody subscribes to.
+   */
+  feed?: { href: string; title: string };
 }
 
 const {
@@ -45,6 +51,7 @@ const {
   publishedTime,
   updatedTime,
   noindex = false,
+  feed,
 } = Astro.props;
 
 const sections = [
@@ -103,6 +110,11 @@ const organizationSchema = {
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3" />
     <link rel="manifest" href="/site.webmanifest" />
     <link rel="alternate" type="application/rss+xml" title="aiPressHQ" href="/rss.xml" />
+    {
+      feed && (
+        <link rel="alternate" type="application/rss+xml" title={feed.title} href={feed.href} />
+      )
+    }
     <meta name="theme-color" content="#ffffff" data-theme-color />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     {
@@ -400,6 +412,7 @@ const organizationSchema = {
       import { initEditionDate } from '../scripts/edition';
       import { initMotion } from '../scripts/motion';
       import { initNavigation } from '../scripts/navigation';
+      import { initOffline } from '../scripts/offline';
       import { initSearch } from '../scripts/search';
       import { initTheme } from '../scripts/theme';
 
@@ -407,6 +420,7 @@ const organizationSchema = {
       initEditionDate();
       initMotion();
       initNavigation();
+      initOffline();
       initSearch();
       initTheme();
 

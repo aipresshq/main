@@ -1,0 +1,104 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+/**
+ * Corrections policy and accountability page.
+ *
+ * /about/ already states the editorial standards — start from what can be
+ * checked, label the kind of work, don't fill gaps with confidence. This is the
+ * other half: what happens when something published here turns out to be wrong,
+ * and who is answerable for it. For a site that reports on unconfirmed claims and
+ * keeps trackers current, a visible revision record is part of the method rather
+ * than an afterthought.
+ */
+---
+
+<BaseLayout
+  title="Corrections | aiPressHQ"
+  description="How aiPressHQ handles errors, how updated stories are marked, and how to report something that looks wrong."
+>
+  <section class="legal-page" aria-labelledby="legal-title">
+    <header class="legal-header">
+      <span class="label">aiPressHQ / Corrections</span>
+      <h1 id="legal-title">Corrections</h1>
+      <p class="legal-updated">Last updated August 10, 2026</p>
+    </header>
+
+    <div class="prose legal-body">
+      <p>
+        This site reports on model launches, pricing claims, and rumours before they are settled.
+        Some of that will turn out to be wrong. What matters is that it gets fixed visibly rather
+        than quietly, so a story you read six months ago can still be checked against what is now
+        known.
+      </p>
+
+      <h2>How errors are fixed</h2>
+      <p>
+        A factual error is corrected in the story itself, as soon as it is confirmed. The correction
+        is not hidden in a rewrite: the article's <strong>Updated</strong> date changes, and a note at
+        the point of the change says what was wrong and what it now says.
+      </p>
+      <p>The scale of the change decides the treatment:</p>
+      <ul>
+        <li>
+          <strong>Typos and broken links</strong> are fixed without a note. Nothing about the meaning
+          of the story changes, so a note would be noise.
+        </li>
+        <li>
+          <strong>A wrong fact</strong> — a price, a date, a model name, a benchmark figure — is corrected
+          in place with a dated note saying what it previously said.
+        </li>
+        <li>
+          <strong>A wrong conclusion</strong> gets a note at the top of the story. If the argument no
+          longer holds, that belongs where a reader sees it before reading on, not at the bottom.
+        </li>
+        <li>
+          <strong>A story that should not have run</strong> stays up, with an explanation of why it was
+          wrong. Deleting it would break every link to it and hide the mistake.
+        </li>
+      </ul>
+
+      <h2>Updates that are not corrections</h2>
+      <p>
+        Trackers and explainers are kept current on purpose. When a model's price changes or a
+        product ships, the story is updated and its <strong>Updated</strong> date moves — that is the
+        story working as intended, not an error being fixed. Where the distinction matters, the note says
+        which of the two happened.
+      </p>
+
+      <h2>What is never done</h2>
+      <ul>
+        <li>Changing a claim after publication without moving the Updated date.</li>
+        <li>Removing a story to make an error disappear.</li>
+        <li>
+          Editing a quote or a figure attributed to a primary source. If the source itself changed,
+          the story says so and links both versions.
+        </li>
+      </ul>
+
+      <h2>Reporting something that looks wrong</h2>
+      <p>
+        Email <a href="mailto:hello@aipresshq.com">hello@aipresshq.com</a> with the story's URL and what
+        you believe is incorrect. A link to a primary source is the fastest way to get it fixed: this
+        site's whole method is to start from what can be checked, so a checkable correction can be acted
+        on immediately.
+      </p>
+      <p>
+        Corrections are made whether or not the person reporting them wants credit, and reporting an
+        error never requires an account or a subscription.
+      </p>
+
+      <h2>Who publishes aiPressHQ</h2>
+      <p>
+        aiPressHQ is written and edited by
+        <a href="/authors/tejas-telkar/">Tejas Telkar</a>. Every story carries a byline, and the
+        byline is a person who can be contacted about it.
+      </p>
+      <p>
+        The editorial method every story follows — what counts as a primary source, how
+        interpretation is separated from evidence, and how unconfirmed claims are labelled — is
+        documented on the <a href="/about/">method page</a>.
+      </p>
+    </div>
+  </section>
+</BaseLayout>

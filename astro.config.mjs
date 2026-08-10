@@ -34,7 +34,11 @@ export default defineConfig({
     sitemap({
       filter: (page) => {
         const path = new URL(page).pathname;
-        return !/^\/posts\/[^/]+\/fragment\/$/.test(path) && path !== '/saved/';
+        // /offline/ is a service-worker fallback state, not a page anyone should
+        // find in search results.
+        return (
+          !/^\/posts\/[^/]+\/fragment\/$/.test(path) && path !== '/saved/' && path !== '/offline/'
+        );
       },
       serialize(item) {
         const lastmod = lastmodByPath.get(new URL(item.url).pathname);
