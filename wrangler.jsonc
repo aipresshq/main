@@ -2,6 +2,9 @@
   "name": "main",
   "main": "src/worker.ts",
   "compatibility_date": "2026-08-06",
+  // Cloudflare creates the DNS record and Advanced Certificate for this on deploy —
+  // no manual dashboard step needed since the zone is already on Cloudflare nameservers.
+  "routes": [{ "pattern": "aipresshq.com", "custom_domain": true }],
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
