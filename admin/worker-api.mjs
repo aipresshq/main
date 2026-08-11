@@ -19,6 +19,8 @@ import {
   verifyPassword,
   verifySession,
 } from './worker-auth.mjs';
+import { createContactStore } from '../src/lib/contact-store.ts';
+import { rateLimitKey } from '../src/lib/rate-limit.ts';
 
 // Matches astro.config.mjs's `site` and BaseLayout.astro's canonical fallback —
 // this module builds indexing URLs, which have to be the real public origin.
@@ -264,6 +266,7 @@ function createPrismicAdapters(env, request) {
     },
     images: env.IMAGES,
     publicR2Url: env.PUBLIC_R2_PUBLIC_URL ?? '',
+    contactDb: env.CONTACT_DB,
   };
 }
 
@@ -377,6 +380,40 @@ export async function handleAssetsApi(request, adapters) {
   return methodNotAllowed();
 }
 
+/**
+ * Lists, marks read, and deletes contact form submissions. The public POST
+ * that creates them lives in src/worker.ts, outside the admin auth wall — this
+ * is the read/manage side, gated the same as every other admin route.
+ */
+export async function handleContactApi(request, adapters) {
+  if (!adapters.contactDb) {
+    return json({ error: 'Contact storage is not configured.' }, 503);
+  }
+  const store = createContactStore(adapters.contactDb);
+  const url = new URL(request.url);
+
+  if (url.pathname === '/admin/api/contact') {
+    if (request.method !== 'GET') return methodNotAllowed();
+    return json(await store.list());
+  }
+
+  const match = url.pathname.match(/^\/admin\/api\/contact\/(\d+)$/);
+  if (!match) return json({ error: 'Not found.' }, 404);
+  const id = Number(match[1]);
+
+  if (request.method === 'PUT') {
+    await store.markRead(id);
+    return json({ id });
+  }
+
+  if (request.method === 'DELETE') {
+    await store.remove(id);
+    return new Response(null, { status: 204 });
+  }
+
+  return methodNotAllowed();
+}
+
 export function sanitizePreviewHtml(html) {
   return html
     .replace(
@@ -483,33 +520,6 @@ async function adminDocumentHeaders(env) {
 const LOGIN_RETRY_AFTER_SECONDS = 60;
 
 /**
- * Reduces a client address to the unit worth rate limiting.
- *
- * IPv6 collapses to its /64, because that is what a single subscriber is
- * normally handed: keying on the full address would give one attacker ~18
- * quintillion fresh buckets, which is no limit at all. IPv4 is kept whole —
- * a /24 is a real network, often a shared NAT, and collapsing it would punish
- * everyone behind one.
- */
-function rateLimitKey(address) {
-  if (!address) return 'unknown';
-  if (!address.includes(':')) return address;
-
-  // Expand the :: elision just far enough to read the first four hextets.
-  const [head, tail = ''] = address.split('::');
-  const headParts = head ? head.split(':') : [];
-  const tailParts = tail ? tail.split(':') : [];
-  const missing = 8 - headParts.length - tailParts.length;
-  const hextets = address.includes('::')
-    ? [...headParts, ...Array(Math.max(missing, 0)).fill('0'), ...tailParts]
-    : headParts;
-
-  const prefix = hextets.slice(0, 4);
-  if (prefix.length < 4) return address;
-  return `${prefix.join(':')}::/64`;
-}
-
-/**
  * Consumes one token from the Worker rate-limit binding for this client.
  *
  * Without this, nothing throttled password guessing against the login route.
@@ -599,6 +609,9 @@ export async function handleAdminRequest(request, env, _ctx, dependencies = {}) 
       return await handlePostsApi(request, adapters);
     }
     if (url.pathname === '/admin/api/assets') return await handleAssetsApi(request, adapters);
+    if (url.pathname === '/admin/api/contact' || url.pathname.startsWith('/admin/api/contact/')) {
+      return await handleContactApi(request, adapters);
+    }
     if (url.pathname === '/admin/api/preview') return await handlePreviewApi(request);
     if (url.pathname === '/admin/api/indexing/submit') {
       return await handleIndexingApi(

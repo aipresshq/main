@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import { createSession } from './worker-auth.mjs';
-import { handleAdminRequest, handleAssetsApi, handlePreviewApi } from './worker-api.mjs';
+import {
+  handleAdminRequest,
+  handleAssetsApi,
+  handleContactApi,
+  handlePreviewApi,
+} from './worker-api.mjs';
 
 const secret = 'worker-api-test-session-secret';
 const ADMIN_ORIGIN = 'https://admin.aipresshq.com';
@@ -66,6 +71,38 @@ const adapters = {
   images: fakeBucket,
   publicR2Url: 'https://images.aipresshq.com',
 };
+
+/** A minimal in-memory stand-in for the D1 binding, just enough to exercise the contact API. */
+function fakeContactDb(seed = []) {
+  const rows = seed.map((row) => ({ ...row }));
+  return {
+    rows,
+    prepare(query) {
+      let boundArgs = [];
+      return {
+        bind(...args) {
+          boundArgs = args;
+          return this;
+        },
+        async run() {
+          if (query.startsWith('UPDATE')) {
+            const [id] = boundArgs;
+            const row = rows.find((candidate) => candidate.id === id);
+            if (row) row.read_at = '2026-01-02 00:00:00';
+          } else if (query.startsWith('DELETE')) {
+            const [id] = boundArgs;
+            const index = rows.findIndex((candidate) => candidate.id === id);
+            if (index !== -1) rows.splice(index, 1);
+          }
+          return {};
+        },
+        async all() {
+          return { results: [...rows] };
+        },
+      };
+    },
+  };
+}
 
 const env = {
   ADMIN_PASSWORD_HASH: 'not-used-by-authenticated-tests',
@@ -257,12 +294,9 @@ await run('a failing rate limiter does not take the login route down with it', a
 // Worker-generated HTML string — was the one page on the site shipping with no
 // CSP at all, despite being the only page that can publish.
 await run('the desk document ships its own security headers', async () => {
-  const response = await handleAdminRequest(
-    new Request(`${ADMIN_ORIGIN}/`),
-    env,
-    undefined,
-    { adapters },
-  );
+  const response = await handleAdminRequest(new Request(`${ADMIN_ORIGIN}/`), env, undefined, {
+    adapters,
+  });
 
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('X-Content-Type-Options'), 'nosniff');
@@ -281,12 +315,9 @@ await run('the desk document ships its own security headers', async () => {
 });
 
 await run('the desk CSP hash matches the inline script actually served', async () => {
-  const response = await handleAdminRequest(
-    new Request(`${ADMIN_ORIGIN}/`),
-    env,
-    undefined,
-    { adapters },
-  );
+  const response = await handleAdminRequest(new Request(`${ADMIN_ORIGIN}/`), env, undefined, {
+    adapters,
+  });
   const html = await response.text();
   const csp = response.headers.get('Content-Security-Policy');
 
@@ -304,12 +335,9 @@ await run('the desk CSP hash matches the inline script actually served', async (
 });
 
 await run('the desk CSP allows the configured R2 origin for cover images', async () => {
-  const response = await handleAdminRequest(
-    new Request(`${ADMIN_ORIGIN}/`),
-    env,
-    undefined,
-    { adapters },
-  );
+  const response = await handleAdminRequest(new Request(`${ADMIN_ORIGIN}/`), env, undefined, {
+    adapters,
+  });
   const csp = response.headers.get('Content-Security-Policy');
 
   // The cover desk and the editor's cover preview render images straight from
@@ -481,4 +509,109 @@ await run('preview returns capped sanitized HTML without writing', async () => {
   const json = await response.json();
   assert.match(json.html, /<h1>Heading<\/h1>/);
   assert.ok(!json.html.includes('<script'));
+});
+
+await run('contact API lists submissions newest first', async () => {
+  const db = fakeContactDb([
+    {
+      id: 1,
+      name: 'Older',
+      email: 'a@example.com',
+      topic: 'general',
+      message: 'a',
+      created_at: '2026-01-01 00:00:00',
+      read_at: null,
+    },
+    {
+      id: 2,
+      name: 'Newer',
+      email: 'b@example.com',
+      topic: 'general',
+      message: 'b',
+      created_at: '2026-01-02 00:00:00',
+      read_at: null,
+    },
+  ]);
+  const response = await handleContactApi(new Request(`${ADMIN_ORIGIN}/admin/api/contact`), {
+    ...adapters,
+    contactDb: db,
+  });
+  assert.equal(response.status, 200);
+  const submissions = await response.json();
+  assert.equal(submissions.length, 2);
+  assert.equal(submissions[0].readAt, null);
+});
+
+await run('contact API marks a submission read', async () => {
+  const db = fakeContactDb([
+    {
+      id: 1,
+      name: 'Reader',
+      email: 'a@example.com',
+      topic: 'general',
+      message: 'a',
+      created_at: '2026-01-01 00:00:00',
+      read_at: null,
+    },
+  ]);
+  const response = await handleContactApi(
+    new Request(`${ADMIN_ORIGIN}/admin/api/contact/1`, { method: 'PUT' }),
+    { ...adapters, contactDb: db },
+  );
+  assert.equal(response.status, 200);
+  assert.ok(db.rows[0].read_at, 'the row should be stamped read');
+});
+
+await run('contact API deletes a submission', async () => {
+  const db = fakeContactDb([
+    {
+      id: 1,
+      name: 'Reader',
+      email: 'a@example.com',
+      topic: 'general',
+      message: 'a',
+      created_at: '2026-01-01 00:00:00',
+      read_at: null,
+    },
+  ]);
+  const response = await handleContactApi(
+    new Request(`${ADMIN_ORIGIN}/admin/api/contact/1`, { method: 'DELETE' }),
+    { ...adapters, contactDb: db },
+  );
+  assert.equal(response.status, 204);
+  assert.equal(db.rows.length, 0);
+});
+
+await run('contact API fails closed without a D1 binding', async () => {
+  const response = await handleContactApi(
+    new Request(`${ADMIN_ORIGIN}/admin/api/contact`),
+    adapters,
+  );
+  assert.equal(response.status, 503);
+});
+
+await run('contact API rejects an unsupported method', async () => {
+  const response = await handleContactApi(
+    new Request(`${ADMIN_ORIGIN}/admin/api/contact`, { method: 'POST' }),
+    { ...adapters, contactDb: fakeContactDb() },
+  );
+  assert.equal(response.status, 405);
+});
+
+await run('the admin desk routes /admin/api/contact behind the session wall', async () => {
+  const response = await handleAdminRequest(
+    new Request(`${ADMIN_ORIGIN}/admin/api/contact`),
+    env,
+    undefined,
+    { adapters: { ...adapters, contactDb: fakeContactDb() } },
+  );
+  assert.equal(response.status, 401, 'contact submissions must not be readable without a session');
+});
+
+await run('an authenticated request reaches the contact list', async () => {
+  const request = await authenticatedRequest('/admin/api/contact');
+  const response = await handleAdminRequest(request, env, undefined, {
+    adapters: { ...adapters, contactDb: fakeContactDb() },
+  });
+  assert.equal(response.status, 200);
 });

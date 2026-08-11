@@ -6,37 +6,199 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   title="Contact aiPressHQ"
   description="Contact aiPressHQ about corrections, sources, permissions, and editorial questions."
 >
-  <section class="legal-page" aria-labelledby="contact-title">
+  <section class="legal-page contact-page" aria-labelledby="contact-title">
     <header class="legal-header">
       <span class="label">aiPressHQ / Contact</span>
       <h1 id="contact-title">Contact aiPressHQ</h1>
       <p class="legal-updated">A direct line for readers and sources.</p>
     </header>
 
-    <div class="prose legal-body">
-      <p>
-        The best way to reach aiPressHQ is by email. Please include the relevant article URL when
-        your message is about a specific story so it can reach the right review queue quickly.
-      </p>
+    <div class="contact-layout">
+      <form class="contact-form" data-contact-form novalidate>
+        <label class="contact-field">
+          <span class="label">Name</span>
+          <input type="text" name="name" autocomplete="name" required maxlength="120" />
+          <span class="contact-field-error" data-error="name"></span>
+        </label>
 
-      <h2>Corrections and source notes</h2>
-      <p>
-        If you spot a factual error, a changed product detail, or a source we should examine, email
-        <a href="mailto:hello@aipresshq.com">hello@aipresshq.com</a> with the article link and the evidence
-        that supports the correction.
-      </p>
+        <label class="contact-field">
+          <span class="label">Email</span>
+          <input type="email" name="email" autocomplete="email" required />
+          <span class="contact-field-error" data-error="email"></span>
+        </label>
 
-      <h2>Permissions and press</h2>
-      <p>
-        For quotation, republication, partnership, or press enquiries, use the same address. Please
-        describe the intended use and include any relevant deadline or publication details.
-      </p>
+        <label class="contact-field">
+          <span class="label">Topic</span>
+          <select name="topic" required>
+            <option value="corrections">Correction or source note</option>
+            <option value="permissions">Permissions or press</option>
+            <option value="general">General question</option>
+          </select>
+          <span class="contact-field-error" data-error="topic"></span>
+        </label>
 
-      <h2>General questions</h2>
-      <p>
-        Reader questions, feedback about the site, and accessibility notes are welcome at
-        <a href="mailto:hello@aipresshq.com">hello@aipresshq.com</a>.
-      </p>
+        <label class="contact-field">
+          <span class="label">Message</span>
+          <textarea name="message" rows="6" required maxlength="4000"></textarea>
+          <span class="contact-field-error" data-error="message"></span>
+        </label>
+
+        <div class="contact-form-actions">
+          <button class="contact-submit" type="submit">Send message</button>
+          <p class="contact-status" data-contact-status role="status" aria-live="polite"></p>
+        </div>
+      </form>
+
+      <div class="prose contact-alternatives">
+        <h2>Prefer email?</h2>
+        <p>
+          Reach the same inbox directly at <a href="mailto:hello@aipresshq.com"
+            >hello@aipresshq.com</a
+          >. Include the article URL if your message is about a specific story, so it reaches the
+          right review queue quickly.
+        </p>
+        <h2>Corrections and source notes</h2>
+        <p>
+          Spotted a factual error, a changed product detail, or a source worth checking? Include the
+          article link and the evidence behind the correction.
+        </p>
+        <h2>Permissions and press</h2>
+        <p>
+          For quotation, republication, partnership, or press enquiries, describe the intended use
+          and any relevant deadline.
+        </p>
+      </div>
     </div>
   </section>
 </BaseLayout>
+
+<style>
+  .contact-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 56px;
+    max-width: 960px;
+    margin-top: 48px;
+  }
+
+  .contact-form {
+    display: grid;
+    gap: 20px;
+    align-content: start;
+  }
+
+  .contact-field {
+    display: grid;
+    gap: 8px;
+  }
+
+  .contact-field input,
+  .contact-field select,
+  .contact-field textarea {
+    width: 100%;
+    min-height: 46px;
+    padding: 11px 13px;
+    border: 1px solid var(--border);
+    border-radius: 0;
+    background: var(--card-bg);
+    color: var(--text);
+    font: inherit;
+    font-size: 0.95rem;
+  }
+
+  .contact-field textarea {
+    min-height: 150px;
+    line-height: 1.55;
+    resize: vertical;
+  }
+
+  .contact-field input:focus-visible,
+  .contact-field select:focus-visible,
+  .contact-field textarea:focus-visible {
+    outline: none;
+    border-color: var(--text);
+  }
+
+  /* This site's whole palette is black/white — signal comes from weight and
+     rules, never from colour (see foundation.css's opening comment) — so an
+     error reads as bold text with a marker glyph, not a red one. */
+  .contact-field-error {
+    min-height: 18px;
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+
+  .contact-field-error:not(:empty)::before {
+    content: '▲ ';
+  }
+
+  .contact-form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px;
+    margin-top: 4px;
+  }
+
+  .contact-submit {
+    min-height: 46px;
+    padding: 12px 22px;
+    border: 1px solid var(--text);
+    border-radius: 0;
+    background: var(--text);
+    color: var(--bg);
+    cursor: pointer;
+    font: 700 0.78rem/1 var(--font-body);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .contact-submit:hover {
+    opacity: 0.85;
+  }
+
+  .contact-submit:disabled {
+    cursor: default;
+    opacity: 0.55;
+  }
+
+  .contact-status {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.88rem;
+  }
+
+  .contact-status.is-error {
+    color: var(--text);
+    font-weight: 700;
+  }
+
+  .contact-alternatives {
+    padding-left: 40px;
+    border-left: 1px solid var(--border);
+  }
+
+  .contact-alternatives h2:first-child {
+    margin-top: 0;
+  }
+
+  @media (max-width: 780px) {
+    .contact-layout {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 40px;
+    }
+
+    .contact-alternatives {
+      padding-left: 0;
+      padding-top: 32px;
+      border-left: none;
+      border-top: 1px solid var(--border);
+    }
+  }
+</style>
+
+<script>
+  import { initContactForm } from '../scripts/contact-form';
+
+  initContactForm();
+</script>

@@ -767,6 +767,53 @@ html[data-theme='dark'] .admin-brand-rail .admin-brand-logo-dark {
   font-weight: 500;
 }
 
+.admin-contact-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.admin-contact-card {
+  display: grid;
+  gap: 10px;
+  padding: 16px 18px;
+  border: 1px solid var(--admin-rule);
+  background: var(--admin-surface);
+}
+
+.admin-contact-card.is-unread {
+  border-left: 3px solid var(--admin-ink);
+}
+
+.admin-contact-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-contact-card-head strong {
+  font-size: 0.95rem;
+}
+
+.admin-contact-card.is-unread .admin-contact-card-head .admin-kicker {
+  color: var(--admin-ink);
+  font-weight: 700;
+}
+
+.admin-contact-meta {
+  margin: 0;
+  color: var(--admin-muted);
+  font-size: 0.78rem;
+}
+
+.admin-contact-message {
+  margin: 0;
+  max-width: 70ch;
+  line-height: 1.55;
+  font-size: 0.88rem;
+}
+
 .admin-empty {
   padding: 44px 0;
   color: var(--admin-muted);

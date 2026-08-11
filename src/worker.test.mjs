@@ -131,16 +131,19 @@ await run('the admin hostname serves the desk at its root and stays noindex', as
   assert.match(response.headers.get('X-Robots-Tag') ?? '', /noindex/);
 });
 
-await run('admin API routes on the admin hostname still return their own status codes', async () => {
-  // The noindex wrapper must not flatten the 401 the session check produces.
-  const response = await worker.fetch(
-    new Request('https://admin.aipresshq.com/admin/api/posts'),
-    { ...assetEnv(), ADMIN_SESSION_SECRET: 'x'.repeat(32) },
-    { waitUntil() {} },
-  );
-  assert.equal(response.status, 401);
-  assert.match(response.headers.get('X-Robots-Tag') ?? '', /noindex/);
-});
+await run(
+  'admin API routes on the admin hostname still return their own status codes',
+  async () => {
+    // The noindex wrapper must not flatten the 401 the session check produces.
+    const response = await worker.fetch(
+      new Request('https://admin.aipresshq.com/admin/api/posts'),
+      { ...assetEnv(), ADMIN_SESSION_SECRET: 'x'.repeat(32) },
+      { waitUntil() {} },
+    );
+    assert.equal(response.status, 401);
+    assert.match(response.headers.get('X-Robots-Tag') ?? '', /noindex/);
+  },
+);
 
 await run('an HTML page view is recorded with its path', async () => {
   const harness = analyticsHarness();
@@ -224,6 +227,180 @@ await run('a failing analytics write never reaches the reader', async () => {
   assert.equal(response.status, 200);
   assert.equal(await response.text(), '<!doctype html><title>page</title>');
 });
+
+/** A minimal stand-in for the D1 binding, recording every INSERT it receives. */
+function fakeContactDb() {
+  const inserted = [];
+  return {
+    inserted,
+    prepare(query) {
+      let boundArgs = [];
+      return {
+        bind(...args) {
+          boundArgs = args;
+          return this;
+        },
+        async run() {
+          if (query.startsWith('INSERT')) inserted.push(boundArgs);
+          return {};
+        },
+      };
+    },
+  };
+}
+
+function fakeContactLimiter({ allow = true } = {}) {
+  const keys = [];
+  return {
+    keys,
+    async limit({ key }) {
+      keys.push(key);
+      return { success: allow };
+    },
+  };
+}
+
+const validContactPayload = {
+  name: 'Reader Name',
+  email: 'reader@example.com',
+  topic: 'general',
+  message: 'A question about a recent story.',
+};
+
+function contactRequest(body, headers = {}) {
+  return new Request('https://aipresshq.com/api/contact', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(body),
+  });
+}
+
+await run('a valid contact submission is stored and returns 201', async () => {
+  const db = fakeContactDb();
+  const response = await worker.fetch(
+    contactRequest(validContactPayload),
+    { ...assetEnv(), CONTACT_DB: db },
+    { waitUntil() {} },
+  );
+  assert.equal(response.status, 201);
+  assert.equal(db.inserted.length, 1);
+  assert.deepEqual(db.inserted[0], [
+    'Reader Name',
+    'reader@example.com',
+    'general',
+    'A question about a recent story.',
+  ]);
+});
+
+await run('an invalid contact submission is rejected with field errors', async () => {
+  const db = fakeContactDb();
+  const response = await worker.fetch(
+    contactRequest({ ...validContactPayload, email: 'not-an-email' }),
+    { ...assetEnv(), CONTACT_DB: db },
+    { waitUntil() {} },
+  );
+  assert.equal(response.status, 400);
+  const body = await response.json();
+  assert.ok(body.errors.email);
+  assert.equal(db.inserted.length, 0, 'an invalid submission must not be stored');
+});
+
+await run(
+  'a missing D1 binding fails closed rather than dropping the message silently',
+  async () => {
+    const response = await worker.fetch(contactRequest(validContactPayload), assetEnv(), {
+      waitUntil() {},
+    });
+    assert.equal(response.status, 503);
+  },
+);
+
+await run('a cross-origin contact submission is refused', async () => {
+  const db = fakeContactDb();
+  const response = await worker.fetch(
+    contactRequest(validContactPayload, { Origin: 'https://evil.example.com' }),
+    { ...assetEnv(), CONTACT_DB: db },
+    { waitUntil() {} },
+  );
+  assert.equal(response.status, 403);
+  assert.equal(db.inserted.length, 0);
+});
+
+await run('a same-origin contact submission is accepted', async () => {
+  const db = fakeContactDb();
+  const response = await worker.fetch(
+    contactRequest(validContactPayload, { Origin: 'https://aipresshq.com' }),
+    { ...assetEnv(), CONTACT_DB: db },
+    { waitUntil() {} },
+  );
+  assert.equal(response.status, 201);
+});
+
+await run('contact submissions are rate limited per client address', async () => {
+  const db = fakeContactDb();
+  const limiter = fakeContactLimiter({ allow: true });
+  await worker.fetch(
+    contactRequest(validContactPayload, { 'CF-Connecting-IP': '203.0.113.9' }),
+    { ...assetEnv(), CONTACT_DB: db, CONTACT_RATE_LIMITER: limiter },
+    { waitUntil() {} },
+  );
+  assert.deepEqual(limiter.keys, ['203.0.113.9']);
+});
+
+await run('a throttled contact submission is refused before touching D1', async () => {
+  const db = fakeContactDb();
+  const limiter = fakeContactLimiter({ allow: false });
+  const response = await worker.fetch(
+    contactRequest(validContactPayload),
+    { ...assetEnv(), CONTACT_DB: db, CONTACT_RATE_LIMITER: limiter },
+    { waitUntil() {} },
+  );
+  assert.equal(response.status, 429);
+  assert.ok(response.headers.get('Retry-After'));
+  assert.equal(db.inserted.length, 0);
+});
+
+await run('a failing rate limiter does not take the contact form down with it', async () => {
+  const db = fakeContactDb();
+  const brokenLimiter = {
+    async limit() {
+      throw new Error('rate limiter unavailable');
+    },
+  };
+  const response = await worker.fetch(
+    contactRequest(validContactPayload),
+    { ...assetEnv(), CONTACT_DB: db, CONTACT_RATE_LIMITER: brokenLimiter },
+    { waitUntil() {} },
+  );
+  assert.equal(response.status, 201, 'should fall through to accepting the submission');
+});
+
+await run('a non-JSON contact submission is rejected', async () => {
+  const db = fakeContactDb();
+  const response = await worker.fetch(
+    new Request('https://aipresshq.com/api/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: 'name=Reader',
+    }),
+    { ...assetEnv(), CONTACT_DB: db },
+    { waitUntil() {} },
+  );
+  assert.equal(response.status, 400);
+});
+
+await run(
+  'the contact response carries a noindex header like every worker-generated route',
+  async () => {
+    const db = fakeContactDb();
+    const response = await worker.fetch(
+      contactRequest(validContactPayload),
+      { ...assetEnv(), CONTACT_DB: db },
+      { waitUntil() {} },
+    );
+    assert.match(response.headers.get('X-Robots-Tag') ?? '', /noindex/);
+  },
+);
 
 await run('no request-identifying data is recorded', async () => {
   const harness = analyticsHarness();

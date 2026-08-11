@@ -14,6 +14,7 @@ const state = {
   posts: [],
   authors: [],
   assets: [],
+  contacts: [],
   editingId: null,
   query: '',
   format: 'all',
@@ -111,6 +112,15 @@ function formatDate(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date);
+}
+
+function formatDateTime(value) {
+  if (!value) return '—';
+  const date = new Date(value.includes('T') ? value : `${value.replace(' ', 'T')}Z`);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(
+    date,
+  );
 }
 
 function formatOptions(selected, values) {
@@ -327,6 +337,25 @@ function renderRelease() {
   content.innerHTML = `${viewHeader('Release / final handoff', 'Publish with intent.', 'The desk saves drafts. The public site changes only after the pending Prismic release is published and the Cloudflare build completes.', '<a class="admin-button admin-button-primary" href="https://aipresshq.prismic.io/" target="_blank" rel="noreferrer">Open Prismic →</a>')}<section class="admin-release"><div class="admin-release-grid"><article class="admin-release-card"><span class="admin-kicker">01 / Review</span><strong>Check the draft</strong><p>Confirm headline, author, dates, format, cover alt text, takeaways, facts tables, and source-linked body copy.</p></article><article class="admin-release-card"><span class="admin-kicker">02 / Release</span><strong>Publish Prismic</strong><p>Open the pending Migration Release in Prismic and publish it once the queue is ready.</p></article><article class="admin-release-card"><span class="admin-kicker">03 / Deploy</span><strong>Build the site</strong><p>Run the Cloudflare deployment after publishing so the static public edition reflects the release.</p></article><article class="admin-release-card"><span class="admin-kicker">04 / Index</span><strong>Request Google indexing</strong><p>Push every live post URL to Google's Indexing API for a real-time crawl request. Run this after the deploy above, once the release is actually live.</p><button class="admin-button admin-button-primary" type="button" data-action="request-indexing">Request Google indexing</button><ul class="admin-indexing-results" data-indexing-result hidden></ul></article></div><div class="admin-editor-section"><h2>Credential boundary</h2><p class="admin-help">Prismic write access, R2 access, the admin password hash, the session secret, and the Google Indexing API key live only in Worker secrets. Moz and GA4 dashboard keys are intentionally not part of this desk.</p></div></section>`;
 }
 
+function renderContacts() {
+  const unread = state.contacts.filter((contact) => !contact.readAt).length;
+  const rows = state.contacts.length
+    ? state.contacts
+        .map((contact) => {
+          const preview =
+            contact.message.length > 160 ? `${contact.message.slice(0, 160)}…` : contact.message;
+          return `<article class="admin-contact-card${contact.readAt ? '' : ' is-unread'}"><div class="admin-contact-card-head"><strong>${escapeHtml(contact.name)}</strong><span class="admin-kicker">${contact.readAt ? 'Read' : '● Unread'}</span></div><p class="admin-contact-meta"><a href="mailto:${escapeHtml(contact.email)}">${escapeHtml(contact.email)}</a> · ${escapeHtml(contact.topic)} · ${escapeHtml(formatDateTime(contact.createdAt))}</p><p class="admin-contact-message">${escapeHtml(preview)}</p><div class="admin-form-actions">${contact.readAt ? '' : `<button class="admin-button" type="button" data-mark-read-id="${contact.id}">Mark read</button>`}<button class="admin-button admin-button-danger" type="button" data-delete-contact-id="${contact.id}">Delete</button></div></article>`;
+        })
+        .join('')
+    : emptyState('No messages yet.', 'Submissions from the public Contact page will show up here.');
+  content.innerHTML = `${viewHeader(
+    'Contact / reader messages',
+    'Contact desk.',
+    `${state.contacts.length} ${state.contacts.length === 1 ? 'message' : 'messages'}, ${unread} unread.`,
+    '<button class="admin-button" type="button" data-action="refresh-contacts">Refresh</button>',
+  )}<section class="admin-section admin-contact-list">${rows}</section>`;
+}
+
 async function requestIndexing() {
   setStatus('Requesting indexing…', false, true);
   const output = content.querySelector('[data-indexing-result]');
@@ -379,6 +408,13 @@ async function loadAssets() {
   state.assets = response.json.assets || [];
 }
 
+async function loadContacts() {
+  const response = await api('/admin/api/contact');
+  if (!response.ok)
+    throw new Error(response.json.error || `Contact request failed (${response.status}).`);
+  state.contacts = Array.isArray(response.json) ? response.json : [];
+}
+
 async function loadView(view = state.view) {
   const requestToken = ++viewRequestToken;
   state.view = view;
@@ -399,12 +435,16 @@ async function loadView(view = state.view) {
     if (view === 'assets') {
       await loadAssets();
     }
+    if (view === 'contact') {
+      await loadContacts();
+    }
     if (requestToken !== viewRequestToken) return;
     if (view === 'dashboard') renderDashboard();
     else if (view === 'posts') renderQueue();
     else if (view === 'editor') renderEditor(post);
     else if (view === 'assets') renderAssets();
     else if (view === 'release') renderRelease();
+    else if (view === 'contact') renderContacts();
     playViewEntrance();
     setStatus('');
   } catch (error) {
@@ -506,6 +546,27 @@ async function deleteAsset(key) {
   await loadView('assets');
 }
 
+async function markContactRead(id) {
+  const response = await api(`/admin/api/contact/${encodeURIComponent(id)}`, { method: 'PUT' });
+  if (!response.ok) {
+    setStatus(response.json.error || 'Could not mark the message read.', true);
+    return;
+  }
+  await loadView('contact');
+}
+
+async function deleteContact(id) {
+  if (!window.confirm('Delete this message?')) return;
+  const response = await api(`/admin/api/contact/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    setStatus(response.json.error || 'Message deletion failed.', true);
+    return;
+  }
+  await loadView('contact');
+}
+
 function addFactColumn() {
   const holder = content.querySelector('[data-facts-editor]');
   if (!holder) return;
@@ -550,10 +611,13 @@ root?.addEventListener('click', async (event) => {
   if (target.dataset.editId) return openEditor(target.dataset.editId);
   if (target.dataset.archiveId) return archivePost(target.dataset.archiveId);
   if (target.dataset.deleteAsset) return deleteAsset(target.dataset.deleteAsset);
+  if (target.dataset.markReadId) return markContactRead(target.dataset.markReadId);
+  if (target.dataset.deleteContactId) return deleteContact(target.dataset.deleteContactId);
   if (target.dataset.action === 'new') return openEditor();
   if (target.dataset.action === 'cancel-editor') return loadView('posts');
   if (target.dataset.action === 'refresh') return loadView('posts');
   if (target.dataset.action === 'refresh-assets') return loadView('assets');
+  if (target.dataset.action === 'refresh-contacts') return loadView('contact');
   if (target.dataset.action === 'assets') return loadView('assets');
   if (target.dataset.action === 'request-indexing') return requestIndexing();
   if (target.dataset.addRepeater) return addRepeater(target.dataset.addRepeater);

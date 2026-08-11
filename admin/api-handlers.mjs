@@ -5,6 +5,7 @@ import { validatePost } from './validate-post.mjs';
 import { sanitizePreviewHtml, MAX_PREVIEW_BYTES } from './worker-api.mjs';
 
 const POST_ID_PATTERN = /^\/admin\/api\/posts\/([^/]+)$/;
+const CONTACT_ID_PATTERN = /^\/admin\/api\/contact\/(\d+)$/;
 
 // Routes the deployed Worker owns but the dev server cannot: there is no
 // session cookie to verify and no R2 binding to list. They answer explicitly
@@ -26,6 +27,20 @@ function handleLocalOnlyRoute({ method, pathname }) {
       status: 501,
       json: {
         error: 'Cover uploads need the deployed Worker and its R2 binding.',
+        localMode: true,
+      },
+    };
+  }
+
+  if (pathname === '/admin/api/contact' && method === 'GET') {
+    return { status: 200, json: { localMode: true } };
+  }
+
+  if (CONTACT_ID_PATTERN.test(pathname)) {
+    return {
+      status: 501,
+      json: {
+        error: 'Contact messages need the deployed Worker and its D1 binding.',
         localMode: true,
       },
     };
