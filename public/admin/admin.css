@@ -80,12 +80,18 @@ button {
 }
 
 button:focus-visible,
-a:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--admin-ink);
+  outline-offset: 3px;
+}
+
+/* Fields get their focus state from their own border, not a floating ring —
+   a ring 3px outside a bordered box reads as two disconnected rectangles. */
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid var(--admin-ink);
-  outline-offset: 3px;
+  outline: none;
+  border-color: var(--admin-ink);
 }
 
 [hidden] {
@@ -300,8 +306,6 @@ html[data-theme='dark'] .admin-brand-rail .admin-brand-logo-dark {
 .admin-login {
   width: min(440px, 100%);
   margin: 8vh auto 0;
-  padding: clamp(22px, 4vw, 40px) 0 0;
-  border-top: 3px solid var(--admin-ink);
 }
 
 .admin-login h1 {

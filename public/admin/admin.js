@@ -715,7 +715,6 @@ async function boot() {
     await loadView('dashboard');
   } else {
     showLogin();
-    setStatus('Sign in to continue.');
   }
 }
 
