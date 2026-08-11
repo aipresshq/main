@@ -1,7 +1,8 @@
 # aiPressHQ
 
 Daily AI news, explainers, and trackers. A static Astro site served from a Cloudflare
-Worker, with stories authored in Prismic and an in-house Editorial Desk at `/admin`.
+Worker, with stories authored in Prismic and an in-house Editorial Desk at
+[admin.aipresshq.com](https://admin.aipresshq.com) (`/admin` under `astro dev` locally).
 
 ## Requirements
 
@@ -28,7 +29,8 @@ npm run dev
 
 The build is fully static — Prismic is read at build time, not per request, so publishing a
 story means publishing the Prismic release and then deploying. The Worker exists to serve
-`/admin`, to keep non-production hostnames out of search results, and to count page views.
+the Editorial Desk on its own hostname (redirecting `/admin` on the public site there), to
+keep non-production hostnames out of search results, and to count page views.
 
 ### Search
 
@@ -37,8 +39,9 @@ a web worker. There is no search backend.
 
 ### Editorial Desk
 
-`/admin` is a login-gated single-page app served as an HTML string by the Worker. It writes
-drafts into a pending Prismic Migration Release; nothing it does publishes on its own. See
+[admin.aipresshq.com](https://admin.aipresshq.com) is a login-gated single-page app served as
+an HTML string by the Worker (`localhost:4321/admin` under `astro dev`). It writes drafts into
+a pending Prismic Migration Release; nothing it does publishes on its own. See
 [`docs/superpowers/runbooks/admin-production.md`](docs/superpowers/runbooks/admin-production.md)
 for secret setup, password-hash rotation, and reading traffic numbers.
 
