@@ -3,6 +3,7 @@ import { createSession } from './worker-auth.mjs';
 import { handleAdminRequest, handleAssetsApi, handlePreviewApi } from './worker-api.mjs';
 
 const secret = 'worker-api-test-session-secret';
+const ADMIN_ORIGIN = 'https://admin.aipresshq.com';
 
 const run = async (name, fn) => {
   try {
@@ -76,7 +77,7 @@ const env = {
 
 async function authenticatedRequest(path, init = {}) {
   const token = await createSession(secret);
-  return new Request(`https://aipresshq.com${path}`, {
+  return new Request(`${ADMIN_ORIGIN}${path}`, {
     ...init,
     headers: { Cookie: `aipresshq_admin=${token}`, ...(init.headers ?? {}) },
   });
@@ -98,11 +99,11 @@ function fakeLimiter({ allow = true } = {}) {
 }
 
 function loginRequest(password, headers = {}) {
-  return new Request('https://aipresshq.com/admin/api/auth/login', {
+  return new Request(`${ADMIN_ORIGIN}/admin/api/auth/login`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Origin: 'https://aipresshq.com',
+      Origin: ADMIN_ORIGIN,
       'CF-Connecting-IP': '203.0.113.7',
       ...headers,
     },
@@ -224,9 +225,9 @@ await run('login still works when no rate-limit binding is configured', async ()
 
 await run('rate limiting falls back to a shared key when no client IP is present', async () => {
   const limiter = fakeLimiter({ allow: true });
-  const request = new Request('https://aipresshq.com/admin/api/auth/login', {
+  const request = new Request(`${ADMIN_ORIGIN}/admin/api/auth/login`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Origin: 'https://aipresshq.com' },
+    headers: { 'Content-Type': 'application/json', Origin: ADMIN_ORIGIN },
     body: JSON.stringify({ password: 'whatever' }),
   });
 
@@ -257,7 +258,7 @@ await run('a failing rate limiter does not take the login route down with it', a
 // CSP at all, despite being the only page that can publish.
 await run('the desk document ships its own security headers', async () => {
   const response = await handleAdminRequest(
-    new Request('https://aipresshq.com/admin'),
+    new Request(`${ADMIN_ORIGIN}/`),
     env,
     undefined,
     { adapters },
@@ -281,7 +282,7 @@ await run('the desk document ships its own security headers', async () => {
 
 await run('the desk CSP hash matches the inline script actually served', async () => {
   const response = await handleAdminRequest(
-    new Request('https://aipresshq.com/admin'),
+    new Request(`${ADMIN_ORIGIN}/`),
     env,
     undefined,
     { adapters },
@@ -304,7 +305,7 @@ await run('the desk CSP hash matches the inline script actually served', async (
 
 await run('the desk CSP allows the configured R2 origin for cover images', async () => {
   const response = await handleAdminRequest(
-    new Request('https://aipresshq.com/admin'),
+    new Request(`${ADMIN_ORIGIN}/`),
     env,
     undefined,
     { adapters },
@@ -319,7 +320,7 @@ await run('the desk CSP allows the configured R2 origin for cover images', async
 await run('the desk CSP omits an R2 origin that is not configured', async () => {
   const envWithoutR2 = { ...env, PUBLIC_R2_PUBLIC_URL: undefined };
   const response = await handleAdminRequest(
-    new Request('https://aipresshq.com/admin'),
+    new Request(`${ADMIN_ORIGIN}/`),
     envWithoutR2,
     undefined,
     { adapters },
@@ -331,7 +332,7 @@ await run('the desk CSP omits an R2 origin that is not configured', async () => 
 
 await run('admin API responses are marked nosniff', async () => {
   const response = await handleAdminRequest(
-    new Request('https://aipresshq.com/admin/api/posts'),
+    new Request(`${ADMIN_ORIGIN}/admin/api/posts`),
     env,
     undefined,
     { adapters },
@@ -342,7 +343,7 @@ await run('admin API responses are marked nosniff', async () => {
 
 await run('unauthenticated API requests are rejected', async () => {
   const response = await handleAdminRequest(
-    new Request('https://aipresshq.com/admin/api/posts'),
+    new Request(`${ADMIN_ORIGIN}/admin/api/posts`),
     env,
     undefined,
     { adapters },
@@ -364,7 +365,7 @@ await run('authenticated post list returns stable editorial fields', async () =>
 await run('invalid post payloads return field-level errors', async () => {
   const request = await authenticatedRequest('/admin/api/posts', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Origin: 'https://aipresshq.com' },
+    headers: { 'Content-Type': 'application/json', Origin: ADMIN_ORIGIN },
     body: JSON.stringify({ ...validPayload, title: '', takeaways: [] }),
   });
   const response = await handleAdminRequest(request, env, undefined, { adapters });
@@ -377,7 +378,7 @@ await run('invalid post payloads return field-level errors', async () => {
 await run('valid post payloads return the created id', async () => {
   const request = await authenticatedRequest('/admin/api/posts', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Origin: 'https://aipresshq.com' },
+    headers: { 'Content-Type': 'application/json', Origin: ADMIN_ORIGIN },
     body: JSON.stringify(validPayload),
   });
   const response = await handleAdminRequest(request, env, undefined, { adapters });
@@ -389,7 +390,7 @@ await run('asset uploads reject unsupported MIME types and oversized bodies', as
   const textForm = new FormData();
   textForm.set('file', new File(['not an image'], 'notes.txt', { type: 'text/plain' }));
   const textResponse = await handleAssetsApi(
-    new Request('https://aipresshq.com/admin/api/assets', { method: 'POST', body: textForm }),
+    new Request(`${ADMIN_ORIGIN}/admin/api/assets`, { method: 'POST', body: textForm }),
     adapters,
   );
   assert.equal(textResponse.status, 400);
@@ -400,7 +401,7 @@ await run('asset uploads reject unsupported MIME types and oversized bodies', as
     new File([new Uint8Array(8 * 1024 * 1024 + 1)], 'large.png', { type: 'image/png' }),
   );
   const largeResponse = await handleAssetsApi(
-    new Request('https://aipresshq.com/admin/api/assets', { method: 'POST', body: largeForm }),
+    new Request(`${ADMIN_ORIGIN}/admin/api/assets`, { method: 'POST', body: largeForm }),
     adapters,
   );
   assert.equal(largeResponse.status, 413);
@@ -408,7 +409,7 @@ await run('asset uploads reject unsupported MIME types and oversized bodies', as
 
 await run('indexing submit requires authentication like every other admin API route', async () => {
   const response = await handleAdminRequest(
-    new Request('https://aipresshq.com/admin/api/indexing/submit', { method: 'POST' }),
+    new Request(`${ADMIN_ORIGIN}/admin/api/indexing/submit`, { method: 'POST' }),
     env,
     undefined,
     { adapters },
@@ -419,7 +420,7 @@ await run('indexing submit requires authentication like every other admin API ro
 await run('indexing submit is unavailable when no key is configured', async () => {
   const request = await authenticatedRequest('/admin/api/indexing/submit', {
     method: 'POST',
-    headers: { Origin: 'https://aipresshq.com' },
+    headers: { Origin: ADMIN_ORIGIN },
   });
   const response = await handleAdminRequest(request, env, undefined, { adapters });
   assert.equal(response.status, 503);
@@ -433,7 +434,7 @@ await run('indexing submit pushes every live post URL and reports the results', 
   };
   const request = await authenticatedRequest('/admin/api/indexing/submit', {
     method: 'POST',
-    headers: { Origin: 'https://aipresshq.com' },
+    headers: { Origin: ADMIN_ORIGIN },
   });
   const response = await handleAdminRequest(
     request,
@@ -452,7 +453,7 @@ await run('indexing submit pushes every live post URL and reports the results', 
 await run('indexing submit surfaces an upstream failure without throwing', async () => {
   const request = await authenticatedRequest('/admin/api/indexing/submit', {
     method: 'POST',
-    headers: { Origin: 'https://aipresshq.com' },
+    headers: { Origin: ADMIN_ORIGIN },
   });
   const response = await handleAdminRequest(
     request,
@@ -470,7 +471,7 @@ await run('indexing submit surfaces an upstream failure without throwing', async
 
 await run('preview returns capped sanitized HTML without writing', async () => {
   const response = await handlePreviewApi(
-    new Request('https://aipresshq.com/admin/api/preview', {
+    new Request(`${ADMIN_ORIGIN}/admin/api/preview`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ body: '# Heading\n\n<script>alert(1)</script>Copy' }),

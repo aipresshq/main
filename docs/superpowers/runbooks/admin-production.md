@@ -1,7 +1,9 @@
 # aiPressHQ Editorial Desk production runbook
 
-The production admin desk is served by the `main` Cloudflare Worker at `/admin/`. The page is a
-static shell; story data and write operations are protected by a signed, HttpOnly session cookie.
+The production admin desk is served by the `main` Cloudflare Worker at
+`https://admin.aipresshq.com/`. The old public-site `/admin` URL redirects there. The page is a
+static shell; story data and write operations are protected by a signed, HttpOnly session cookie
+scoped to the admin routes on the admin hostname.
 Prismic write access and R2 access stay inside the Worker environment and never reach browser code.
 
 ## Configure secrets
@@ -58,12 +60,16 @@ npx wrangler deploy --dry-run
 npx wrangler deploy
 ```
 
+`wrangler.jsonc` declares `admin.aipresshq.com` as a Worker Custom Domain. On deploy,
+Cloudflare creates the DNS record and certificate for that hostname, as long as no conflicting DNS
+record already exists.
+
 ## Reading traffic numbers
 
 Page views are counted in the Worker, not by a browser beacon, so ad blockers do not skew
 them and nothing is added to the page or the CSP. Each view records the path, the country
 Cloudflare resolved, and the referrer **host** only — no IP, no user agent, no cookie.
-Editorial traffic to `/admin`, and anything on a non-production hostname, is excluded.
+Editorial traffic to `admin.aipresshq.com`, and anything on a non-production hostname, is excluded.
 
 Query the `aipresshq_pageviews` dataset with the Analytics Engine SQL API:
 

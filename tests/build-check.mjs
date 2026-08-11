@@ -2430,6 +2430,13 @@ check('Cloudflare production routing protects admin separately from public asset
     'the production Worker must have the images R2 binding',
   );
   const worker = src('src/worker.ts');
+  assert.ok(
+    config.routes?.some(
+      (route) => route.pattern === 'admin.aipresshq.com' && route.custom_domain === true,
+    ),
+    'the admin Worker must be attached to admin.aipresshq.com as a Custom Domain',
+  );
+  assert.match(worker, /admin\.aipresshq\.com/);
   assert.match(src('admin/worker-api.mjs'), /\/admin\/api\//);
   assert.match(worker, /ASSETS\.fetch/);
 

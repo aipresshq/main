@@ -100,19 +100,41 @@ await run('noindex is added without discarding the asset response', async () => 
   assert.equal(await response.text(), '<!doctype html><title>page</title>');
 });
 
-await run('the admin desk is never indexable, even on the production host', async () => {
+await run('public admin paths redirect to the admin hostname', async () => {
   const response = await worker.fetch(
     new Request('https://aipresshq.com/admin'),
     { ...assetEnv(), ADMIN_SESSION_SECRET: 'x'.repeat(32) },
     { waitUntil() {} },
   );
+  assert.equal(response.status, 308);
+  assert.equal(response.headers.get('Location'), 'https://admin.aipresshq.com/');
   assert.match(response.headers.get('X-Robots-Tag') ?? '', /noindex/);
 });
 
-await run('admin API routes still return their own status codes', async () => {
+await run('mutating public admin API requests are not redirected', async () => {
+  const response = await worker.fetch(
+    new Request('https://aipresshq.com/admin/api/posts', { method: 'POST' }),
+    { ...assetEnv(), ADMIN_SESSION_SECRET: 'x'.repeat(32) },
+    { waitUntil() {} },
+  );
+  assert.equal(response.status, 404);
+  assert.match(response.headers.get('X-Robots-Tag') ?? '', /noindex/);
+});
+
+await run('the admin hostname serves the desk at its root and stays noindex', async () => {
+  const response = await worker.fetch(
+    new Request('https://admin.aipresshq.com/'),
+    { ...assetEnv(), ADMIN_SESSION_SECRET: 'x'.repeat(32) },
+    { waitUntil() {} },
+  );
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get('X-Robots-Tag') ?? '', /noindex/);
+});
+
+await run('admin API routes on the admin hostname still return their own status codes', async () => {
   // The noindex wrapper must not flatten the 401 the session check produces.
   const response = await worker.fetch(
-    new Request('https://aipresshq.com/admin/api/posts'),
+    new Request('https://admin.aipresshq.com/admin/api/posts'),
     { ...assetEnv(), ADMIN_SESSION_SECRET: 'x'.repeat(32) },
     { waitUntil() {} },
   );
@@ -165,10 +187,20 @@ await run('static assets are not counted as page views', async () => {
   assert.equal(harness.points.length, 0, 'a stylesheet is not a page view');
 });
 
+await run('the admin hostname does not serve public pages', async () => {
+  const response = await worker.fetch(
+    new Request('https://admin.aipresshq.com/posts/gpt-5-6-terra/'),
+    { ...assetEnv(), ADMIN_SESSION_SECRET: 'x'.repeat(32) },
+    { waitUntil() {} },
+  );
+  assert.equal(response.status, 404);
+  assert.match(response.headers.get('X-Robots-Tag') ?? '', /noindex/);
+});
+
 await run('the admin desk is never counted as a page view', async () => {
   const harness = analyticsHarness();
   harness.env.ADMIN_SESSION_SECRET = 'x'.repeat(32);
-  await record('https://aipresshq.com/admin', harness);
+  await record('https://admin.aipresshq.com/', harness);
   assert.equal(harness.points.length, 0, 'editorial traffic is not audience traffic');
 });
 

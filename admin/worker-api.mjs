@@ -43,6 +43,19 @@ const ADMIN_BASE_SECURITY_HEADERS = {
   'Referrer-Policy': 'strict-origin-when-cross-origin',
 };
 
+const ADMIN_STATIC_ASSET_PATHS = new Set([
+  '/admin/admin.css',
+  '/admin/admin.js',
+  '/admin/authors.json',
+  '/favicon.ico',
+  '/favicon-light.svg',
+  '/favicon-dark.svg',
+]);
+
+function isAdminStaticAsset(pathname) {
+  return pathname.startsWith('/brand/') || ADMIN_STATIC_ASSET_PATHS.has(pathname);
+}
+
 function json(body, status = 200, headers = {}) {
   return new Response(JSON.stringify(body), {
     status,
@@ -529,13 +542,17 @@ async function loginThrottled(request, env) {
 export async function handleAdminRequest(request, env, _ctx, dependencies = {}) {
   const url = new URL(request.url);
 
-  if (url.pathname === '/admin' || url.pathname === '/admin/') {
+  if (url.pathname === '/' || url.pathname === '/admin' || url.pathname === '/admin/') {
     if (request.method !== 'GET' && request.method !== 'HEAD') return methodNotAllowed();
     return new Response(renderAdminPage(), { headers: await adminDocumentHeaders(env) });
   }
 
-  if (!url.pathname.startsWith('/admin/api/')) {
+  if (isAdminStaticAsset(url.pathname)) {
     return env.ASSETS.fetch(request);
+  }
+
+  if (!url.pathname.startsWith('/admin/api/')) {
+    return json({ error: 'Not found.' }, 404);
   }
 
   if (isMutating(request.method) && !isSameOriginRequest(request)) {

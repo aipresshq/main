@@ -92,7 +92,7 @@ await run('cookie helpers use an HttpOnly secure admin scope', async () => {
   assert.match(cookie, /Secure/);
   assert.match(cookie, /SameSite=Lax/);
   assert.equal(clearSessionCookie().includes('Max-Age=0'), true);
-  const request = new Request('https://aipresshq.com/admin', {
+  const request = new Request('https://admin.aipresshq.com/admin', {
     headers: { Cookie: `${cookie}; other=value` },
   });
   assert.equal(readCookie(request), 'token');

@@ -96,7 +96,7 @@ export function renderAdminPage() {
   <body>
     <div class="admin-shell" data-admin-app>
       <header class="admin-command-bar">
-        <a class="admin-wordmark" href="/" aria-label="aiPressHQ home">${brandMark('admin-brand-command')}</a>
+        <a class="admin-wordmark" href="https://aipresshq.com/" aria-label="aiPressHQ home">${brandMark('admin-brand-command')}</a>
         <div class="admin-command-context">
           <span class="admin-kicker">Editorial operations</span>
           <strong>Today’s desk</strong>

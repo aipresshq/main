@@ -58,6 +58,7 @@ export interface WorkerExecutionContext {
  * default to leaking a duplicate of the whole site into search results.
  */
 const INDEXABLE_HOSTNAMES = new Set(['aipresshq.com', 'www.aipresshq.com']);
+const ADMIN_HOSTNAME = 'admin.aipresshq.com';
 
 const NOINDEX = 'noindex, nofollow';
 
@@ -75,6 +76,32 @@ function withNoindex(response: Response): Response {
     status: response.status,
     statusText: response.statusText,
     headers,
+  });
+}
+
+function isAdminPath(pathname: string): boolean {
+  return pathname === '/admin' || pathname.startsWith('/admin/');
+}
+
+function redirectToAdminHost(request: Request): Response {
+  if (request.method !== 'GET' && request.method !== 'HEAD') {
+    return new Response('Not found.', {
+      status: 404,
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    });
+  }
+
+  const adminUrl = new URL(request.url);
+  adminUrl.protocol = 'https:';
+  adminUrl.hostname = ADMIN_HOSTNAME;
+  if (adminUrl.pathname === '/admin' || adminUrl.pathname === '/admin/') adminUrl.pathname = '/';
+
+  return new Response(null, {
+    status: 308,
+    headers: {
+      Location: adminUrl.href,
+      'Cache-Control': 'private, max-age=300',
+    },
   });
 }
 
@@ -136,17 +163,19 @@ function recordPageView(
 export default {
   async fetch(request: Request, env: WorkerEnv, ctx: WorkerExecutionContext) {
     const url = new URL(request.url);
-    const isAdmin = url.pathname === '/admin' || url.pathname.startsWith('/admin/');
+    const adminHost = url.hostname === ADMIN_HOSTNAME;
 
-    const response = isAdmin
-      ? await handleAdminRequest(request, env, ctx)
-      : await env.ASSETS.fetch(request);
+    if (adminHost) return withNoindex(await handleAdminRequest(request, env, ctx));
+
+    if (isAdminPath(url.pathname)) return withNoindex(redirectToAdminHost(request));
+
+    const response = await env.ASSETS.fetch(request);
 
     // The desk is login-gated, but a gate is not an indexing directive — say so
     // explicitly rather than relying on crawlers being turned away by the 401.
     // This also keeps editorial, staging and preview traffic out of the audience
     // numbers recorded below.
-    if (isAdmin || !INDEXABLE_HOSTNAMES.has(url.hostname)) return withNoindex(response);
+    if (!INDEXABLE_HOSTNAMES.has(url.hostname)) return withNoindex(response);
 
     recordPageView(request, url, response, env, ctx);
     return response;

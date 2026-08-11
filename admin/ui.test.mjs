@@ -43,6 +43,7 @@ await test('renderAdminPage renders the brand wordmark rather than plain text', 
   assert.ok(html.includes('admin-brand-rail'));
   // The logo is decorative; the link keeps the accessible name.
   assert.ok(html.includes('aria-label="aiPressHQ home"'));
+  assert.ok(html.includes('href="https://aipresshq.com/"'));
 });
 
 await test('renderAdminPage links the brand favicon', () => {
