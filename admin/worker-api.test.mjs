@@ -4,6 +4,7 @@ import {
   handleAdminRequest,
   handleAssetsApi,
   handleContactApi,
+  handleCorrectionsApi,
   handlePreviewApi,
 } from './worker-api.mjs';
 
@@ -89,6 +90,45 @@ function fakeContactDb(seed = []) {
             const [id] = boundArgs;
             const row = rows.find((candidate) => candidate.id === id);
             if (row) row.read_at = '2026-01-02 00:00:00';
+          } else if (query.startsWith('DELETE')) {
+            const [id] = boundArgs;
+            const index = rows.findIndex((candidate) => candidate.id === id);
+            if (index !== -1) rows.splice(index, 1);
+          }
+          return {};
+        },
+        async all() {
+          return { results: [...rows] };
+        },
+      };
+    },
+  };
+}
+
+/** A minimal in-memory stand-in for the D1 binding, just enough to exercise the corrections API. */
+function fakeCorrectionsDb(seed = []) {
+  const rows = seed.map((row) => ({ ...row }));
+  let nextId = rows.reduce((max, row) => Math.max(max, row.id), 0) + 1;
+  return {
+    rows,
+    prepare(query) {
+      let boundArgs = [];
+      return {
+        bind(...args) {
+          boundArgs = args;
+          return this;
+        },
+        async run() {
+          if (query.startsWith('INSERT')) {
+            const [postTitle, postUrl, description, correctedAt] = boundArgs;
+            rows.push({
+              id: nextId++,
+              post_title: postTitle,
+              post_url: postUrl,
+              description,
+              corrected_at: correctedAt,
+              created_at: '2026-08-11 00:00:00',
+            });
           } else if (query.startsWith('DELETE')) {
             const [id] = boundArgs;
             const index = rows.findIndex((candidate) => candidate.id === id);
@@ -497,6 +537,68 @@ await run('indexing submit surfaces an upstream failure without throwing', async
   assert.equal(response.status, 502);
 });
 
+await run('analytics requires authentication like every other admin API route', async () => {
+  const response = await handleAdminRequest(
+    new Request(`${ADMIN_ORIGIN}/admin/api/analytics`),
+    env,
+    undefined,
+    { adapters },
+  );
+  assert.equal(response.status, 401);
+});
+
+await run('analytics is unavailable when no API token is configured', async () => {
+  const request = await authenticatedRequest('/admin/api/analytics');
+  const response = await handleAdminRequest(request, env, undefined, { adapters });
+  assert.equal(response.status, 503);
+});
+
+await run('analytics runs the pageview queries and shapes the response', async () => {
+  const calls = [];
+  const fakeQuery = async (_queryEnv, sql) => {
+    calls.push(sql);
+    if (sql.includes("INTERVAL '1' DAY")) return [{ views: 12 }];
+    if (sql.includes("INTERVAL '7' DAY") && sql.includes('blob1')) {
+      return [{ path: '/posts/terra/', views: 40 }];
+    }
+    if (sql.includes('blob2')) return [{ country: 'IN', views: 30 }];
+    if (sql.includes('blob3')) return [{ referrer: 'news.ycombinator.com', views: 5 }];
+    return [{ views: 90 }];
+  };
+  const request = await authenticatedRequest('/admin/api/analytics');
+  const response = await handleAdminRequest(
+    request,
+    { ...env, CF_ANALYTICS_API_TOKEN: 'test-token' },
+    undefined,
+    { adapters, queryAnalyticsEngine: fakeQuery },
+  );
+  assert.equal(response.status, 200);
+  assert.equal(calls.length, 5, 'every query should run');
+  const body = await response.json();
+  assert.equal(body.viewsToday, 12);
+  assert.equal(body.viewsLast7Days, 90);
+  assert.deepEqual(body.topPages, [{ path: '/posts/terra/', views: 40 }]);
+  assert.deepEqual(body.topCountries, [{ country: 'IN', views: 30 }]);
+  assert.deepEqual(body.topReferrers, [{ referrer: 'news.ycombinator.com', views: 5 }]);
+});
+
+await run('a failing analytics query is reported rather than throwing', async () => {
+  const request = await authenticatedRequest('/admin/api/analytics');
+  const response = await handleAdminRequest(
+    request,
+    { ...env, CF_ANALYTICS_API_TOKEN: 'test-token' },
+    undefined,
+    {
+      adapters,
+      queryAnalyticsEngine: async () => {
+        throw new Error('Analytics Engine query failed (401).');
+      },
+    },
+  );
+  assert.equal(response.status, 502);
+  assert.match((await response.json()).error, /query failed/i);
+});
+
 await run('preview returns capped sanitized HTML without writing', async () => {
   const response = await handlePreviewApi(
     new Request(`${ADMIN_ORIGIN}/admin/api/preview`, {
@@ -614,4 +716,110 @@ await run('an authenticated request reaches the contact list', async () => {
     adapters: { ...adapters, contactDb: fakeContactDb() },
   });
   assert.equal(response.status, 200);
+});
+
+await run('corrections API lists corrections newest first', async () => {
+  const db = fakeCorrectionsDb([
+    {
+      id: 2,
+      post_title: 'Newer',
+      post_url: null,
+      description: 'b',
+      corrected_at: '2026-08-10',
+      created_at: '2026-08-10 00:00:00',
+    },
+    {
+      id: 1,
+      post_title: 'Older',
+      post_url: null,
+      description: 'a',
+      corrected_at: '2026-08-01',
+      created_at: '2026-08-01 00:00:00',
+    },
+  ]);
+  const response = await handleCorrectionsApi(
+    new Request(`${ADMIN_ORIGIN}/admin/api/corrections`),
+    { ...adapters, correctionsDb: db },
+  );
+  assert.equal(response.status, 200);
+  const corrections = await response.json();
+  assert.deepEqual(
+    corrections.map((correction) => correction.postTitle),
+    ['Newer', 'Older'],
+  );
+});
+
+await run('corrections API creates a correction from valid input', async () => {
+  const db = fakeCorrectionsDb();
+  const response = await handleCorrectionsApi(
+    new Request(`${ADMIN_ORIGIN}/admin/api/corrections`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: ADMIN_ORIGIN },
+      body: JSON.stringify({
+        postTitle: 'GPT-5.6 Terra: where it fits',
+        postUrl: '/posts/gpt-5-6-terra/',
+        description: 'Price corrected from $12/M to $10/M tokens.',
+        correctedAt: '2026-08-11',
+      }),
+    }),
+    { ...adapters, correctionsDb: db },
+  );
+  assert.equal(response.status, 201);
+  assert.equal(db.rows.length, 1);
+  assert.equal(db.rows[0].post_title, 'GPT-5.6 Terra: where it fits');
+});
+
+await run('corrections API rejects invalid input with field errors', async () => {
+  const db = fakeCorrectionsDb();
+  const response = await handleCorrectionsApi(
+    new Request(`${ADMIN_ORIGIN}/admin/api/corrections`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: ADMIN_ORIGIN },
+      body: JSON.stringify({ postTitle: '', postUrl: '', description: '', correctedAt: '' }),
+    }),
+    { ...adapters, correctionsDb: db },
+  );
+  assert.equal(response.status, 400);
+  const body = await response.json();
+  assert.ok(body.errors.postTitle);
+  assert.ok(body.errors.description);
+  assert.ok(body.errors.correctedAt);
+  assert.equal(db.rows.length, 0, 'an invalid correction must not be stored');
+});
+
+await run('corrections API deletes a correction', async () => {
+  const db = fakeCorrectionsDb([
+    {
+      id: 1,
+      post_title: 'One',
+      post_url: null,
+      description: 'a',
+      corrected_at: '2026-08-01',
+      created_at: '2026-08-01 00:00:00',
+    },
+  ]);
+  const response = await handleCorrectionsApi(
+    new Request(`${ADMIN_ORIGIN}/admin/api/corrections/1`, { method: 'DELETE' }),
+    { ...adapters, correctionsDb: db },
+  );
+  assert.equal(response.status, 204);
+  assert.equal(db.rows.length, 0);
+});
+
+await run('corrections API fails closed without a D1 binding', async () => {
+  const response = await handleCorrectionsApi(
+    new Request(`${ADMIN_ORIGIN}/admin/api/corrections`),
+    adapters,
+  );
+  assert.equal(response.status, 503);
+});
+
+await run('the admin desk routes /admin/api/corrections behind the session wall', async () => {
+  const response = await handleAdminRequest(
+    new Request(`${ADMIN_ORIGIN}/admin/api/corrections`),
+    env,
+    undefined,
+    { adapters: { ...adapters, correctionsDb: fakeCorrectionsDb() } },
+  );
+  assert.equal(response.status, 401, 'corrections must not be readable without a session');
 });

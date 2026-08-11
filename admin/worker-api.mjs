@@ -20,6 +20,8 @@ import {
   verifySession,
 } from './worker-auth.mjs';
 import { createContactStore } from '../src/lib/contact-store.ts';
+import { createCorrectionsStore } from '../src/lib/corrections-store.ts';
+import { validateCorrection } from '../src/lib/validate-correction.ts';
 import { rateLimitKey } from '../src/lib/rate-limit.ts';
 
 // Matches astro.config.mjs's `site` and BaseLayout.astro's canonical fallback —
@@ -267,6 +269,10 @@ function createPrismicAdapters(env, request) {
     images: env.IMAGES,
     publicR2Url: env.PUBLIC_R2_PUBLIC_URL ?? '',
     contactDb: env.CONTACT_DB,
+    // Corrections live in the same D1 database as contact submissions — one
+    // small database, two small tables, rather than provisioning a second
+    // database for a single-digit-row table.
+    correctionsDb: env.CONTACT_DB,
   };
 }
 
@@ -414,6 +420,54 @@ export async function handleContactApi(request, adapters) {
   return methodNotAllowed();
 }
 
+/**
+ * Lists, creates, and deletes corrections. Public reads happen through
+ * handleCorrectionsFeedApi in src/worker.ts, outside the admin auth wall —
+ * this is the write side, gated the same as every other admin route.
+ */
+export async function handleCorrectionsApi(request, adapters) {
+  if (!adapters.correctionsDb) {
+    return json({ error: 'Corrections storage is not configured.' }, 503);
+  }
+  const store = createCorrectionsStore(adapters.correctionsDb);
+  const url = new URL(request.url);
+
+  if (url.pathname === '/admin/api/corrections') {
+    if (request.method === 'GET') return json(await store.list());
+    if (request.method === 'POST') {
+      const parsed = await readJson(request);
+      if (parsed.error) return parsed.error;
+      const record = parsed.value ?? {};
+      const validation = validateCorrection({
+        postTitle: record.postTitle,
+        postUrl: record.postUrl,
+        description: record.description,
+        correctedAt: record.correctedAt,
+      });
+      if (!validation.valid) return json({ errors: validation.errors }, 400);
+      await store.insert({
+        postTitle: String(record.postTitle).trim(),
+        postUrl: record.postUrl ? String(record.postUrl).trim() : null,
+        description: String(record.description).trim(),
+        correctedAt: String(record.correctedAt).trim(),
+      });
+      return json({ ok: true }, 201);
+    }
+    return methodNotAllowed();
+  }
+
+  const match = url.pathname.match(/^\/admin\/api\/corrections\/(\d+)$/);
+  if (!match) return json({ error: 'Not found.' }, 404);
+  const id = Number(match[1]);
+
+  if (request.method === 'DELETE') {
+    await store.remove(id);
+    return new Response(null, { status: 204 });
+  }
+
+  return methodNotAllowed();
+}
+
 export function sanitizePreviewHtml(html) {
   return html
     .replace(
@@ -462,6 +516,81 @@ export async function handleIndexingApi(
     return json({ results });
   } catch {
     return json({ error: 'Unable to reach the Google Indexing API.' }, 502);
+  }
+}
+
+// Matches the account this Worker deploys to. Not a secret — only the API
+// token queried against it (env.CF_ANALYTICS_API_TOKEN) needs to stay one.
+const CF_ACCOUNT_ID = '8c42797095e46ae33d870c8e5182b3d5';
+const ANALYTICS_DATASET = 'aipresshq_pageviews';
+
+/**
+ * Runs one query against the Analytics Engine SQL API. recordPageView (in
+ * src/worker.ts) writes blob1/blob2/blob3 as path/country/referrer host and
+ * double1 as a constant 1, which is what the queries below group and count.
+ */
+async function queryAnalyticsEngine(env, sql) {
+  const response = await fetch(
+    `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/analytics_engine/sql`,
+    { method: 'POST', headers: { Authorization: `Bearer ${env.CF_ANALYTICS_API_TOKEN}` }, body: sql },
+  );
+  if (!response.ok) {
+    throw new Error(`Analytics Engine query failed (${response.status}).`);
+  }
+  const payload = await response.json();
+  return Array.isArray(payload.data) ? payload.data : [];
+}
+
+/**
+ * Reads back the pageviews recordPageView has been writing all along. Was
+ * write-only until now — collected but with nowhere to see it. Takes `query`
+ * as a parameter for the same reason handleIndexingApi takes `submit`: tests
+ * inject a fake instead of mocking global fetch.
+ */
+export async function handleAnalyticsApi(request, env, query = queryAnalyticsEngine) {
+  if (request.method !== 'GET') return methodNotAllowed();
+  if (!env.CF_ANALYTICS_API_TOKEN) {
+    return json(
+      {
+        error:
+          'Analytics is not configured. Create an API token with Account Analytics: Read and set it as the CF_ANALYTICS_API_TOKEN secret.',
+      },
+      503,
+    );
+  }
+
+  try {
+    const [today, last7Days, topPages, topCountries, topReferrers] = await Promise.all([
+      query(
+        env,
+        `SELECT count() AS views FROM ${ANALYTICS_DATASET} WHERE timestamp > NOW() - INTERVAL '1' DAY`,
+      ),
+      query(
+        env,
+        `SELECT count() AS views FROM ${ANALYTICS_DATASET} WHERE timestamp > NOW() - INTERVAL '7' DAY`,
+      ),
+      query(
+        env,
+        `SELECT blob1 AS path, count() AS views FROM ${ANALYTICS_DATASET} WHERE timestamp > NOW() - INTERVAL '7' DAY GROUP BY blob1 ORDER BY views DESC LIMIT 10`,
+      ),
+      query(
+        env,
+        `SELECT blob2 AS country, count() AS views FROM ${ANALYTICS_DATASET} WHERE timestamp > NOW() - INTERVAL '7' DAY AND blob2 != '' GROUP BY blob2 ORDER BY views DESC LIMIT 10`,
+      ),
+      query(
+        env,
+        `SELECT blob3 AS referrer, count() AS views FROM ${ANALYTICS_DATASET} WHERE timestamp > NOW() - INTERVAL '7' DAY AND blob3 != '' GROUP BY blob3 ORDER BY views DESC LIMIT 10`,
+      ),
+    ]);
+    return json({
+      viewsToday: Number(today[0]?.views ?? 0),
+      viewsLast7Days: Number(last7Days[0]?.views ?? 0),
+      topPages,
+      topCountries,
+      topReferrers,
+    });
+  } catch (error) {
+    return json({ error: error instanceof Error ? error.message : 'Analytics query failed.' }, 502);
   }
 }
 
@@ -612,7 +741,16 @@ export async function handleAdminRequest(request, env, _ctx, dependencies = {}) 
     if (url.pathname === '/admin/api/contact' || url.pathname.startsWith('/admin/api/contact/')) {
       return await handleContactApi(request, adapters);
     }
+    if (
+      url.pathname === '/admin/api/corrections' ||
+      url.pathname.startsWith('/admin/api/corrections/')
+    ) {
+      return await handleCorrectionsApi(request, adapters);
+    }
     if (url.pathname === '/admin/api/preview') return await handlePreviewApi(request);
+    if (url.pathname === '/admin/api/analytics') {
+      return await handleAnalyticsApi(request, env, dependencies.queryAnalyticsEngine);
+    }
     if (url.pathname === '/admin/api/indexing/submit') {
       return await handleIndexingApi(
         request,

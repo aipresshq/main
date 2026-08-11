@@ -15,6 +15,9 @@ const state = {
   authors: [],
   assets: [],
   contacts: [],
+  analytics: null,
+  analyticsNotice: '',
+  corrections: [],
   editingId: null,
   query: '',
   format: 'all',
@@ -356,6 +359,52 @@ function renderContacts() {
   )}<section class="admin-section admin-contact-list">${rows}</section>`;
 }
 
+function analyticsRows(items, labelKey, valueKey, emptyLabel) {
+  if (!items || items.length === 0) {
+    return `<tr><td colspan="2">${escapeHtml(emptyLabel)}</td></tr>`;
+  }
+  return items
+    .map(
+      (item) =>
+        `<tr><td>${escapeHtml(item[labelKey] ?? '—')}</td><td>${escapeHtml(String(item[valueKey] ?? 0))}</td></tr>`,
+    )
+    .join('');
+}
+
+function renderAnalytics() {
+  const header = viewHeader(
+    'Analytics / traffic',
+    "Who's reading.",
+    'Pageviews recorded server-side by the Worker — no cookies, no third-party beacon.',
+    '<button class="admin-button" type="button" data-action="refresh-analytics">Refresh</button>',
+  );
+  if (!state.analytics) {
+    content.innerHTML = `${header}${emptyState(
+      'Analytics is not connected yet.',
+      state.analyticsNotice || 'Configure the CF_ANALYTICS_API_TOKEN secret to see traffic here.',
+    )}`;
+    return;
+  }
+  const { viewsToday, viewsLast7Days, topPages, topCountries, topReferrers } = state.analytics;
+  content.innerHTML = `${header}<div class="admin-metrics"><div class="admin-metric"><span class="admin-kicker">Views today</span><strong>${viewsToday}</strong><span>Recorded since midnight UTC</span></div><div class="admin-metric"><span class="admin-kicker">Views, last 7 days</span><strong>${viewsLast7Days}</strong><span>Rolling seven-day total</span></div></div><section class="admin-section"><div class="admin-section-heading"><h2>Top pages</h2><span class="admin-kicker">Last 7 days</span></div><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Path</th><th>Views</th></tr></thead><tbody>${analyticsRows(topPages, 'path', 'views', 'No pageviews recorded yet.')}</tbody></table></div></section><section class="admin-section"><div class="admin-section-heading"><h2>Top countries</h2><span class="admin-kicker">Last 7 days</span></div><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Country</th><th>Views</th></tr></thead><tbody>${analyticsRows(topCountries, 'country', 'views', 'No country data yet.')}</tbody></table></div></section><section class="admin-section"><div class="admin-section-heading"><h2>Top referrers</h2><span class="admin-kicker">Last 7 days</span></div><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Referrer</th><th>Views</th></tr></thead><tbody>${analyticsRows(topReferrers, 'referrer', 'views', 'No outside referrers yet.')}</tbody></table></div></section>`;
+}
+
+function renderCorrections() {
+  const rows = state.corrections.length
+    ? state.corrections
+        .map(
+          (correction) =>
+            `<article class="admin-contact-card"><div class="admin-contact-card-head"><strong>${escapeHtml(correction.postTitle)}</strong><span class="admin-kicker">${escapeHtml(formatDate(correction.correctedAt))}</span></div>${correction.postUrl ? `<p class="admin-contact-meta"><a href="${escapeHtml(correction.postUrl)}" target="_blank" rel="noreferrer">${escapeHtml(correction.postUrl)}</a></p>` : ''}<p class="admin-contact-message">${escapeHtml(correction.description)}</p><div class="admin-form-actions"><button class="admin-button admin-button-danger" type="button" data-delete-correction-id="${correction.id}">Delete</button></div></article>`,
+        )
+        .join('')
+    : emptyState('No corrections issued yet.', 'Add one below once a story needs correcting.');
+  content.innerHTML = `${viewHeader(
+    'Corrections / revision log',
+    'The public record.',
+    'Everything added here appears on the public /corrections/ page, newest first.',
+  )}<section class="admin-section"><form class="admin-editor-section" data-correction-form><div class="admin-field-grid"><label class="admin-label">Story title<input name="postTitle" required maxlength="200" placeholder="GPT-5.6 Terra: where it fits"><span class="admin-field-error" data-error="postTitle"></span></label><label class="admin-label">Story link (optional)<input name="postUrl" placeholder="/posts/gpt-5-6-terra/"><span class="admin-field-error" data-error="postUrl"></span></label><label class="admin-label">Correction date<input type="date" name="correctedAt" required><span class="admin-field-error" data-error="correctedAt"></span></label><label class="admin-label admin-field-grid-wide">What was wrong and what it now says<textarea name="description" rows="3" required maxlength="2000"></textarea><span class="admin-field-error" data-error="description"></span></label></div><div class="admin-form-actions"><button class="admin-button admin-button-primary" type="submit">Add correction</button></div></form></section><section class="admin-section admin-contact-list">${rows}</section>`;
+}
+
 async function requestIndexing() {
   setStatus('Requesting indexing…', false, true);
   const output = content.querySelector('[data-indexing-result]');
@@ -415,6 +464,27 @@ async function loadContacts() {
   state.contacts = Array.isArray(response.json) ? response.json : [];
 }
 
+async function loadAnalytics() {
+  const response = await api('/admin/api/analytics');
+  if (response.status === 503) {
+    state.analytics = null;
+    state.analyticsNotice = response.json.error || '';
+    return;
+  }
+  if (!response.ok) {
+    throw new Error(response.json.error || `Analytics request failed (${response.status}).`);
+  }
+  state.analytics = response.json;
+  state.analyticsNotice = '';
+}
+
+async function loadCorrections() {
+  const response = await api('/admin/api/corrections');
+  if (!response.ok)
+    throw new Error(response.json.error || `Corrections request failed (${response.status}).`);
+  state.corrections = Array.isArray(response.json) ? response.json : [];
+}
+
 async function loadView(view = state.view) {
   const requestToken = ++viewRequestToken;
   state.view = view;
@@ -438,6 +508,12 @@ async function loadView(view = state.view) {
     if (view === 'contact') {
       await loadContacts();
     }
+    if (view === 'analytics') {
+      await loadAnalytics();
+    }
+    if (view === 'corrections') {
+      await loadCorrections();
+    }
     if (requestToken !== viewRequestToken) return;
     if (view === 'dashboard') renderDashboard();
     else if (view === 'posts') renderQueue();
@@ -445,6 +521,8 @@ async function loadView(view = state.view) {
     else if (view === 'assets') renderAssets();
     else if (view === 'release') renderRelease();
     else if (view === 'contact') renderContacts();
+    else if (view === 'analytics') renderAnalytics();
+    else if (view === 'corrections') renderCorrections();
     playViewEntrance();
     setStatus('');
   } catch (error) {
@@ -567,6 +645,42 @@ async function deleteContact(id) {
   await loadView('contact');
 }
 
+async function submitCorrection(form) {
+  for (const node of form.querySelectorAll('[data-error]')) node.textContent = '';
+  const formData = new FormData(form);
+  const payload = {
+    postTitle: String(formData.get('postTitle') ?? ''),
+    postUrl: String(formData.get('postUrl') ?? ''),
+    description: String(formData.get('description') ?? ''),
+    correctedAt: String(formData.get('correctedAt') ?? ''),
+  };
+  setStatus('Adding correction…', false, true);
+  const response = await api('/admin/api/corrections', { method: 'POST', body: payload });
+  if (!response.ok) {
+    const errors = response.json.errors || {};
+    Object.entries(errors).forEach(([field, message]) => {
+      const node = form.querySelector(`[data-error="${CSS.escape(field)}"]`);
+      if (node) node.textContent = message;
+    });
+    setStatus(response.json.error || 'Review the highlighted fields.', true);
+    return;
+  }
+  setStatus('Correction added.');
+  await loadView('corrections');
+}
+
+async function deleteCorrection(id) {
+  if (!window.confirm('Delete this correction from the public record?')) return;
+  const response = await api(`/admin/api/corrections/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    setStatus(response.json.error || 'Correction deletion failed.', true);
+    return;
+  }
+  await loadView('corrections');
+}
+
 function addFactColumn() {
   const holder = content.querySelector('[data-facts-editor]');
   if (!holder) return;
@@ -613,11 +727,13 @@ root?.addEventListener('click', async (event) => {
   if (target.dataset.deleteAsset) return deleteAsset(target.dataset.deleteAsset);
   if (target.dataset.markReadId) return markContactRead(target.dataset.markReadId);
   if (target.dataset.deleteContactId) return deleteContact(target.dataset.deleteContactId);
+  if (target.dataset.deleteCorrectionId) return deleteCorrection(target.dataset.deleteCorrectionId);
   if (target.dataset.action === 'new') return openEditor();
   if (target.dataset.action === 'cancel-editor') return loadView('posts');
   if (target.dataset.action === 'refresh') return loadView('posts');
   if (target.dataset.action === 'refresh-assets') return loadView('assets');
   if (target.dataset.action === 'refresh-contacts') return loadView('contact');
+  if (target.dataset.action === 'refresh-analytics') return loadView('analytics');
   if (target.dataset.action === 'assets') return loadView('assets');
   if (target.dataset.action === 'request-indexing') return requestIndexing();
   if (target.dataset.addRepeater) return addRepeater(target.dataset.addRepeater);
@@ -680,6 +796,7 @@ root?.addEventListener('submit', async (event) => {
   }
   if (form.matches('[data-editor-form]')) return submitEditor(form);
   if (form.matches('[data-asset-form]')) return uploadAsset(form);
+  if (form.matches('[data-correction-form]')) return submitCorrection(form);
 });
 
 logoutButton?.addEventListener('click', async () => {

@@ -121,6 +121,8 @@ export function renderAdminPage() {
             <button type="button" data-view="assets">Cover desk <span>04</span></button>
             <button type="button" data-view="release">Release handoff <span>05</span></button>
             <button type="button" data-view="contact">Contact desk <span>06</span></button>
+            <button type="button" data-view="analytics">Analytics <span>07</span></button>
+            <button type="button" data-view="corrections">Corrections <span>08</span></button>
           </nav>
           <div class="admin-rail-note">
             <span class="admin-kicker">Publishing rule</span>
