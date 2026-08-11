@@ -92,6 +92,10 @@ const quaternaryPostId = 'codex-beyond-the-laptop';
 const pricingPostId = 'luna-price-efficiency';
 const tutorialPostId = 'codex-workspace-cleanup';
 const motionPostId = 'motion-claude-launch-video';
+const sonnetPricingPostId = 'claude-sonnet-5-permanent-pricing';
+const codexResetPostId = 'openai-codex-usage-reset';
+const watermarkPostId = 'claude-invisible-watermarks';
+const suspensionsPostId = 'anthropic-account-suspensions';
 const publishedPostIds = [
   primaryPostId,
   secondaryPostId,
@@ -100,6 +104,10 @@ const publishedPostIds = [
   pricingPostId,
   tutorialPostId,
   motionPostId,
+  sonnetPricingPostId,
+  codexResetPostId,
+  watermarkPostId,
+  suspensionsPostId,
 ];
 
 // Scope content assertions to the story itself. A post page also renders nav,
@@ -257,7 +265,7 @@ check('dist/ exists after build', () => {
 });
 
 check('all content posts built successfully', () => {
-  assert.equal(publishedPostIds.length, 7, 'the published edition should contain seven stories');
+  assert.equal(publishedPostIds.length, 11, 'the published edition should contain eleven stories');
   for (const id of publishedPostIds) {
     assert.ok(distExists(`posts/${id}/index.html`), `posts/${id}/index.html was not built`);
   }
@@ -416,6 +424,38 @@ check('published stories link their reference covers and official reporting sour
         'https://motion.so/blog/how-to-turn-a-product-launch-into-a-video',
         'https://motion.so/learn/mcp-video-generation',
         'https://motion.so/',
+      ],
+    },
+    [sonnetPricingPostId]: {
+      coverAlt:
+        "Botanical illustration of a stylized number five made from painted flowers and leaves, from Anthropic's Claude Sonnet 5 launch video",
+      inlineUrls: [
+        'https://x.com/claudeai/status/2072017450611142835',
+        'https://platform.claude.com/docs/en/about-claude/pricing',
+      ],
+    },
+    [codexResetPostId]: {
+      coverAlt:
+        "Screenshot of OpenAI's Codex interface showing a task prompt and a list of recent coding tasks",
+      inlineUrls: [
+        'https://x.com/thsottiaux/status/2086972933566857393',
+        'https://help.openai.com/en/articles/11369540-using-codex-with-your-chatgpt-plan',
+        'https://learn.chatgpt.com/docs/pricing',
+      ],
+    },
+    [watermarkPostId]: {
+      coverAlt:
+        'Screenshot of Anthropic\'s Claude Support article titled "How Claude marks AI-generated content"',
+      inlineUrls: [
+        'https://support.claude.com/en/articles/16266773-how-claude-marks-ai-generated-content',
+      ],
+    },
+    [suspensionsPostId]: {
+      coverAlt:
+        "Screenshot from Anthropic's Transparency Hub showing 398,000 appeals and 42,000 appeal overturns for January to June 2026",
+      inlineUrls: [
+        'https://x.com/local0ptimist/status/2086806480209285438',
+        'https://www.anthropic.com/transparency/system-trust-reporting',
       ],
     },
   };
@@ -1634,9 +1674,11 @@ check('homepage lead story is the most recent post', () => {
   const html = dist('index.html');
   const lead = html.match(/<h1 class="hero-lead-headline">([\s\S]*?)<\/h1>/);
   assert.ok(lead, 'no lead headline rendered');
-  // Most recent by pubDate: codex-beyond-the-laptop (2026-08-04).
+  // Most recent by pubDate: four stories published 2026-08-11 tie on date, so
+  // sortPostsNewestFirst's secondary key (ascending id) decides among them —
+  // suspensionsPostId ('anthropic-account-suspensions') sorts first.
   assert.ok(
-    lead[1].includes(`/posts/${quaternaryPostId}/`),
+    lead[1].includes(`/posts/${suspensionsPostId}/`),
     'lead story should be the most recent post',
   );
   assert.match(html, /\d+ min read/, 'read time not rendered');
@@ -2217,7 +2259,7 @@ check('author pages render profiles and every authored story newest first', () =
 
   const urls = [...html.matchAll(/class="author-story" href="([^"]+)"/g)].map((match) => match[1]);
   assert.equal(urls.length, sourcePosts().length);
-  assert.equal(urls[0], `/posts/${quaternaryPostId}/`);
+  assert.equal(urls[0], `/posts/${suspensionsPostId}/`);
   assert.equal(urls.at(-1), `/posts/${secondaryPostId}/`);
 
   const schemas = [

@@ -275,6 +275,19 @@
   margin: 0 0 26px;
 }
 
+/* Prismic's default image-node wrapper is a plain <p> — override the 60ch
+   text measure so a chart gets the full prose width instead of a cramped,
+   off-brand crop. */
+.prose p.block-img {
+  max-width: none;
+  margin: 40px 0;
+}
+
+.prose p.block-img img {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
 .prose ul,
 .prose ol {
   margin: 0 0 20px;
