@@ -76,12 +76,21 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         </li>
       </ul>
 
+      <h2>Corrections issued</h2>
+      <p>Every correction made to a published story, newest first.</p>
+    </div>
+
+    <div class="corrections-feed" data-corrections-feed>
+      <p class="corrections-status" data-corrections-status>Loading corrections…</p>
+    </div>
+
+    <div class="prose legal-body">
       <h2>Reporting something that looks wrong</h2>
       <p>
-        Email <a href="mailto:hello@aipresshq.com">hello@aipresshq.com</a> with the story's URL and what
-        you believe is incorrect. A link to a primary source is the fastest way to get it fixed: this
-        site's whole method is to start from what can be checked, so a checkable correction can be acted
-        on immediately.
+        Use the <a href="/contact/">contact form</a> — pick "Correction or source note" — or email
+        <a href="mailto:hello@aipresshq.com">hello@aipresshq.com</a> with the story's URL and what you
+        believe is incorrect. A link to a primary source is the fastest way to get it fixed: this site's
+        whole method is to start from what can be checked, so a checkable correction can be acted on immediately.
       </p>
       <p>
         Corrections are made whether or not the person reporting them wants credit, and reporting an
@@ -102,3 +111,56 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     </div>
   </section>
 </BaseLayout>
+
+<style>
+  .corrections-feed {
+    max-width: 72ch;
+    margin: 24px 0 40px;
+  }
+
+  .corrections-status {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.92rem;
+  }
+
+  .corrections-list {
+    display: grid;
+    gap: 20px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .corrections-item {
+    padding: 16px 0 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .corrections-item time {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .corrections-item-title {
+    margin: 0 0 6px;
+    font-weight: 700;
+  }
+
+  .corrections-item-description {
+    margin: 0;
+    line-height: 1.55;
+    color: var(--text-muted);
+  }
+</style>
+
+<script>
+  import { initCorrectionsFeed } from '../scripts/corrections-feed';
+
+  initCorrectionsFeed();
+</script>

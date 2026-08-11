@@ -402,6 +402,76 @@ await run(
   },
 );
 
+/** A minimal stand-in for the D1 binding, seeded with existing correction rows. */
+function fakeCorrectionsDb(seed = []) {
+  return {
+    prepare(query) {
+      return {
+        bind() {
+          return this;
+        },
+        async run() {
+          return {};
+        },
+        async all() {
+          if (!query.startsWith('SELECT')) return { results: [] };
+          return { results: seed };
+        },
+      };
+    },
+  };
+}
+
+await run('the corrections feed returns every stored correction', async () => {
+  const db = fakeCorrectionsDb([
+    {
+      id: 1,
+      post_title: 'GPT-5.6 Terra: where it fits',
+      post_url: '/posts/gpt-5-6-terra/',
+      description: 'Price corrected from $12/M to $10/M tokens.',
+      corrected_at: '2026-08-11',
+      created_at: '2026-08-11 00:00:00',
+    },
+  ]);
+  const response = await worker.fetch(
+    new Request('https://aipresshq.com/api/corrections'),
+    { ...assetEnv(), CONTACT_DB: db },
+    { waitUntil() {} },
+  );
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.corrections.length, 1);
+  assert.equal(body.corrections[0].postTitle, 'GPT-5.6 Terra: where it fits');
+  assert.equal(body.corrections[0].postUrl, '/posts/gpt-5-6-terra/');
+});
+
+await run('the corrections feed is cached briefly at the edge', async () => {
+  const response = await worker.fetch(
+    new Request('https://aipresshq.com/api/corrections'),
+    { ...assetEnv(), CONTACT_DB: fakeCorrectionsDb() },
+    { waitUntil() {} },
+  );
+  assert.match(response.headers.get('Cache-Control') ?? '', /max-age=60/);
+});
+
+await run('the corrections feed fails closed without a D1 binding', async () => {
+  const response = await worker.fetch(
+    new Request('https://aipresshq.com/api/corrections'),
+    assetEnv(),
+    { waitUntil() {} },
+  );
+  assert.equal(response.status, 503);
+});
+
+await run('the corrections feed carries a noindex header', async () => {
+  const response = await worker.fetch(
+    new Request('https://aipresshq.com/api/corrections'),
+    { ...assetEnv(), CONTACT_DB: fakeCorrectionsDb() },
+    { waitUntil() {} },
+  );
+  assert.match(response.headers.get('X-Robots-Tag') ?? '', /noindex/);
+});
+
 await run('no request-identifying data is recorded', async () => {
   const harness = analyticsHarness();
   await record('https://aipresshq.com/', harness, {

@@ -1,5 +1,6 @@
 import { handleAdminRequest, isSameOriginRequest } from '../admin/worker-api.mjs';
 import { createContactStore, type ContactDatabase } from './lib/contact-store.ts';
+import { createCorrectionsStore, type CorrectionsDatabase } from './lib/corrections-store.ts';
 import { validateContact } from './lib/validate-contact.ts';
 import { rateLimitKey } from './lib/rate-limit.ts';
 
@@ -37,7 +38,8 @@ export interface WorkerEnv {
   LOGIN_RATE_LIMITER?: RateLimiter;
   CONTACT_RATE_LIMITER?: RateLimiter;
   ANALYTICS?: AnalyticsEngineDataset;
-  CONTACT_DB?: ContactDatabase;
+  /** Also holds the corrections table — see corrections-store.ts. */
+  CONTACT_DB?: ContactDatabase & CorrectionsDatabase;
 }
 
 /** Cloudflare's Analytics Engine binding, declared under `analytics_engine_datasets`. */
@@ -237,6 +239,20 @@ async function handleContactSubmission(request: Request, env: WorkerEnv): Promis
   return json({ success: true }, 201);
 }
 
+/**
+ * Serves the public corrections feed rendered on /corrections/. Read-only,
+ * unauthenticated, cached briefly at the edge. The write side — adding or
+ * removing a correction — lives behind the admin session wall.
+ */
+async function handleCorrectionsFeed(env: WorkerEnv): Promise<Response> {
+  if (!env.CONTACT_DB) {
+    return json({ error: 'Corrections storage is not configured.' }, 503);
+  }
+  const store = createCorrectionsStore(env.CONTACT_DB);
+  const corrections = await store.list();
+  return json({ corrections }, 200, { 'Cache-Control': 'public, max-age=60' });
+}
+
 export default {
   async fetch(request: Request, env: WorkerEnv, ctx: WorkerExecutionContext) {
     const url = new URL(request.url);
@@ -248,6 +264,10 @@ export default {
 
     if (url.pathname === '/api/contact' && request.method === 'POST') {
       return withNoindex(await handleContactSubmission(request, env));
+    }
+
+    if (url.pathname === '/api/corrections' && request.method === 'GET') {
+      return withNoindex(await handleCorrectionsFeed(env));
     }
 
     const response = await env.ASSETS.fetch(request);

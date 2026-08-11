@@ -6,6 +6,7 @@ import { sanitizePreviewHtml, MAX_PREVIEW_BYTES } from './worker-api.mjs';
 
 const POST_ID_PATTERN = /^\/admin\/api\/posts\/([^/]+)$/;
 const CONTACT_ID_PATTERN = /^\/admin\/api\/contact\/(\d+)$/;
+const CORRECTIONS_ID_PATTERN = /^\/admin\/api\/corrections\/(\d+)$/;
 
 // Routes the deployed Worker owns but the dev server cannot: there is no
 // session cookie to verify and no R2 binding to list. They answer explicitly
@@ -34,6 +35,33 @@ function handleLocalOnlyRoute({ method, pathname }) {
 
   if (pathname === '/admin/api/contact' && method === 'GET') {
     return { status: 200, json: { localMode: true } };
+  }
+
+  if (pathname === '/admin/api/analytics' && method === 'GET') {
+    return {
+      status: 503,
+      json: {
+        error: 'Analytics needs the deployed Worker and a CF_ANALYTICS_API_TOKEN secret.',
+        localMode: true,
+      },
+    };
+  }
+
+  if (pathname === '/admin/api/corrections' && method === 'GET') {
+    return { status: 200, json: { localMode: true } };
+  }
+
+  if (
+    (pathname === '/admin/api/corrections' && method === 'POST') ||
+    CORRECTIONS_ID_PATTERN.test(pathname)
+  ) {
+    return {
+      status: 501,
+      json: {
+        error: 'Corrections need the deployed Worker and its D1 binding.',
+        localMode: true,
+      },
+    };
   }
 
   if (CONTACT_ID_PATTERN.test(pathname)) {
