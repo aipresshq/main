@@ -384,7 +384,9 @@
 
 .related-news-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* auto-fit, not repeat(3, ...) — a thin edition can hand this fewer than
+     three stories, and a reserved empty column would sit beside them. */
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 36px 24px;
 }
 
@@ -555,6 +557,12 @@
   margin-top: 28px;
 }
 
+/* No side posts to fill the third column — drop it rather than reserve an
+   empty "Keep reading" panel with a heading and nothing under it. */
+.desk-showcase-main-lean {
+  grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.9fr);
+}
+
 .desk-showcase-lead {
   position: relative;
   display: block;
@@ -665,7 +673,9 @@
 
 .desk-showcase-watch-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* auto-fit, not repeat(2, ...) — a thin edition can hand this one post,
+     and a second reserved column would sit empty beside it. */
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 22px 14px;
   margin-top: 18px;
 }
@@ -706,7 +716,8 @@
 
 .desk-showcase-briefs {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* auto-fit, not repeat(4, ...) — see .desk-showcase-watch-grid above. */
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   margin-top: 28px;
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
@@ -882,7 +893,8 @@
 
 .story-timeline-track {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  /* auto-fit, not repeat(6, ...) — see .desk-index-columns' comment. */
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   margin-top: 28px;
   border-top: 1px solid var(--border);
 }
@@ -1046,7 +1058,7 @@
   }
 
   .story-timeline-track {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     row-gap: 24px;
   }
 
@@ -1109,11 +1121,11 @@
   }
 
   .desk-showcase-watch-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   }
 
   .desk-showcase-briefs {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   }
 
   .desk-showcase-briefs a,

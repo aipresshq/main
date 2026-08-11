@@ -34,7 +34,7 @@ const headingId = `desk-showcase-${slugify(title)}`;
     >
   </header>
 
-  <div class="desk-showcase-main">
+  <div class:list={['desk-showcase-main', { 'desk-showcase-main-lean': sidePosts.length === 0 }]}>
     <a class="desk-showcase-lead" href={`/posts/${lead.id}/`}>
       <CoverImage
         src={lead.data.cover}
@@ -69,39 +69,43 @@ const headingId = `desk-showcase-${slugify(title)}`;
       </ul>
     </section>
 
-    <aside class="desk-showcase-watch" aria-labelledby={`${headingId}-more`}>
-      <div class="desk-showcase-subhead">
-        <span class="label">Keep reading</span>
-        <h3 id={`${headingId}-more`}>More from the desk</h3>
-      </div>
-      <div class="desk-showcase-watch-grid">
-        {
-          sidePosts.map((post) => (
-            <a href={`/posts/${post.id}/`}>
-              <CoverImage
-                src={post.data.cover}
-                alt={post.data.coverAlt}
-                sizes="(max-width: 900px) 50vw, 20vw"
-              />
-              <span class="label">{post.data.tags[0]}</span>
-              <strong>{post.data.title}</strong>
-            </a>
-          ))
-        }
-      </div>
-    </aside>
-  </div>
-
-  <div class="desk-showcase-briefs" aria-label="More headlines">
     {
-      lowerPosts.map((post) => (
-        <a href={`/posts/${post.id}/`}>
-          <span class="label">{post.data.tags[0]}</span>
-          <strong>{post.data.title}</strong>
-        </a>
-      ))
+      sidePosts.length > 0 && (
+        <aside class="desk-showcase-watch" aria-labelledby={`${headingId}-more`}>
+          <div class="desk-showcase-subhead">
+            <span class="label">Keep reading</span>
+            <h3 id={`${headingId}-more`}>More from the desk</h3>
+          </div>
+          <div class="desk-showcase-watch-grid">
+            {sidePosts.map((post) => (
+              <a href={`/posts/${post.id}/`}>
+                <CoverImage
+                  src={post.data.cover}
+                  alt={post.data.coverAlt}
+                  sizes="(max-width: 900px) 50vw, 20vw"
+                />
+                <span class="label">{post.data.tags[0]}</span>
+                <strong>{post.data.title}</strong>
+              </a>
+            ))}
+          </div>
+        </aside>
+      )
     }
   </div>
+
+  {
+    lowerPosts.length > 0 && (
+      <div class="desk-showcase-briefs" aria-label="More headlines">
+        {lowerPosts.map((post) => (
+          <a href={`/posts/${post.id}/`}>
+            <span class="label">{post.data.tags[0]}</span>
+            <strong>{post.data.title}</strong>
+          </a>
+        ))}
+      </div>
+    )
+  }
 
   <nav class="desk-showcase-topics" aria-label={`${title} topics`}>
     <span class="desk-showcase-topics-label">In focus</span>

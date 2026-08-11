@@ -901,7 +901,9 @@ a.byline:focus-visible {
 
 .newsroom-cards {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* auto-fit, not repeat(2, ...) — a thin edition can hand this only one
+     card, and a second reserved column would sit empty beside it. */
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 28px 22px;
 }
 

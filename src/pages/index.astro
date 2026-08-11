@@ -20,14 +20,14 @@ import { topicGroups } from '../lib/topics';
 const posts = sortPostsNewestFirst(await getCollection('posts'));
 
 const storyCount = posts.length;
-const lowDensity = storyCount < 6;
 
-// Keep a small edition focused. The deeper front modules only become useful
-// when there are enough distinct stories left after the hero and latest feed.
-const stagePosts = posts.slice(0, Math.min(storyCount, lowDensity ? 3 : 5));
+// A small catalog can't spare five posts for the hero alone: every post held
+// back here is one fewer available to every section below it. Three still
+// covers a lead plus two picks; a bigger edition can afford the full five.
+const stagePosts = posts.slice(0, Math.min(storyCount, storyCount >= 24 ? 5 : 3));
 const inStage = new Set(stagePosts.map((p) => p.id));
 const remainingPosts = posts.filter((p) => !inStage.has(p.id));
-const latestLimit = storyCount >= 18 ? 6 : storyCount >= 10 ? 4 : storyCount >= 6 ? 3 : 0;
+const latestLimit = storyCount >= 18 ? 6 : storyCount >= 10 ? 2 : storyCount >= 6 ? 2 : 0;
 const latestPosts = remainingPosts.slice(0, latestLimit);
 const allocatedIds = new Set([...inStage, ...latestPosts.map((p) => p.id)]);
 
@@ -44,12 +44,15 @@ const companyTags = new Set([
 ]);
 const deskCandidateIds = new Set<string>();
 
+// One per column, not three: a small catalog spends its whole remaining pool
+// on one greedy column otherwise, leaving the other two — and every section
+// below this one — empty regardless of what they're flagged with.
 function collectDeskStories(predicate: (post: (typeof posts)[number]) => boolean) {
   const selected = remainingPosts
     .filter(
       (post) => !allocatedIds.has(post.id) && !deskCandidateIds.has(post.id) && predicate(post),
     )
-    .slice(0, 3);
+    .slice(0, 1);
 
   selected.forEach((post) => {
     deskCandidateIds.add(post.id);
@@ -65,7 +68,7 @@ const companyCandidates = collectDeskStories(
   (post) => post.data.postType !== 'tracker' && post.data.tags.some((tag) => companyTags.has(tag)),
 );
 const deskCandidateCount = deskCandidateIds.size;
-const showDeskIndex = deskCandidateCount >= 3;
+const showDeskIndex = deskCandidateCount >= 2;
 if (showDeskIndex) {
   deskCandidateIds.forEach((id) => allocatedIds.add(id));
 }
@@ -84,9 +87,15 @@ const relatedNews = remainingPosts
   .slice(0, 6);
 relatedNews.forEach((post) => allocatedIds.add(post.id));
 
+// Every threshold below this line requires only enough posts for the
+// component to render without empty grid cells (verified against each
+// component's markup), not the deeper pool the modules were designed
+// around — an edition with a dozen posts still fills most sections at one
+// or two stories each, rather than staying hidden until the catalog is ten
+// times bigger.
 const availableAfterRelated = remainingPosts.filter((post) => !allocatedIds.has(post.id));
 const deskShowcasePosts =
-  availableAfterRelated.length >= 6 ? availableAfterRelated.slice(0, 11) : [];
+  availableAfterRelated.length >= 1 ? availableAfterRelated.slice(0, 3) : [];
 deskShowcasePosts.forEach((post) => allocatedIds.add(post.id));
 const [deskLead, ...deskRemainder] = deskShowcasePosts;
 const deskHeadlines = deskRemainder.slice(0, 3);
@@ -98,23 +107,24 @@ const showcaseTopics = ['OpenAI', 'Comparisons', 'Research', 'Product Launch', '
     href: `/tag/${slugify(topic)}/`,
   }),
 );
-const availableAfterShowcase = remainingPosts.filter((post) => !allocatedIds.has(post.id));
-const briefingPosts =
-  deskLead && availableAfterShowcase.length >= 3 ? availableAfterShowcase.slice(0, 5) : [];
-briefingPosts.forEach((post) => allocatedIds.add(post.id));
-const availableAfterBriefing = remainingPosts.filter((post) => !allocatedIds.has(post.id));
-const timelinePosts = availableAfterBriefing.length >= 3 ? availableAfterBriefing.slice(0, 6) : [];
-timelinePosts.forEach((post) => allocatedIds.add(post.id));
 
-const availableAfterTimeline = remainingPosts.filter((post) => !allocatedIds.has(post.id));
-const trackers = availableAfterTimeline
+const availableAfterShowcase = remainingPosts.filter((post) => !allocatedIds.has(post.id));
+const trackers = availableAfterShowcase
   .filter((post) => post.data.postType === 'tracker')
   .slice(0, 5);
 trackers.forEach((post) => allocatedIds.add(post.id));
 
-const availableAfterTrackers = remainingPosts.filter((post) => !allocatedIds.has(post.id));
-const digest = availableAfterTrackers.slice(0, 8);
-digest.forEach((post) => allocatedIds.add(post.id));
+// Briefing's list, the timeline, and "more from today" are all recap formats
+// with no unique visual hook of their own (no cover photo, no featured flag)
+// — at low volume they share this last pool rather than exhausting it from
+// each other, the same way deskLead above is already shared between
+// DeskShowcase and BriefingBoard. A dozen posts cannot give every recap
+// format its own exclusive tail; showing the same handful of leftovers a
+// couple of ways reads as "today's rundown," not as a bug.
+const fillerPool = remainingPosts.filter((post) => !allocatedIds.has(post.id));
+const briefingPosts = deskLead ? fillerPool.slice(0, 5) : [];
+const timelinePosts = fillerPool.slice(0, 6);
+const digest = fillerPool.slice(0, 8);
 
 const newsroomPosts = picks.filter((post) => !allocatedIds.has(post.id)).slice(0, 6);
 newsroomPosts.forEach((post) => allocatedIds.add(post.id));
@@ -144,7 +154,7 @@ const directoryGroups = topicGroups
 
   {showDeskIndex && <DeskIndex columns={deskColumns} />}
 
-  {relatedNews.length >= 2 && <RelatedNews posts={relatedNews} />}
+  {relatedNews.length > 0 && <RelatedNews posts={relatedNews} />}
 
   {
     deskLead && (
@@ -166,16 +176,16 @@ const directoryGroups = topicGroups
     )
   }
 
-  {timelinePosts.length >= 3 && <StoryTimeline posts={timelinePosts} />}
+  {timelinePosts.length > 0 && <StoryTimeline posts={timelinePosts} />}
 
   {directoryGroups.length > 0 && <TopicDirectory groups={directoryGroups} />}
 
-  {trackers.length >= 2 && <FeatureBand title="Trackers" href="/trackers/" posts={trackers} />}
+  {trackers.length > 0 && <FeatureBand title="Trackers" href="/trackers/" posts={trackers} />}
 
-  {digest.length >= 3 && <HeadlineGrid title="More from today" posts={digest} />}
+  {digest.length > 0 && <HeadlineGrid title="More from today" posts={digest} />}
 
   {
-    newsroomPosts.length >= 2 && (
+    newsroomPosts.length > 0 && (
       <NewsroomGrid title="Editor's Picks" href="/trending/" posts={newsroomPosts} />
     )
   }

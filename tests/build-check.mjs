@@ -198,6 +198,21 @@ const attributesFromTag = (tag) =>
       match[2] ?? match[3] ?? match[4],
     ]),
   );
+// Several homepage modules are content-gated (they need a post carrying a
+// specific flag) rather than volume-gated, so whether they render varies with
+// the next Prismic publish. What must always hold, regardless: a module that
+// does render is never an empty shell with no story in it.
+const assertSectionEmptyOrPopulated = (html, marker, label) => {
+  const start = html.indexOf(marker);
+  if (start === -1) return;
+  const end = html.indexOf('</section>', start);
+  assert.ok(end > start, `${label} opened without closing its <section>`);
+  assert.match(
+    html.slice(start, end),
+    /\/posts\/[a-z0-9-]+\//,
+    `${label} rendered without a single post link`,
+  );
+};
 const collectJsonStrings = (value, copy) => {
   if (typeof value === 'string') {
     copy.push(value);
@@ -977,7 +992,7 @@ check('post listings resolve author references into display names', () => {
     home.indexOf('</section>', home.indexOf('class="hero hero--columns')),
   );
   assert.ok(hero.includes('By Tejas Telkar'), 'hero byline should use the author profile name');
-  assert.ok(!home.includes('class="newsroom-section'), 'empty newsroom section should be hidden');
+  assertSectionEmptyOrPopulated(home, 'class="newsroom-section"', "Editor's Picks");
   assert.ok(!home.includes('[object Object]'), 'homepage leaked an unresolved author reference');
 
   const article = dist(`posts/${primaryPostId}/index.html`);
@@ -1754,20 +1769,65 @@ check('homepage renders only editorial layouts with available stories', () => {
   );
   assert.match(html, /class="hero hero--columns-[123]"/, 'homepage hero is missing');
   assert.ok(html.includes('class="topic-directory"'), 'topic directory should remain available');
-  assert.ok(!html.includes('class="band-lead"'), 'empty tracker band should be hidden');
-  assert.ok(!html.includes('class="headline-item"'), 'empty closing grid should be hidden');
+  // Both modules are content-gated (postType 'tracker' / featured:true), not
+  // volume-gated, and which posts carry those flags changes with the next
+  // Prismic release. Rather than pin today's flag count, assert the thing
+  // that must hold regardless: if the module renders at all, it renders with
+  // a real post, never an empty shell.
+  assertSectionEmptyOrPopulated(html, 'class="band"', 'the tracker band');
+  assertSectionEmptyOrPopulated(html, 'class="newsroom-section"', "Editor's Picks");
 });
 
-check('homepage hides low-density modules without duplicating stories', () => {
+check('homepage fills every low-volume module the current catalog can support', () => {
   const html = dist('index.html');
   assert.match(html, /class="hero hero--columns-[123]"/, 'homepage hero should remain visible');
-  // desk-index now clears its 3-candidate threshold at the site's current
-  // real post count — a working module, not a low-density gap to hide.
-  assert.ok(!html.includes('class="desk-showcase"'), 'low-density showcase should be hidden');
-  assert.ok(!html.includes('class="briefing-board"'), 'low-density briefing should be hidden');
-  assert.ok(!html.includes('class="story-timeline"'), 'low-density timeline should be hidden');
-  assert.ok(!html.includes('class="related-news"'), 'empty related-news should be hidden');
-  assert.ok(!html.includes('class="newsroom-section"'), 'low-density picks should be hidden');
+  // At a dozen real posts, desk-index, desk-showcase, briefing-board,
+  // story-timeline and the closing headline grid all clear their (lowered)
+  // minimums — see src/pages/index.astro's allocation comments for why each
+  // threshold sits where it does. related-news, the tracker band and
+  // Editor's Picks stay content-gated (see the check above) rather than
+  // volume-gated, so they are not asserted here.
+  assert.ok(
+    html.includes('class="desk-showcase"'),
+    'desk-showcase should have enough posts to show',
+  );
+  assert.ok(
+    html.includes('class="briefing-board"'),
+    'briefing-board should have enough posts to show',
+  );
+  assert.ok(
+    html.includes('class="story-timeline"'),
+    'story-timeline should have enough posts to show',
+  );
+  assert.ok(
+    html.includes('class="headline-item"'),
+    'the closing headline grid should have posts to show',
+  );
+
+  // Every fixed-count grid this module touches was converted to auto-fit
+  // specifically so a thin edition never reserves a visibly empty track —
+  // confirm none of the old fixed counts crept back in, at any breakpoint.
+  const css = sourceStyles();
+  for (const selector of [
+    '.desk-showcase-watch-grid',
+    '.desk-showcase-briefs',
+    '.story-timeline-track',
+    '.newsroom-cards',
+    '.related-news-grid',
+  ]) {
+    const rules = [
+      ...css.matchAll(
+        new RegExp(`${selector.replace(/[.]/g, '\\.')}\\s*\\{([\\s\\S]*?)\\n\\}`, 'g'),
+      ),
+    ];
+    assert.ok(rules.length > 0, `${selector} rule not found`);
+    for (const rule of rules) {
+      assert.ok(
+        !/grid-template-columns:\s*repeat\(\d/.test(rule[1]),
+        `${selector} reserves a fixed column count again`,
+      );
+    }
+  }
 });
 
 check('homepage keeps responsive rules ready for denser editions', () => {
@@ -1782,16 +1842,6 @@ check('homepage keeps responsive rules ready for denser editions', () => {
   assert.match(
     css,
     /@media \(max-width: 620px\)[\s\S]*?\.topic-directory-groups[\s\S]*?grid-template-columns:\s*1fr/,
-  );
-});
-
-check("Editor's Picks stays hidden until a story is actually featured", () => {
-  const html = dist('index.html');
-  assert.ok(!html.includes('class="newsroom-section"'), "empty Editor's Picks should be hidden");
-  assert.equal(
-    sourcePosts().filter(({ featured }) => featured).length,
-    0,
-    'the single supplied story should not be silently promoted to featured',
   );
 });
 
@@ -1857,12 +1907,6 @@ check('sections carry no filler copy and lead with headlines', () => {
     html.indexOf('</section>', html.indexOf('class="band')),
   );
   assert.ok(!/\d+ min read/.test(band), 'band items should not carry read times');
-});
-
-check('the closing grid stays hidden when the stage contains the full edition', () => {
-  const html = dist('index.html');
-  assert.ok(!html.includes('More from today'), 'empty closing grid should not render a heading');
-  assert.ok(!html.includes('class="headline-grid"'), 'empty closing grid should be hidden');
 });
 
 check('sections never depend on scroll position to become visible', () => {
