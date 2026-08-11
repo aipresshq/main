@@ -38,20 +38,11 @@
   // Server-side page-view counting. The site had no analytics of any kind, and
   // every request already passes through the Worker, so views are recorded here
   // rather than with a third-party beacon: no client script, no addition to the
-  // CSP, no cookie, and no data leaving Cloudflare.
-  //
-  // PENDING ONE DASHBOARD CLICK. Analytics Engine is not yet enabled on this
-  // account, and `wrangler deploy` rejects the binding until it is (error 10089;
-  // note that `--dry-run` does *not* catch this, it only validates config shape).
-  // Enable it here, then uncomment the two lines below and redeploy:
-  //   https://dash.cloudflare.com/8c42797095e46ae33d870c8e5182b3d5/workers/analytics-engine
-  //
-  // The Worker code is already in place and treats a missing binding as a no-op,
-  // so nothing breaks while this is commented out — no views are recorded, and
-  // that is the only difference. See recordPageView in src/worker.ts.
-  // "analytics_engine_datasets": [
-  //   { "binding": "ANALYTICS", "dataset": "aipresshq_pageviews" },
-  // ],
+  // CSP, no cookie, and no data leaving Cloudflare. See recordPageView in
+  // src/worker.ts.
+  "analytics_engine_datasets": [
+    { "binding": "ANALYTICS", "dataset": "aipresshq_pageviews" },
+  ],
   // Without this, Worker logs are dropped and a production 500 leaves no trace.
   "observability": {
     "enabled": true,
