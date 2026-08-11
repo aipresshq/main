@@ -170,16 +170,13 @@ a.byline:focus-visible {
 }
 
 .byline-avatar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 30px;
   height: 30px;
   border-radius: 50%;
   border: 1px solid var(--border);
   background: var(--surface-strong);
-  font-size: 0.72rem;
-  font-weight: 700;
+  object-fit: cover;
+  object-position: 50% 34%;
   flex-shrink: 0;
 }
 

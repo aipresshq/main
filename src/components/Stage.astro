@@ -74,9 +74,15 @@ const picksWithAuthors = await Promise.all(editorPicks.map(withAuthor));
         </h1>
         <div class="hero-lead-meta">
           <span class="byline">
-            <span class="byline-avatar" aria-hidden="true">
-              {leadWithAuthor.author.data.name.charAt(0)}
-            </span>
+            <img
+              class="byline-avatar"
+              src={leadWithAuthor.author.data.avatar}
+              alt=""
+              width="30"
+              height="30"
+              loading="eager"
+              decoding="async"
+            />
             <span class="byline-name">By {leadWithAuthor.author.data.name}</span>
           </span>
           <time class="label" datetime={leadWithAuthor.post.data.pubDate.toISOString()}>
