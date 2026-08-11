@@ -134,7 +134,7 @@ export function renderAdminPage() {
             <h1>Sign in to the editorial desk.</h1>
             <p>Use the desk password to manage Prismic drafts, covers, and the next release.</p>
             <form data-admin-login-form>
-              <label>
+              <label class="admin-label">
                 <span>Password</span>
                 <input type="password" name="password" autocomplete="current-password" required />
               </label>
