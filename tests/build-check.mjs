@@ -16,6 +16,7 @@ import {
   sortPostsNewestFirst,
 } from '../src/lib/post-order.ts';
 import { slugify } from '../src/lib/slug.ts';
+import { ARCHIVE_PAGE_SIZE } from '../src/lib/pagination.ts';
 import { getAuthorId } from '../src/lib/author-reference.ts';
 import { storyFormats } from '../src/lib/formats.ts';
 import { topicGroups, knownTopics } from '../src/lib/topics.ts';
@@ -97,6 +98,7 @@ const codexResetPostId = 'openai-codex-usage-reset';
 const watermarkPostId = 'claude-invisible-watermarks';
 const suspensionsPostId = 'anthropic-account-suspensions';
 const gemini37PostId = 'gemini-3-7-flash-spotted';
+const linuxDesktopPostId = 'chatgpt-desktop-linux-preview';
 const publishedPostIds = [
   primaryPostId,
   secondaryPostId,
@@ -110,6 +112,7 @@ const publishedPostIds = [
   watermarkPostId,
   suspensionsPostId,
   gemini37PostId,
+  linuxDesktopPostId,
 ];
 
 // Scope content assertions to the story itself. A post page also renders nav,
@@ -282,7 +285,11 @@ check('dist/ exists after build', () => {
 });
 
 check('all content posts built successfully', () => {
-  assert.equal(publishedPostIds.length, 12, 'the published edition should contain twelve stories');
+  assert.equal(
+    publishedPostIds.length,
+    13,
+    'the published edition should contain thirteen stories',
+  );
   for (const id of publishedPostIds) {
     assert.ok(distExists(`posts/${id}/index.html`), `posts/${id}/index.html was not built`);
   }
@@ -482,6 +489,18 @@ check('published stories link their reference covers and official reporting sour
         'https://x.com/DanDr1s/status/2086834146681184263',
         'https://x.com/testingcatalog/status/2086859500812714288',
         'https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-3-6-flash-3-5-flash-lite-3-5-flash-cyber/',
+      ],
+    },
+    [linuxDesktopPostId]: {
+      coverAlt:
+        'OpenAI\'s own promotional graphic for the release: white text reading "ChatGPT Desktop now on Linux" over a starfield image of the Milky Way',
+      inlineUrls: [
+        'https://x.com/OpenAI/status/2087231350134980830',
+        'https://www.phoronix.com/news/ChatGPT-Desktop-Linux-Preview',
+        'https://github.com/openai/codex',
+        'https://community.openai.com/t/request-for-official-linux-desktop-app-for-chatgpt/1029344',
+        'https://www.omgubuntu.co.uk/2026/07/claude-desktop-linux-beta',
+        'https://help.openai.com/en/articles/9395554',
       ],
     },
   };
@@ -1713,7 +1732,7 @@ check('homepage lead story is the most recent post', () => {
   // sortPostsNewestFirst breaks the tie by Prismic's real first_publication_date
   // — gemini37PostId was the last of that group actually published.
   assert.ok(
-    lead[1].includes(`/posts/${gemini37PostId}/`),
+    lead[1].includes(`/posts/${linuxDesktopPostId}/`),
     'lead story should be the most recent post',
   );
   assert.match(html, /\d+ min read/, 'read time not rendered');
@@ -1728,19 +1747,33 @@ check('homepage hero surfaces the current lead story', () => {
     html.indexOf('</section>', html.indexOf('class="hero hero--columns')),
   );
   assert.ok(hero.includes('class="hero-lead"'), 'lead story is not rendered');
-  assert.ok(!hero.includes('class="hero-picks"'), "empty Editor's Pick rail should be hidden");
+  // Two of the site's three featured posts land in the stage's top three
+  // slots, so the picks rail now has real candidates to show instead of
+  // hiding for lack of any.
+  assert.ok(
+    hero.includes('class="hero-picks"'),
+    "Editor's Pick rail should show the featured posts in stage",
+  );
   assert.ok(hero.includes('class="hero-just-in"'), 'Just In rail should show the second story');
 });
 
 check('/trending/ shows only featured posts', () => {
   const html = dist('trending/index.html');
-  assert.ok(html.includes('class="category-empty"'), 'empty trending archive should be explicit');
+  assert.ok(!html.includes('class="category-empty"'), 'trending should list the featured posts');
+  assert.ok(linksTo(html, gemini37PostId), 'featured post missing from trending');
+  assert.ok(linksTo(html, suspensionsPostId), 'featured post missing from trending');
+  assert.ok(linksTo(html, watermarkPostId), 'featured post missing from trending');
   assert.ok(!linksTo(html, primaryPostId), 'non-featured post leaked into trending');
 });
 
 check('/trackers/ shows only tracker-type posts', () => {
   const html = dist('trackers/index.html');
-  assert.ok(html.includes('class="category-empty"'), 'empty tracker archive should be explicit');
+  assert.ok(
+    !html.includes('class="category-empty"'),
+    'trackers should list the tracker-flagged posts',
+  );
+  assert.ok(linksTo(html, codexResetPostId), 'tracker post missing from trackers');
+  assert.ok(linksTo(html, sonnetPricingPostId), 'tracker post missing from trackers');
   assert.ok(!linksTo(html, primaryPostId), 'non-tracker post leaked into trackers');
 });
 
@@ -2321,9 +2354,18 @@ check('author pages render profiles and every authored story newest first', () =
   assert.ok(html.includes('Published stories'));
 
   const urls = [...html.matchAll(/class="author-story" href="([^"]+)"/g)].map((match) => match[1]);
-  assert.equal(urls.length, sourcePosts().length);
-  assert.equal(urls[0], `/posts/${gemini37PostId}/`);
-  assert.equal(urls.at(-1), `/posts/${secondaryPostId}/`);
+  // Thirteen authored stories is one past ARCHIVE_PAGE_SIZE, so this profile
+  // paginates the same way /latest/ does — page one holds the newest 12, and
+  // the oldest spills to page two, still newest-first within each page.
+  assert.equal(urls.length, Math.min(sourcePosts().length, ARCHIVE_PAGE_SIZE));
+  assert.equal(urls[0], `/posts/${linuxDesktopPostId}/`);
+  assert.equal(urls.at(-1), `/posts/${tertiaryPostId}/`);
+
+  const page2 = dist('authors/tejas-telkar/2/index.html');
+  const page2Urls = [...page2.matchAll(/class="author-story" href="([^"]+)"/g)].map(
+    (match) => match[1],
+  );
+  assert.deepEqual(page2Urls, [`/posts/${secondaryPostId}/`]);
 
   const schemas = [
     ...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g),
@@ -2871,12 +2913,14 @@ check('archives paginate without moving any existing URL', () => {
     assert.ok(!/posts=\{posts\}/.test(source), `${route} still renders the unpaginated list`);
   }
 
-  // At the current content volume every archive is a single page, so the control
-  // must not render at all — an "1" with dead arrows either side is noise.
+  // Thirteen posts is one past ARCHIVE_PAGE_SIZE (12), so /latest/ now
+  // genuinely spans two pages — the control has real work to do here, unlike
+  // the smaller per-tag/per-format archives that still fit on one page.
   assert.ok(
-    !dist('latest/index.html').includes('class="pagination"'),
-    'pagination should stay hidden while an archive fits on one page',
+    dist('latest/index.html').includes('class="pagination"'),
+    '/latest/ should paginate once the edition exceeds one page',
   );
+  assert.ok(distExists('latest/2/index.html'), '/latest/2/ should exist once /latest/ overflows');
 });
 
 check('the public CSP is enforcing and its hashes match the scripts actually shipped', () => {

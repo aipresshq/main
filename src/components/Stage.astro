@@ -44,29 +44,14 @@ const picksWithAuthors = await Promise.all(editorPicks.map(withAuthor));
       ]}
       aria-label="Top stories"
     >
-      {picksWithAuthors.length > 0 && (
-        <div class="hero-picks">
-          <div class="hero-column-head">
-            <h2>Editor's Pick</h2>
-          </div>
-          {picksWithAuthors.map(({ post, author }) => (
-            <a class="hero-pick-card" href={`/posts/${post.id}/`}>
-              <CoverImage
-                src={post.data.cover}
-                alt={post.data.coverAlt}
-                sizes="(max-width: 900px) 50vw, 25vw"
-              />
-              <span class="label hero-pick-topic">{post.data.tags[0]}</span>
-              <h3>{post.data.title}</h3>
-              <span class="hero-pick-meta">
-                <span>{author.data.name}</span>
-                <span>{readMinutes(post)} min read</span>
-              </span>
-            </a>
-          ))}
-        </div>
-      )}
-
+      {
+        // The lead's <h1> has to be the page's first heading — Editor's Pick
+        // (h2) and Just In (h2) are supplementary, so they come after it in
+        // source and reading order. Visual position (picks on the left of
+        // the lead) is restored with CSS `order` below rather than by moving
+        // this markup, since a sighted reader's layout and a screen reader's
+        // navigation order don't have to agree.
+      }
       <div class="hero-lead">
         <span class="label hero-lead-topic">{leadWithAuthor.post.data.tags[0]}</span>
         <h1 class="hero-lead-headline">
@@ -100,6 +85,29 @@ const picksWithAuthors = await Promise.all(editorPicks.map(withAuthor));
           />
         </a>
       </div>
+
+      {picksWithAuthors.length > 0 && (
+        <div class="hero-picks">
+          <div class="hero-column-head">
+            <h2>Editor's Pick</h2>
+          </div>
+          {picksWithAuthors.map(({ post, author }) => (
+            <a class="hero-pick-card" href={`/posts/${post.id}/`}>
+              <CoverImage
+                src={post.data.cover}
+                alt={post.data.coverAlt}
+                sizes="(max-width: 900px) 50vw, 25vw"
+              />
+              <span class="label hero-pick-topic">{post.data.tags[0]}</span>
+              <h3>{post.data.title}</h3>
+              <span class="hero-pick-meta">
+                <span>{author.data.name}</span>
+                <span>{readMinutes(post)} min read</span>
+              </span>
+            </a>
+          ))}
+        </div>
+      )}
 
       {justIn.length > 0 && (
         <aside class="hero-just-in" aria-label="Just in">

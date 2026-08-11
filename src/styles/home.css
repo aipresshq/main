@@ -27,6 +27,22 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
+/* Visual position stays picks / lead / just-in left to right, independent of
+   source order — the lead's <h1> now comes first in the markup so it's also
+   first in reading order, which "Editor's Pick" and "Just In" (both h2s) must
+   follow rather than precede. */
+.hero-picks {
+  order: 1;
+}
+
+.hero-lead {
+  order: 2;
+}
+
+.hero-just-in {
+  order: 3;
+}
+
 .hero-column-head {
   display: flex;
   align-items: center;
