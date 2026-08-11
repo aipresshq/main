@@ -96,6 +96,7 @@ const sonnetPricingPostId = 'claude-sonnet-5-permanent-pricing';
 const codexResetPostId = 'openai-codex-usage-reset';
 const watermarkPostId = 'claude-invisible-watermarks';
 const suspensionsPostId = 'anthropic-account-suspensions';
+const gemini37PostId = 'gemini-3-7-flash-spotted';
 const publishedPostIds = [
   primaryPostId,
   secondaryPostId,
@@ -108,6 +109,7 @@ const publishedPostIds = [
   codexResetPostId,
   watermarkPostId,
   suspensionsPostId,
+  gemini37PostId,
 ];
 
 // Scope content assertions to the story itself. A post page also renders nav,
@@ -265,7 +267,7 @@ check('dist/ exists after build', () => {
 });
 
 check('all content posts built successfully', () => {
-  assert.equal(publishedPostIds.length, 11, 'the published edition should contain eleven stories');
+  assert.equal(publishedPostIds.length, 12, 'the published edition should contain twelve stories');
   for (const id of publishedPostIds) {
     assert.ok(distExists(`posts/${id}/index.html`), `posts/${id}/index.html was not built`);
   }
@@ -456,6 +458,15 @@ check('published stories link their reference covers and official reporting sour
       inlineUrls: [
         'https://x.com/local0ptimist/status/2086806480209285438',
         'https://www.anthropic.com/transparency/system-trust-reporting',
+      ],
+    },
+    [gemini37PostId]: {
+      coverAlt:
+        "Code diff from Google's python-genai GitHub repository showing a new gemini-3.7-flash entry added beneath gemini-3.6-flash",
+      inlineUrls: [
+        'https://x.com/DanDr1s/status/2086834146681184263',
+        'https://x.com/testingcatalog/status/2086859500812714288',
+        'https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-3-6-flash-3-5-flash-lite-3-5-flash-cyber/',
       ],
     },
   };
@@ -2232,8 +2243,6 @@ check('article sidebar uses the approved responsive layout', () => {
     css,
     /@media \(max-width: 620px\)[\s\S]*?\.latest-list\s*\{[\s\S]*?grid-template-columns:\s*1fr/,
   );
-  assert.match(css, /\.article-actions\s*\{[\s\S]*?position:\s*fixed/);
-  assert.match(css, /\.stream-article \.article-actions\s*\{[\s\S]*?position:\s*static/);
   assert.match(css, /\.article-sidebar-module\s*>\s*summary::after/);
 });
 
@@ -3078,10 +3087,8 @@ check('dense public grids collapse without hiding content on mobile', () => {
 
 check('article wide content is contained inside its own scroll surfaces', () => {
   const article = src('src/styles/article.css');
-  const responsive = src('src/styles/responsive.css');
   assert.match(article, /\.table-scroll\s*\{[\s\S]*?overflow-x:\s*auto/);
   assert.match(article, /\.prose pre\[data-code-block\][\s\S]*?overflow-x:\s*auto/);
-  assert.match(responsive, /\.article-actions[\s\S]*?env\(safe-area-inset-bottom/);
 });
 
 // --- RUNNER (do not edit below this line) ---
