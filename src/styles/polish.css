@@ -290,7 +290,9 @@
 
 .desk-index-columns {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* auto-fit, not repeat(3, ...) — a column Astro didn't render (no posts to
+     fill it) must not leave a reserved, visibly empty 1fr track beside it. */
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 24px;
 }
 

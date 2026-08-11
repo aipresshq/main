@@ -5,7 +5,14 @@ export function sortPostsNewestFirst(
 ): CollectionEntry<'posts'>[] {
   return [...posts].sort((a, b) => {
     const dateDifference = b.data.pubDate.valueOf() - a.data.pubDate.valueOf();
-    return dateDifference || a.id.localeCompare(b.id);
+    if (dateDifference) return dateDifference;
+    // Same editorial pubDate (a date, not a datetime) — several stories can
+    // share one, especially on a busy day. Break the tie by when each was
+    // actually published in Prismic, not by UID, which carries no relationship
+    // to recency and previously made publish order look arbitrary.
+    const publicationDifference =
+      b.data.firstPublicationDate.valueOf() - a.data.firstPublicationDate.valueOf();
+    return publicationDifference || a.id.localeCompare(b.id);
   });
 }
 

@@ -122,6 +122,7 @@ export function prismicPostsLoader(): Loader {
             tags: groupFieldToStrings(data.tags, 'tag'),
             postType: data.post_type,
             featured: data.featured,
+            firstPublicationDate: doc.first_publication_date,
           },
         });
 

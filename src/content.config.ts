@@ -37,6 +37,11 @@ const posts = defineCollection({
     author: reference('authors'),
     pubDate: z.coerce.date(),
     updatedDate: z.coerce.date().optional(),
+    // Prismic's own publish timestamp (full precision, not just a date) —
+    // pubDate is editorial and date-only, so several same-day stories tie on
+    // it. This breaks that tie by actual publish order instead of falling
+    // through to alphabetical UID, which has no relationship to recency.
+    firstPublicationDate: z.coerce.date(),
 
     // A stable editorial format makes the archive easier to scan than the
     // older digest/evergreen/tracker publishing bucket alone.

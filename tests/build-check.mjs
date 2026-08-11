@@ -703,9 +703,18 @@ check('all generated public HTML is free of internal scaffolding language', () =
 
 check('continuous reading order is deterministic and stops at the oldest post', () => {
   const fixtures = [
-    { id: 'beta', data: { pubDate: new Date('2026-01-02') } },
-    { id: 'alpha', data: { pubDate: new Date('2026-01-02') } },
-    { id: 'oldest', data: { pubDate: new Date('2026-01-01') } },
+    {
+      id: 'beta',
+      data: { pubDate: new Date('2026-01-02'), firstPublicationDate: new Date('2026-01-02') },
+    },
+    {
+      id: 'alpha',
+      data: { pubDate: new Date('2026-01-02'), firstPublicationDate: new Date('2026-01-02') },
+    },
+    {
+      id: 'oldest',
+      data: { pubDate: new Date('2026-01-01'), firstPublicationDate: new Date('2026-01-01') },
+    },
   ];
   assert.deepEqual(
     sortPostsNewestFirst(fixtures).map((post) => post.id),
@@ -1685,11 +1694,11 @@ check('homepage lead story is the most recent post', () => {
   const html = dist('index.html');
   const lead = html.match(/<h1 class="hero-lead-headline">([\s\S]*?)<\/h1>/);
   assert.ok(lead, 'no lead headline rendered');
-  // Most recent by pubDate: four stories published 2026-08-11 tie on date, so
-  // sortPostsNewestFirst's secondary key (ascending id) decides among them —
-  // suspensionsPostId ('anthropic-account-suspensions') sorts first.
+  // Several stories tie on pubDate (an editorial date, not a datetime), so
+  // sortPostsNewestFirst breaks the tie by Prismic's real first_publication_date
+  // — gemini37PostId was the last of that group actually published.
   assert.ok(
-    lead[1].includes(`/posts/${suspensionsPostId}/`),
+    lead[1].includes(`/posts/${gemini37PostId}/`),
     'lead story should be the most recent post',
   );
   assert.match(html, /\d+ min read/, 'read time not rendered');
@@ -1752,7 +1761,8 @@ check('homepage renders only editorial layouts with available stories', () => {
 check('homepage hides low-density modules without duplicating stories', () => {
   const html = dist('index.html');
   assert.match(html, /class="hero hero--columns-[123]"/, 'homepage hero should remain visible');
-  assert.ok(!html.includes('class="desk-index"'), 'low-density desk index should be hidden');
+  // desk-index now clears its 3-candidate threshold at the site's current
+  // real post count — a working module, not a low-density gap to hide.
   assert.ok(!html.includes('class="desk-showcase"'), 'low-density showcase should be hidden');
   assert.ok(!html.includes('class="briefing-board"'), 'low-density briefing should be hidden');
   assert.ok(!html.includes('class="story-timeline"'), 'low-density timeline should be hidden');
@@ -2268,7 +2278,7 @@ check('author pages render profiles and every authored story newest first', () =
 
   const urls = [...html.matchAll(/class="author-story" href="([^"]+)"/g)].map((match) => match[1]);
   assert.equal(urls.length, sourcePosts().length);
-  assert.equal(urls[0], `/posts/${suspensionsPostId}/`);
+  assert.equal(urls[0], `/posts/${gemini37PostId}/`);
   assert.equal(urls.at(-1), `/posts/${secondaryPostId}/`);
 
   const schemas = [
