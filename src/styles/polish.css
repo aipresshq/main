@@ -807,7 +807,10 @@
 }
 
 .briefing-board-list li:first-child {
-  padding-top: 0;
+  /* Matches .briefing-board-feature's padding-top exactly, so the first rank
+     number and the feature card's "Read the context" label share one top
+     edge instead of the list sitting 30px higher than the card beside it. */
+  padding-top: 30px;
 }
 
 .briefing-board-rank {
