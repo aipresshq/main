@@ -406,6 +406,68 @@ await run('asset uploads reject unsupported MIME types and oversized bodies', as
   assert.equal(largeResponse.status, 413);
 });
 
+await run('indexing submit requires authentication like every other admin API route', async () => {
+  const response = await handleAdminRequest(
+    new Request('https://aipresshq.com/admin/api/indexing/submit', { method: 'POST' }),
+    env,
+    undefined,
+    { adapters },
+  );
+  assert.equal(response.status, 401);
+});
+
+await run('indexing submit is unavailable when no key is configured', async () => {
+  const request = await authenticatedRequest('/admin/api/indexing/submit', {
+    method: 'POST',
+    headers: { Origin: 'https://aipresshq.com' },
+  });
+  const response = await handleAdminRequest(request, env, undefined, { adapters });
+  assert.equal(response.status, 503);
+});
+
+await run('indexing submit pushes every live post URL and reports the results', async () => {
+  const calls = [];
+  const fakeSubmit = async (keyJson, urls) => {
+    calls.push({ keyJson, urls });
+    return urls.map((requestedUrl) => ({ url: requestedUrl, ok: true, status: 200 }));
+  };
+  const request = await authenticatedRequest('/admin/api/indexing/submit', {
+    method: 'POST',
+    headers: { Origin: 'https://aipresshq.com' },
+  });
+  const response = await handleAdminRequest(
+    request,
+    { ...env, GOOGLE_INDEXING_KEY_JSON: '{"client_email":"a","private_key":"b"}' },
+    undefined,
+    { adapters, submitUrlsToGoogleIndexing: fakeSubmit },
+  );
+  assert.equal(response.status, 200);
+  assert.deepEqual(calls[0].urls, ['https://aipresshq.com/posts/terra/']);
+  const body = await response.json();
+  assert.deepEqual(body.results, [
+    { url: 'https://aipresshq.com/posts/terra/', ok: true, status: 200 },
+  ]);
+});
+
+await run('indexing submit surfaces an upstream failure without throwing', async () => {
+  const request = await authenticatedRequest('/admin/api/indexing/submit', {
+    method: 'POST',
+    headers: { Origin: 'https://aipresshq.com' },
+  });
+  const response = await handleAdminRequest(
+    request,
+    { ...env, GOOGLE_INDEXING_KEY_JSON: '{"client_email":"a","private_key":"b"}' },
+    undefined,
+    {
+      adapters,
+      submitUrlsToGoogleIndexing: async () => {
+        throw new Error('token exchange failed');
+      },
+    },
+  );
+  assert.equal(response.status, 502);
+});
+
 await run('preview returns capped sanitized HTML without writing', async () => {
   const response = await handlePreviewApi(
     new Request('https://aipresshq.com/admin/api/preview', {

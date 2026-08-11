@@ -324,7 +324,34 @@ function renderAssets() {
 }
 
 function renderRelease() {
-  content.innerHTML = `${viewHeader('Release / final handoff', 'Publish with intent.', 'The desk saves drafts. The public site changes only after the pending Prismic release is published and the Cloudflare build completes.', '<a class="admin-button admin-button-primary" href="https://aipresshq.prismic.io/" target="_blank" rel="noreferrer">Open Prismic →</a>')}<section class="admin-release"><div class="admin-release-grid"><article class="admin-release-card"><span class="admin-kicker">01 / Review</span><strong>Check the draft</strong><p>Confirm headline, author, dates, format, cover alt text, takeaways, facts tables, and source-linked body copy.</p></article><article class="admin-release-card"><span class="admin-kicker">02 / Release</span><strong>Publish Prismic</strong><p>Open the pending Migration Release in Prismic and publish it once the queue is ready.</p></article><article class="admin-release-card"><span class="admin-kicker">03 / Deploy</span><strong>Build the site</strong><p>Run the Cloudflare deployment after publishing so the static public edition reflects the release.</p></article></div><div class="admin-editor-section"><h2>Credential boundary</h2><p class="admin-help">Prismic write access, R2 access, the admin password hash, and the session secret live only in Worker secrets. Moz, Google Search Console, and GA4 keys are intentionally not part of this desk.</p></div></section>`;
+  content.innerHTML = `${viewHeader('Release / final handoff', 'Publish with intent.', 'The desk saves drafts. The public site changes only after the pending Prismic release is published and the Cloudflare build completes.', '<a class="admin-button admin-button-primary" href="https://aipresshq.prismic.io/" target="_blank" rel="noreferrer">Open Prismic →</a>')}<section class="admin-release"><div class="admin-release-grid"><article class="admin-release-card"><span class="admin-kicker">01 / Review</span><strong>Check the draft</strong><p>Confirm headline, author, dates, format, cover alt text, takeaways, facts tables, and source-linked body copy.</p></article><article class="admin-release-card"><span class="admin-kicker">02 / Release</span><strong>Publish Prismic</strong><p>Open the pending Migration Release in Prismic and publish it once the queue is ready.</p></article><article class="admin-release-card"><span class="admin-kicker">03 / Deploy</span><strong>Build the site</strong><p>Run the Cloudflare deployment after publishing so the static public edition reflects the release.</p></article><article class="admin-release-card"><span class="admin-kicker">04 / Index</span><strong>Request Google indexing</strong><p>Push every live post URL to Google's Indexing API for a real-time crawl request. Run this after the deploy above, once the release is actually live.</p><button class="admin-button admin-button-primary" type="button" data-action="request-indexing">Request Google indexing</button><ul class="admin-indexing-results" data-indexing-result hidden></ul></article></div><div class="admin-editor-section"><h2>Credential boundary</h2><p class="admin-help">Prismic write access, R2 access, the admin password hash, the session secret, and the Google Indexing API key live only in Worker secrets. Moz and GA4 dashboard keys are intentionally not part of this desk.</p></div></section>`;
+}
+
+async function requestIndexing() {
+  setStatus('Requesting indexing…', false, true);
+  const output = content.querySelector('[data-indexing-result]');
+  const response = await api('/admin/api/indexing/submit', { method: 'POST' });
+  if (!response.ok) {
+    setStatus(response.json.error || `Indexing request failed (${response.status}).`, true);
+    return;
+  }
+  const results = response.json.results || [];
+  const failed = results.filter((result) => !result.ok);
+  setStatus(
+    failed.length
+      ? `Requested indexing for ${results.length - failed.length}/${results.length} stories; ${failed.length} failed.`
+      : `Requested indexing for ${results.length} ${results.length === 1 ? 'story' : 'stories'}.`,
+    failed.length > 0,
+  );
+  if (output) {
+    output.hidden = false;
+    output.innerHTML = results
+      .map(
+        (result) =>
+          `<li class="${result.ok ? 'is-ok' : 'is-fail'}">${result.ok ? '✓' : '✗'} ${escapeHtml(result.url)}${result.ok ? '' : ` (${result.status})`}</li>`,
+      )
+      .join('');
+  }
 }
 
 async function loadPosts() {
@@ -528,6 +555,7 @@ root?.addEventListener('click', async (event) => {
   if (target.dataset.action === 'refresh') return loadView('posts');
   if (target.dataset.action === 'refresh-assets') return loadView('assets');
   if (target.dataset.action === 'assets') return loadView('assets');
+  if (target.dataset.action === 'request-indexing') return requestIndexing();
   if (target.dataset.addRepeater) return addRepeater(target.dataset.addRepeater);
   if (target.dataset.removeRepeater !== undefined) {
     target.closest('.admin-repeater-row')?.remove();

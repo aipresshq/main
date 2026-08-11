@@ -36,7 +36,10 @@ npx wrangler secret put ADMIN_PASSWORD_HASH
 npx wrangler secret put ADMIN_SESSION_SECRET
 npx wrangler secret put PRISMIC_WRITE_TOKEN
 npx wrangler secret put PUBLIC_R2_PUBLIC_URL
+npx wrangler secret put GOOGLE_INDEXING_KEY_JSON
 ```
+
+`GOOGLE_INDEXING_KEY_JSON` is the full contents of a Google Cloud service account key, minified to one line — the same value used locally by `scripts/google-indexing-ping.mjs` via `.env`, just set as a Worker secret instead so the desk's "Request Google indexing" button (Release handoff view) can call it in production. That service account must be an Owner on the `aipresshq.com` Search Console property. Without this secret set, the button's endpoint (`/admin/api/indexing/submit`) returns 503 rather than failing silently.
 
 `PUBLIC_R2_PUBLIC_URL` should be the public origin for the `aipresshq-images` R2 bucket. The bucket
 itself is bound as `IMAGES` in `wrangler.jsonc`; S3 access keys are not used by the Worker.

@@ -2,6 +2,7 @@ import * as prismic from '@prismicio/client';
 import { marked } from 'marked';
 import { renderAdminPage, ADMIN_THEME_SCRIPT } from './ui.mjs';
 import { postPayloadToPrismicData } from './prismic-write-mapping.mjs';
+import { submitUrlsToGoogleIndexing } from './google-indexing.mjs';
 import { validatePost } from './validate-post.mjs';
 import {
   groupFieldToStrings,
@@ -18,6 +19,10 @@ import {
   verifyPassword,
   verifySession,
 } from './worker-auth.mjs';
+
+// Matches astro.config.mjs's `site` and BaseLayout.astro's canonical fallback —
+// this module builds indexing URLs, which have to be the real public origin.
+const SITE_ORIGIN = 'https://aipresshq.com';
 
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 const MAX_PREVIEW_BYTES = 100 * 1024;
@@ -384,6 +389,32 @@ export async function handlePreviewApi(request) {
   return json({ html });
 }
 
+/**
+ * Pushes every live post's URL to Google's Indexing API. Takes `submit` as a
+ * parameter (rather than importing submitUrlsToGoogleIndexing directly)
+ * purely so tests can inject a fake instead of mocking global fetch — same
+ * dependency-injection seam createPrismicAdapters gives the rest of this file.
+ */
+export async function handleIndexingApi(
+  request,
+  env,
+  adapters,
+  submit = submitUrlsToGoogleIndexing,
+) {
+  if (request.method !== 'POST') return methodNotAllowed();
+  if (!env.GOOGLE_INDEXING_KEY_JSON) {
+    return json({ error: 'Google indexing is not configured for this Worker.' }, 503);
+  }
+  const posts = await adapters.listPosts();
+  const urls = posts.map((post) => `${SITE_ORIGIN}/posts/${post.id}/`);
+  try {
+    const results = await submit(env.GOOGLE_INDEXING_KEY_JSON, urls);
+    return json({ results });
+  } catch {
+    return json({ error: 'Unable to reach the Google Indexing API.' }, 502);
+  }
+}
+
 let cachedThemeScriptHash;
 
 async function themeScriptHash() {
@@ -552,6 +583,14 @@ export async function handleAdminRequest(request, env, _ctx, dependencies = {}) 
     }
     if (url.pathname === '/admin/api/assets') return await handleAssetsApi(request, adapters);
     if (url.pathname === '/admin/api/preview') return await handlePreviewApi(request);
+    if (url.pathname === '/admin/api/indexing/submit') {
+      return await handleIndexingApi(
+        request,
+        env,
+        adapters,
+        dependencies.submitUrlsToGoogleIndexing,
+      );
+    }
     return json({ error: 'Not found.' }, 404);
   } catch {
     return json({ error: 'Unable to complete the admin request.' }, 500);
