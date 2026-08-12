@@ -94,6 +94,89 @@ await test('tags must have at least one entry', () => {
   assert.ok(result.errors.tags);
 });
 
+await test('unknown tags are rejected before publishing', () => {
+  const result = validatePost({ ...basePost(), tags: ['AI', 'Models'] }, options);
+  assert.equal(result.valid, false);
+  assert.match(result.errors.tags, /Models/);
+  assert.match(result.errors.tags, /canonical/i);
+});
+
+await test('duplicate canonical tags are rejected case-insensitively', () => {
+  const result = validatePost({ ...basePost(), tags: ['AI', 'ai'] }, options);
+  assert.equal(result.valid, false);
+  assert.match(result.errors.tags, /duplicate/i);
+});
+
+await test('more than six tags are rejected', () => {
+  const result = validatePost(
+    {
+      ...basePost(),
+      tags: ['AI', 'OpenAI', 'Anthropic', 'Meta', 'Microsoft', 'Mistral', 'Research'],
+    },
+    options,
+  );
+  assert.equal(result.valid, false);
+  assert.match(result.errors.tags, /six/i);
+});
+
+await test('briefs may publish without an outline', () => {
+  const result = validatePost(basePost(), options);
+  assert.equal(result.valid, true);
+});
+
+await test('non-brief formats require two level-two headings', () => {
+  const result = validatePost(
+    { ...basePost(), format: 'analysis', body: 'Opening.\n\n## Evidence\n\nOne section.' },
+    options,
+  );
+  assert.equal(result.valid, false);
+  assert.match(result.errors.body, /at least two.*##/i);
+});
+
+await test('non-brief formats accept two unique level-two headings', () => {
+  const result = validatePost(
+    {
+      ...basePost(),
+      format: 'analysis',
+      body: 'Opening.\n\n## What happened\n\nFacts.\n\n## What remains open\n\nLimits.',
+    },
+    options,
+  );
+  assert.equal(result.valid, true);
+});
+
+await test('level-one headings are rejected because the article title is the h1', () => {
+  const result = validatePost({ ...basePost(), body: '# Duplicate title\n\nCopy.' }, options);
+  assert.equal(result.valid, false);
+  assert.match(result.errors.body, /level-one|h1/i);
+});
+
+await test('duplicate level-two heading slugs are rejected', () => {
+  const result = validatePost(
+    {
+      ...basePost(),
+      format: 'analysis',
+      body: '## What changed?\n\nA.\n\n## What changed\n\nB.',
+    },
+    options,
+  );
+  assert.equal(result.valid, false);
+  assert.match(result.errors.body, /unique/i);
+});
+
+await test('headings inside fenced code do not satisfy the outline contract', () => {
+  const result = validatePost(
+    {
+      ...basePost(),
+      format: 'analysis',
+      body: '```md\n## Fake one\n## Fake two\n```',
+    },
+    options,
+  );
+  assert.equal(result.valid, false);
+  assert.ok(result.errors.body);
+});
+
 await test('factsTable rows must match the column count', () => {
   const result = validatePost(
     { ...basePost(), factsTable: { columns: ['A', 'B'], rows: [['x', 'y', 'z']] } },

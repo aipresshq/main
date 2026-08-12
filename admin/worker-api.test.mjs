@@ -46,7 +46,7 @@ const validPayload = {
   takeaways: ['One useful takeaway'],
   tags: ['AI'],
   featured: false,
-  body: 'A body with enough copy.',
+  body: 'Opening context.\n\n## What happened\n\nConfirmed facts.\n\n## What remains open\n\nUnanswered questions.',
 };
 
 const fakeBucket = {
