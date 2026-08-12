@@ -99,6 +99,7 @@ const watermarkPostId = 'claude-invisible-watermarks';
 const suspensionsPostId = 'anthropic-account-suspensions';
 const gemini37PostId = 'gemini-3-7-flash-spotted';
 const linuxDesktopPostId = 'chatgpt-desktop-linux-preview';
+const codexTeasePostId = 'codex-reset-surprise-teased';
 const publishedPostIds = [
   primaryPostId,
   secondaryPostId,
@@ -113,6 +114,7 @@ const publishedPostIds = [
   suspensionsPostId,
   gemini37PostId,
   linuxDesktopPostId,
+  codexTeasePostId,
 ];
 
 // Scope content assertions to the story itself. A post page also renders nav,
@@ -287,8 +289,8 @@ check('dist/ exists after build', () => {
 check('all content posts built successfully', () => {
   assert.equal(
     publishedPostIds.length,
-    13,
-    'the published edition should contain thirteen stories',
+    14,
+    'the published edition should contain fourteen stories',
   );
   for (const id of publishedPostIds) {
     assert.ok(distExists(`posts/${id}/index.html`), `posts/${id}/index.html was not built`);
@@ -501,6 +503,18 @@ check('published stories link their reference covers and official reporting sour
         'https://community.openai.com/t/request-for-official-linux-desktop-app-for-chatgpt/1029344',
         'https://www.omgubuntu.co.uk/2026/07/claude-desktop-linux-beta',
         'https://help.openai.com/en/articles/9395554',
+      ],
+    },
+    [codexTeasePostId]: {
+      coverAlt:
+        'Tibo\'s post on X, dated 12 August 2026: "I previously promised a reset for every 1M in additional active users for Codex, until 10M. We blew past that and have been silent since 10M. Little surprise for you tomorrow."',
+      inlineUrls: [
+        'https://x.com/thsottiaux/status/2087423996115681767',
+        'https://x.com/thsottiaux/status/2076735790567338203',
+        'https://x.com/thsottiaux/status/2077114635308986427',
+        'https://x.com/thsottiaux/status/2077607697487188198',
+        'https://x.com/thsottiaux/status/2079609157934886975',
+        'https://codexresets.com/',
       ],
     },
   };
@@ -1732,7 +1746,7 @@ check('homepage lead story is the most recent post', () => {
   // sortPostsNewestFirst breaks the tie by Prismic's real first_publication_date
   // — gemini37PostId was the last of that group actually published.
   assert.ok(
-    lead[1].includes(`/posts/${linuxDesktopPostId}/`),
+    lead[1].includes(`/posts/${codexTeasePostId}/`),
     'lead story should be the most recent post',
   );
   assert.match(html, /\d+ min read/, 'read time not rendered');
@@ -2354,18 +2368,18 @@ check('author pages render profiles and every authored story newest first', () =
   assert.ok(html.includes('Published stories'));
 
   const urls = [...html.matchAll(/class="author-story" href="([^"]+)"/g)].map((match) => match[1]);
-  // Thirteen authored stories is one past ARCHIVE_PAGE_SIZE, so this profile
+  // Fourteen authored stories is two past ARCHIVE_PAGE_SIZE, so this profile
   // paginates the same way /latest/ does — page one holds the newest 12, and
-  // the oldest spills to page two, still newest-first within each page.
+  // the oldest two spill to page two, still newest-first within each page.
   assert.equal(urls.length, Math.min(sourcePosts().length, ARCHIVE_PAGE_SIZE));
-  assert.equal(urls[0], `/posts/${linuxDesktopPostId}/`);
-  assert.equal(urls.at(-1), `/posts/${tertiaryPostId}/`);
+  assert.equal(urls[0], `/posts/${codexTeasePostId}/`);
+  assert.equal(urls.at(-1), `/posts/${primaryPostId}/`);
 
   const page2 = dist('authors/tejas-telkar/2/index.html');
   const page2Urls = [...page2.matchAll(/class="author-story" href="([^"]+)"/g)].map(
     (match) => match[1],
   );
-  assert.deepEqual(page2Urls, [`/posts/${secondaryPostId}/`]);
+  assert.deepEqual(page2Urls, [`/posts/${tertiaryPostId}/`, `/posts/${secondaryPostId}/`]);
 
   const schemas = [
     ...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g),
