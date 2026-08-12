@@ -76,11 +76,9 @@ const decodePublicCopy = (text) =>
 const escapeHtmlAttribute = (value) =>
   value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-// Prismic is the source of truth for post content, but this harness keeps its
-// own list of the published stories. Everything that iterates the built output
-// goes through sourcePosts(), so without an independent list a story that
-// silently failed to build would simply be skipped by every one of those checks
-// instead of turning the suite red.
+// These named stories carry story-specific regression assertions below. They
+// form a required baseline, not the complete Prismic catalog: new publications
+// enter generic coverage automatically through sourcePosts().
 const primaryPostId = 'gpt-5-6-terra';
 const secondaryPostId = 'gpt-6-mako-koi-tune-leak';
 const tertiaryPostId = 'mythos-6-leak';
@@ -96,7 +94,7 @@ const gemini37PostId = 'gemini-3-7-flash-spotted';
 const linuxDesktopPostId = 'chatgpt-desktop-linux-preview';
 const codexTeasePostId = 'codex-reset-surprise-teased';
 const daybreakTiersPostId = 'openai-splits-daybreak-into-blue-and-red-tiers-launches-gpt-5-6-cyber';
-const publishedPostIds = [
+const baselinePostIds = [
   primaryPostId,
   secondaryPostId,
   tertiaryPostId,
@@ -137,21 +135,14 @@ const articleHeadings = (html, label = 'page') =>
   );
 
 const sourcePosts = () => {
-  // After the Prismic migration, posts are fetched from Prismic during build,
-  // so the built output — not source markdown — is the only local record of
-  // what shipped. Cross-check it against publishedPostIds so a story that
-  // failed to build fails loudly here rather than being quietly skipped.
+  // After the Prismic migration, the built output is the local record of what
+  // shipped. Enumerating it here makes every generic check cover new stories
+  // without requiring a hand-edited slug list after each publication.
   const distPostsDir = new URL('../dist/posts/', import.meta.url);
   const postDirs = readdirSync(distPostsDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
     .sort();
-
-  assert.deepEqual(
-    postDirs,
-    [...publishedPostIds].sort(),
-    'dist/posts/ must contain exactly the published stories — a post missing from the build would otherwise be skipped by every check that iterates sourcePosts()',
-  );
 
   return postDirs.map((id) => {
     const html = dist(`posts/${id}/index.html`);
@@ -293,19 +284,11 @@ check('dist/ exists after build', () => {
 });
 
 check('all content posts built successfully', () => {
-  assert.ok(publishedPostIds.length > 0, 'the editorial fixture lists no published stories');
-  for (const id of publishedPostIds) {
-    assert.ok(distExists(`posts/${id}/index.html`), `posts/${id}/index.html was not built`);
+  const renderedIds = new Set(sourcePosts().map(({ id }) => id));
+  assert.ok(renderedIds.size > 0, 'the build rendered no public stories');
+  for (const id of baselinePostIds) {
+    assert.ok(renderedIds.has(id), `baseline story ${id} was not built`);
   }
-  // sourcePosts() performs the same cross-check internally, so a story missing
-  // from the build fails every post-iterating check rather than only this one.
-  assert.deepEqual(
-    sourcePosts()
-      .map(({ id }) => id)
-      .sort(),
-    [...publishedPostIds].sort(),
-    'the editorial fixture should contain the published stories',
-  );
 });
 
 check('public posts contain no internal fixture language', () => {
@@ -320,7 +303,7 @@ check('public posts contain no internal fixture language', () => {
   // included — this check is real, but it adds no unique failure coverage
   // beyond what the dist-wide check already provides, only a clearer,
   // post-specific failure message when scaffolding copy slips into a story.
-  for (const id of publishedPostIds) {
+  for (const { id } of sourcePosts()) {
     const copy = extractPublicCopy(articleBody(dist(`posts/${id}/index.html`), `/posts/${id}/`));
     assert.equal(
       containsInternalScaffolding(copy),
@@ -331,7 +314,7 @@ check('public posts contain no internal fixture language', () => {
 });
 
 check('published posts disclose an editorial update date', () => {
-  for (const id of publishedPostIds) {
+  for (const { id } of sourcePosts()) {
     const html = dist(`posts/${id}/index.html`);
     assert.match(
       html,
@@ -366,7 +349,7 @@ check('every story carries explicit editorial format and reader context', () => 
   const validFormats = new Set(storyFormats.map(({ key }) => key));
   assert.equal(validFormats.size, 6, 'editorial format taxonomy should stay intentionally small');
 
-  for (const id of publishedPostIds) {
+  for (const { id } of sourcePosts()) {
     const body = articleBody(dist(`posts/${id}/index.html`), `/posts/${id}/`);
     const format = body.match(
       /<a class="label article-kicker" href="\/format\/([a-z0-9-]+)\/"/,
@@ -532,8 +515,8 @@ check('published stories link their reference covers and official reporting sour
 
   assert.deepEqual(
     Object.keys(expected).sort(),
-    [...publishedPostIds].sort(),
-    'the attribution table must cover exactly the published stories',
+    [...baselinePostIds].sort(),
+    'the attribution table must cover exactly the named regression stories',
   );
 
   for (const [id, attribution] of Object.entries(expected)) {
@@ -972,7 +955,7 @@ check('posts resolve validated author profiles into linked bylines and schema', 
   // page whose byline is empty but that mentions the author anywhere else —
   // every post page links "Tejas Telkar" from its author module and Suggested
   // Reads, so that form of the check could never fail.
-  for (const id of publishedPostIds) {
+  for (const { id } of sourcePosts()) {
     const html = dist(`posts/${id}/index.html`);
     const byline = html.match(/<a\b[^>]*class="byline(?:\s[^"]*)?"[^>]*>[\s\S]*?<\/a>/);
     assert.ok(byline, `${id} must have an author byline`);
