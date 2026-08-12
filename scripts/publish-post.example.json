@@ -1,0 +1,14 @@
+{
+  "title": "Example Post Title",
+  "description": "One or two sentences for meta description and cards.",
+  "author": "tejas-telkar",
+  "pubDate": "2026-08-12",
+  "format": "brief",
+  "postType": "digest",
+  "cover": "./example-cover.jpg",
+  "coverAlt": "Describe what the image shows.",
+  "featured": false,
+  "tags": ["AI"],
+  "takeaways": ["First takeaway.", "Second takeaway."],
+  "body": "Markdown body of the article goes here."
+}

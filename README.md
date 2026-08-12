@@ -18,14 +18,14 @@ npm run dev
 
 ## How it fits together
 
-| Piece                | Where                                                            |
-| -------------------- | ---------------------------------------------------------------- |
-| Pages and layouts    | [`src/pages/`](src/pages/), [`src/layouts/`](src/layouts/)       |
-| Story content        | Prismic, read at build time by [`src/loaders/`](src/loaders/)    |
-| Authors              | [`src/content/authors/`](src/content/authors/) (Markdown)        |
-| Editorial Desk       | [`admin/`](admin/) (server) + [`public/admin/`](public/admin/)   |
-| Production routing   | [`src/worker.ts`](src/worker.ts), [`wrangler.jsonc`](wrangler.jsonc) |
-| Static headers       | [`public/_headers`](public/_headers)                             |
+| Piece              | Where                                                                |
+| ------------------ | -------------------------------------------------------------------- |
+| Pages and layouts  | [`src/pages/`](src/pages/), [`src/layouts/`](src/layouts/)           |
+| Story content      | Prismic, read at build time by [`src/loaders/`](src/loaders/)        |
+| Authors            | [`src/content/authors/`](src/content/authors/) (Markdown)            |
+| Editorial Desk     | [`admin/`](admin/) (server) + [`public/admin/`](public/admin/)       |
+| Production routing | [`src/worker.ts`](src/worker.ts), [`wrangler.jsonc`](wrangler.jsonc) |
+| Static headers     | [`public/_headers`](public/_headers)                                 |
 
 The build is fully static — Prismic is read at build time, not per request, so publishing a
 story means publishing the Prismic release and then deploying. The Worker exists to serve
@@ -45,22 +45,28 @@ a pending Prismic Migration Release; nothing it does publishes on its own. See
 [`docs/superpowers/runbooks/admin-production.md`](docs/superpowers/runbooks/admin-production.md)
 for secret setup, password-hash rotation, and reading traffic numbers.
 
+`npm run publish:post -- <draft.json>` writes a draft the same way, from the command line: it
+runs the same `validatePost()`/`createPost()` the Desk's API uses (see `admin/posts-store.mjs`),
+and uploads a local `cover` image path to R2 first if one is given. Prefer this over writing a
+new one-off `scripts/create-*.mjs` file per article — those bypass validation entirely.
+
 ## Commands
 
-| Command                | What it does                                                          |
-| ---------------------- | --------------------------------------------------------------------- |
-| `npm run dev`          | Dev server. Note `_headers` is Cloudflare-only and does **not** apply. |
-| `npm run build`        | Static build to `dist/`, including the Pagefind index.                 |
-| `npm run preview`      | Serve `dist/` locally.                                                 |
-| `npx wrangler dev`     | Serve `dist/` **through the Worker**, with `_headers` applied.         |
-| `npm run lint`         | ESLint, zero warnings tolerated.                                       |
-| `npm run format`       | Prettier, in place. `format:check` for the read-only version.           |
-| `npm run check`        | `astro check` — types across `.astro` and `.ts`.                      |
-| `npm run test:units`   | Every suite that needs no credentials.                                 |
-| `npm test`             | Asserts against `dist/`. Run a build first.                            |
-| `npm run test:prismic` | Hits the **live** Prismic write API. Needs `.env`; not run in CI.      |
-| `npm run test:admin`   | `test:units` plus `test:prismic`.                                      |
-| `npm run indexnow`     | Pings IndexNow. Manual, and only meaningful after a real publish.      |
+| Command                                | What it does                                                                                   |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `npm run dev`                          | Dev server. Note `_headers` is Cloudflare-only and does **not** apply.                         |
+| `npm run build`                        | Static build to `dist/`, including the Pagefind index.                                         |
+| `npm run preview`                      | Serve `dist/` locally.                                                                         |
+| `npx wrangler dev`                     | Serve `dist/` **through the Worker**, with `_headers` applied.                                 |
+| `npm run lint`                         | ESLint, zero warnings tolerated.                                                               |
+| `npm run format`                       | Prettier, in place. `format:check` for the read-only version.                                  |
+| `npm run check`                        | `astro check` — types across `.astro` and `.ts`.                                               |
+| `npm run test:units`                   | Every suite that needs no credentials.                                                         |
+| `npm test`                             | Asserts against `dist/`. Run a build first.                                                    |
+| `npm run test:prismic`                 | Hits the **live** Prismic write API. Needs `.env`; not run in CI.                              |
+| `npm run test:admin`                   | `test:units` plus `test:prismic`.                                                              |
+| `npm run indexnow`                     | Pings IndexNow. Manual, and only meaningful after a real publish.                              |
+| `npm run publish:post -- <draft.json>` | Validates and writes one new post as a Prismic draft. See `scripts/publish-post.example.json`. |
 
 To verify anything header-, CSP-, or Worker-related, use `npx wrangler dev` rather than
 `astro dev` — `_headers`, `_redirects`, and the Worker itself do not exist in the Astro dev
@@ -88,4 +94,6 @@ npx wrangler deploy
 ```
 
 Secrets live in the Worker, never in the repo — see the runbook. After publishing a Prismic
-release, redeploy so the static edition reflects it.
+release, redeploy so the static edition reflects it — or set up
+[`docs/superpowers/runbooks/auto-deploy-on-publish.md`](docs/superpowers/runbooks/auto-deploy-on-publish.md)
+once and this happens automatically.

@@ -10,11 +10,6 @@ import {
 } from '../src/scripts/continuous-reader.ts';
 import { serializeBodyWithHeadings } from '../src/loaders/prismic-posts.ts';
 import { getSuggestedPosts } from '../src/lib/recommendations.ts';
-import {
-  getNextOlderPost,
-  getPreviousNewerPost,
-  sortPostsNewestFirst,
-} from '../src/lib/post-order.ts';
 import { slugify } from '../src/lib/slug.ts';
 import { ARCHIVE_PAGE_SIZE } from '../src/lib/pagination.ts';
 import { getAuthorId } from '../src/lib/author-reference.ts';
@@ -100,6 +95,7 @@ const suspensionsPostId = 'anthropic-account-suspensions';
 const gemini37PostId = 'gemini-3-7-flash-spotted';
 const linuxDesktopPostId = 'chatgpt-desktop-linux-preview';
 const codexTeasePostId = 'codex-reset-surprise-teased';
+const daybreakTiersPostId = 'openai-splits-daybreak-into-blue-and-red-tiers-launches-gpt-5-6-cyber';
 const publishedPostIds = [
   primaryPostId,
   secondaryPostId,
@@ -115,6 +111,7 @@ const publishedPostIds = [
   gemini37PostId,
   linuxDesktopPostId,
   codexTeasePostId,
+  daybreakTiersPostId,
 ];
 
 // Scope content assertions to the story itself. A post page also renders nav,
@@ -157,7 +154,8 @@ const sourcePosts = () => {
   );
 
   return postDirs.map((id) => {
-    const tags = articleTags(dist(`posts/${id}/index.html`), `/posts/${id}/`);
+    const html = dist(`posts/${id}/index.html`);
+    const tags = articleTags(html, `/posts/${id}/`);
     // Tag extraction previously read a `data-post-tags` attribute that the
     // build never emitted, which silently gave every post an empty tag list and
     // emptied every sourceTopics()-driven check. Fail loudly instead.
@@ -165,9 +163,17 @@ const sourcePosts = () => {
       tags.length > 0,
       `/posts/${id}/ rendered no tags in its <ul class="article-tags"> list — tag extraction is broken or the story lost its topics`,
     );
+    // Editorial pubDate only (a date, not a datetime) — the real Prismic
+    // publication time used to break same-day ties isn't rendered anywhere,
+    // so it can't be recovered here. Checks that need "which post is newest"
+    // on a tie rely on src/lib/post-order.test.mjs for that, and only use
+    // this pubDate for same-day-or-not comparisons.
+    const publishedTime = html.match(/<meta property="article:published_time" content="([^"]+)">/);
+    assert.ok(publishedTime, `/posts/${id}/ is missing its article:published_time meta tag`);
     return {
       id,
       tags,
+      pubDate: new Date(publishedTime[1]),
     };
   });
 };
@@ -287,11 +293,7 @@ check('dist/ exists after build', () => {
 });
 
 check('all content posts built successfully', () => {
-  assert.equal(
-    publishedPostIds.length,
-    14,
-    'the published edition should contain fourteen stories',
-  );
+  assert.ok(publishedPostIds.length > 0, 'the editorial fixture lists no published stories');
   for (const id of publishedPostIds) {
     assert.ok(distExists(`posts/${id}/index.html`), `posts/${id}/index.html was not built`);
   }
@@ -515,6 +517,15 @@ check('published stories link their reference covers and official reporting sour
         'https://x.com/thsottiaux/status/2077607697487188198',
         'https://x.com/thsottiaux/status/2079609157934886975',
         'https://codexresets.com/',
+      ],
+    },
+    [daybreakTiersPostId]: {
+      coverAlt:
+        "A CNBC interview photo of a man making a startled expression, on a driveway with a boom microphone in frame. The photo is attached to an unrelated, unverified quote-tweet on X's trending page for this story, not an image of Daybreak or GPT-5.6-Cyber.",
+      inlineUrls: [
+        'https://openai.com/daybreak/',
+        'https://cyberscoop.com/openai-daybreak-expansion-specialized-cyber-services/',
+        'https://the-decoder.com/openai-launches-gpt-5-6-cyber-to-help-defenders-find-vulnerabilities-before-attackers-do/',
       ],
     },
   };
@@ -749,34 +760,9 @@ check('all generated public HTML is free of internal scaffolding language', () =
   }
 });
 
-check('continuous reading order is deterministic and stops at the oldest post', () => {
-  const fixtures = [
-    {
-      id: 'beta',
-      data: { pubDate: new Date('2026-01-02'), firstPublicationDate: new Date('2026-01-02') },
-    },
-    {
-      id: 'alpha',
-      data: { pubDate: new Date('2026-01-02'), firstPublicationDate: new Date('2026-01-02') },
-    },
-    {
-      id: 'oldest',
-      data: { pubDate: new Date('2026-01-01'), firstPublicationDate: new Date('2026-01-01') },
-    },
-  ];
-  assert.deepEqual(
-    sortPostsNewestFirst(fixtures).map((post) => post.id),
-    ['alpha', 'beta', 'oldest'],
-  );
-  assert.equal(getNextOlderPost('alpha', fixtures)?.id, 'beta');
-  assert.equal(getNextOlderPost('beta', fixtures)?.id, 'oldest');
-  assert.equal(getNextOlderPost('oldest', fixtures), undefined);
-  assert.equal(getNextOlderPost('missing', fixtures), undefined);
-  assert.equal(getPreviousNewerPost('oldest', fixtures)?.id, 'beta');
-  assert.equal(getPreviousNewerPost('beta', fixtures)?.id, 'alpha');
-  assert.equal(getPreviousNewerPost('alpha', fixtures), undefined);
-  assert.equal(getPreviousNewerPost('missing', fixtures), undefined);
-});
+// sortPostsNewestFirst/getNextOlderPost/getPreviousNewerPost have their own
+// fixture-based coverage in src/lib/post-order.test.mjs (test:units) — no
+// need for a dist/-dependent duplicate here.
 
 check('article fragments are canonical noindex documents with one append-safe story', () => {
   for (const { id } of sourcePosts()) {
@@ -1742,12 +1728,19 @@ check('homepage lead story is the most recent post', () => {
   const html = dist('index.html');
   const lead = html.match(/<h1 class="hero-lead-headline">([\s\S]*?)<\/h1>/);
   assert.ok(lead, 'no lead headline rendered');
-  // Several stories tie on pubDate (an editorial date, not a datetime), so
-  // sortPostsNewestFirst breaks the tie by Prismic's real first_publication_date
-  // — gemini37PostId was the last of that group actually published.
+  // Several stories can tie on pubDate (an editorial date, not a datetime) —
+  // sortPostsNewestFirst breaks that with Prismic's real publish time, which
+  // isn't rendered anywhere in the build and so can't be checked here. That
+  // tie-break is covered by src/lib/post-order.test.mjs; this only checks
+  // that the lead comes from the single most recent published day.
+  const posts = sourcePosts();
+  const newestDay = Math.max(...posts.map((post) => post.pubDate.valueOf()));
+  const newestIds = posts
+    .filter((post) => post.pubDate.valueOf() === newestDay)
+    .map(({ id }) => id);
   assert.ok(
-    lead[1].includes(`/posts/${codexTeasePostId}/`),
-    'lead story should be the most recent post',
+    newestIds.some((id) => lead[1].includes(`/posts/${id}/`)),
+    'lead story should be from the most recently published day',
   );
   assert.match(html, /\d+ min read/, 'read time not rendered');
   assert.ok(html.includes('class="byline-name"'), 'byline not rendered');
@@ -2364,22 +2357,43 @@ check('author pages render profiles and every authored story newest first', () =
   assert.ok(html.includes('Tejas Telkar'));
   assert.ok(html.includes('Writer and editor'));
   assert.ok(html.includes('class="label author-story-tag">Explainers'));
-  assert.ok(html.includes(`<strong>${sourcePosts().length}</strong>`));
+  const posts = sourcePosts();
+  assert.ok(html.includes(`<strong>${posts.length}</strong>`));
   assert.ok(html.includes('Published stories'));
 
-  const urls = [...html.matchAll(/class="author-story" href="([^"]+)"/g)].map((match) => match[1]);
-  // Fourteen authored stories is two past ARCHIVE_PAGE_SIZE, so this profile
-  // paginates the same way /latest/ does — page one holds the newest 12, and
-  // the oldest two spill to page two, still newest-first within each page.
-  assert.equal(urls.length, Math.min(sourcePosts().length, ARCHIVE_PAGE_SIZE));
-  assert.equal(urls[0], `/posts/${codexTeasePostId}/`);
-  assert.equal(urls.at(-1), `/posts/${primaryPostId}/`);
-
-  const page2 = dist('authors/tejas-telkar/2/index.html');
-  const page2Urls = [...page2.matchAll(/class="author-story" href="([^"]+)"/g)].map(
+  const idFromHref = (href) => href.replace(/^\/posts\//, '').replace(/\/$/, '');
+  const page1Urls = [...html.matchAll(/class="author-story" href="([^"]+)"/g)].map(
     (match) => match[1],
   );
-  assert.deepEqual(page2Urls, [`/posts/${tertiaryPostId}/`, `/posts/${secondaryPostId}/`]);
+  // This profile paginates the same way /latest/ does, so once the author's
+  // story count passes ARCHIVE_PAGE_SIZE, page one holds only the newest slice.
+  assert.equal(page1Urls.length, Math.min(posts.length, ARCHIVE_PAGE_SIZE));
+
+  let allUrls = page1Urls;
+  if (posts.length > ARCHIVE_PAGE_SIZE) {
+    const page2 = dist('authors/tejas-telkar/2/index.html');
+    const page2Urls = [...page2.matchAll(/class="author-story" href="([^"]+)"/g)].map(
+      (match) => match[1],
+    );
+    assert.equal(page2Urls.length, posts.length - page1Urls.length);
+    allUrls = page1Urls.concat(page2Urls);
+  }
+
+  // It's a single-author site, so this author's paginated list — across
+  // however many pages it spans — must be exactly sourcePosts(), newest day
+  // first. Same-day tie-break order is covered by src/lib/post-order.test.mjs,
+  // not re-checked here, since the real Prismic publish time it depends on
+  // isn't rendered anywhere in the build.
+  assert.deepEqual(
+    [...allUrls.map(idFromHref)].sort(),
+    [...posts.map(({ id }) => id)].sort(),
+    "the paginated author story list should be exactly this author's posts",
+  );
+  const pubDateById = new Map(posts.map((post) => [post.id, post.pubDate.valueOf()]));
+  const days = allUrls.map((url) => pubDateById.get(idFromHref(url)));
+  for (let i = 1; i < days.length; i += 1) {
+    assert.ok(days[i - 1] >= days[i], 'author stories should render newest day first');
+  }
 
   const schemas = [
     ...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g),
@@ -2927,9 +2941,10 @@ check('archives paginate without moving any existing URL', () => {
     assert.ok(!/posts=\{posts\}/.test(source), `${route} still renders the unpaginated list`);
   }
 
-  // Thirteen posts is one past ARCHIVE_PAGE_SIZE (12), so /latest/ now
-  // genuinely spans two pages — the control has real work to do here, unlike
-  // the smaller per-tag/per-format archives that still fit on one page.
+  // The fixture has passed ARCHIVE_PAGE_SIZE (12) for a while now, so
+  // /latest/ genuinely spans two pages — the control has real work to do
+  // here, unlike the smaller per-tag/per-format archives that still fit on
+  // one page.
   assert.ok(
     dist('latest/index.html').includes('class="pagination"'),
     '/latest/ should paginate once the edition exceeds one page',

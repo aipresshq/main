@@ -34,3 +34,6 @@ pnpm-debug.log*
 
 # wrangler local state
 .wrangler/
+
+# scratch post drafts for scripts/publish-post.mjs
+/drafts/
