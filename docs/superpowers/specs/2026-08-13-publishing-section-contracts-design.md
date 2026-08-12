@@ -1,7 +1,7 @@
 # Publishing and section contracts
 
 Date: 2026-08-13
-Status: Pending design review
+Status: Approved
 
 ## Problem
 
@@ -82,7 +82,7 @@ Intentional reuse is allowed. A featured tracker can appear in the hero, Tracker
 | Module | Eligibility and ranking | Visibility |
 | --- | --- | --- |
 | Stage lead and Just In | Newest posts. Use three at the current catalog size and five once the catalog reaches 24 posts. | Visible when at least one post exists. |
-| Stage Editor's Pick | Newest featured posts other than the lead, up to two. It does not require the story to be inside the Stage recency slice. | Visible when a featured candidate exists. |
+| Stage Editor's Pick | Newest featured posts outside the Stage recency slice, up to two. | Visible when a featured candidate exists. |
 | Latest | Newest posts not already in the Stage recency slice, using the existing size-based limits. | Visible when a candidate exists. |
 | Find your next read | Applications uses `Product Launch` first and `AI` as fallback. Companies and labs uses canonical company tags. Usage and access uses tracker posts. Each column selects independently and excludes duplicates only within this module. | Visible when at least one column has a story. |
 | Related news | Stories other than the lead that share at least one canonical tag with the lead. Rank by number of shared tags, then recency. | Visible when a related story exists. |
