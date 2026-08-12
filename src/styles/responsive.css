@@ -119,6 +119,10 @@
     justify-content: center;
   }
 
+  .article-layout:not(:has(> .article-outline)) {
+    grid-template-columns: minmax(0, 720px);
+  }
+
   .article-endcap {
     grid-template-columns: 1fr;
     gap: 32px;

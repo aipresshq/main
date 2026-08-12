@@ -767,9 +767,11 @@ check('article fragments are canonical noindex documents with one append-safe st
       html.includes('class="article-sidebar"'),
       'fragment must use the shared article sidebar',
     );
-    assert.ok(
+    const tocLinks = (html.match(/data-toc-link/g) || []).length;
+    assert.equal(
       html.includes('class="article-outline"'),
-      'fragment must use the shared left article outline',
+      tocLinks > 0,
+      `${id} fragment rendered an empty outline or hid available outline links`,
     );
     assert.ok(!html.includes('class="site-header"'), 'fragment duplicated the global header');
     assert.ok(!html.includes('class="site-footer"'), 'fragment duplicated the footer');
@@ -2179,10 +2181,25 @@ check('all standalone articles share the same hero and sidebar shell', () => {
   for (const { id } of sourcePosts()) {
     const html = dist(`posts/${id}/index.html`);
     assert.ok(html.includes('class="article-layout"'), `${id} is missing the article layout`);
-    assert.ok(
-      html.includes('class="article-outline"'),
-      `${id} is missing the left article outline`,
+    const format = articleBody(html, `/posts/${id}/`).match(
+      /<a class="label article-kicker" href="\/format\/([a-z0-9-]+)\/"/,
+    )?.[1];
+    const tocLinks = (html.match(/data-toc-link/g) || []).length;
+    const hasOutline = html.includes('class="article-outline"');
+    assert.equal(
+      hasOutline,
+      tocLinks > 0,
+      `${id} rendered an empty In this story outline or hid available links`,
     );
+    if (format !== 'brief' && tocLinks === 0) {
+      assert.ok(
+        [
+          daybreakTiersPostId,
+          'xai-launches-grok-4-6-matching-gpt-5-6-sol-at-half-the-price',
+        ].includes(id),
+        `${id} is a structured legacy story with no level-two headings`,
+      );
+    }
     assert.ok(html.includes('class="article-figure"'), `${id} is missing the article hero`);
     assert.ok(html.includes('class="article-sidebar"'), `${id} is missing the article sidebar`);
     assert.equal(
@@ -2197,6 +2214,12 @@ check('all standalone articles share the same hero and sidebar shell', () => {
       `${id} should render one latest module when another story is available`,
     );
   }
+
+  assert.match(
+    sourceStyles(),
+    /\.article-layout:not\(:has\(> \.article-outline\)\)[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\) minmax\(280px, 340px\)/,
+    'heading-free articles should use the reading column and discovery rail',
+  );
 });
 
 check('article layout splits the outline from the discovery sidebar', () => {

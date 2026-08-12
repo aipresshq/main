@@ -11,6 +11,10 @@
   padding-top: 28px;
 }
 
+.article-layout:not(:has(> .article-outline)) {
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+}
+
 .article {
   min-width: 0;
 }
