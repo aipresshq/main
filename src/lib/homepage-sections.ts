@@ -53,9 +53,7 @@ function selectDeskStories<T extends HomepagePost>(posts: T[]) {
   const applicationsPosts = takeFirst((post) =>
     post.data.tags.includes(productLaunches ? 'Product Launch' : 'AI'),
   );
-  const companyPosts = takeFirst((post) =>
-    post.data.tags.some((tag) => COMPANY_TAGS.has(tag)),
-  );
+  const companyPosts = takeFirst((post) => post.data.tags.some((tag) => COMPANY_TAGS.has(tag)));
   const usagePosts = takeFirst((post) => post.data.postType === 'tracker');
 
   return { applicationsPosts, companyPosts, usagePosts };
@@ -100,14 +98,14 @@ export function selectHomepageSections<T extends HomepagePost>(posts: T[]): Home
   const briefingFeature = posts.find(
     (post) => post.data.format === 'explainer' || post.data.format === 'analysis',
   );
-  const briefingPosts = posts
-    .filter((post) => post.id !== briefingFeature?.id)
-    .slice(0, 5);
+  const briefingPosts = posts.filter((post) => post.id !== briefingFeature?.id).slice(0, 5);
 
   const newestDay = lead ? utcDay(lead.data.pubDate) : undefined;
   const oldestTimelineDay = newestDay === undefined ? undefined : newestDay - 6 * DAY_MS;
   const timelinePosts = posts
-    .filter((post) => oldestTimelineDay !== undefined && utcDay(post.data.pubDate) >= oldestTimelineDay)
+    .filter(
+      (post) => oldestTimelineDay !== undefined && utcDay(post.data.pubDate) >= oldestTimelineDay,
+    )
     .slice(0, 6);
 
   const trackers = posts.filter((post) => post.data.postType === 'tracker').slice(0, 5);

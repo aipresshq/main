@@ -70,6 +70,12 @@ await test('cover accepts a full https URL', () => {
   assert.equal(result.valid, true);
 });
 
+await test('only the publishing CLI may validate a relative local cover path', () => {
+  const payload = { ...basePost(), cover: './covers/example.png' };
+  assert.equal(validatePost(payload, options).valid, false);
+  assert.equal(validatePost(payload, { ...options, allowRelativeCover: true }).valid, true);
+});
+
 await test('takeaways must have at least one entry', () => {
   const result = validatePost({ ...basePost(), takeaways: [] }, options);
   assert.equal(result.valid, false);
@@ -105,6 +111,13 @@ await test('duplicate canonical tags are rejected case-insensitively', () => {
   const result = validatePost({ ...basePost(), tags: ['AI', 'ai'] }, options);
   assert.equal(result.valid, false);
   assert.match(result.errors.tags, /duplicate/i);
+});
+
+await test('canonical tag spelling and casing are required', () => {
+  const result = validatePost({ ...basePost(), tags: ['ai'] }, options);
+  assert.equal(result.valid, false);
+  assert.match(result.errors.tags, /ai/);
+  assert.match(result.errors.tags, /canonical/i);
 });
 
 await test('more than six tags are rejected', () => {

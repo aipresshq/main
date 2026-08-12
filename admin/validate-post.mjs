@@ -11,9 +11,10 @@ function isNonEmptyString(value) {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
-function isValidCover(value) {
+function isValidCover(value, allowRelativeCover = false) {
   if (!isNonEmptyString(value)) return false;
   if (value.startsWith('/')) return true;
+  if (allowRelativeCover) return true;
   try {
     new URL(value);
     return true;
@@ -35,7 +36,7 @@ function markdownHeadings(body) {
     .map((token) => ({ depth: token.depth, text: token.text.trim() }));
 }
 
-export function validatePost(payload, { existingAuthorIds }) {
+export function validatePost(payload, { existingAuthorIds, allowRelativeCover = false }) {
   const errors = {};
 
   if (!isNonEmptyString(payload.title)) errors.title = 'Title is required.';
@@ -56,7 +57,7 @@ export function validatePost(payload, { existingAuthorIds }) {
     errors.format = `Format must be one of: ${FORMATS.join(', ')}.`;
   }
 
-  if (!isValidCover(payload.cover)) {
+  if (!isValidCover(payload.cover, allowRelativeCover)) {
     errors.cover = 'Cover must be a root-relative path or a valid URL.';
   }
   if (!isNonEmptyString(payload.coverAlt)) errors.coverAlt = 'Cover alt text is required.';
@@ -86,7 +87,9 @@ export function validatePost(payload, { existingAuthorIds }) {
   const tags = Array.isArray(payload.tags) ? payload.tags.filter(isNonEmptyString) : [];
   const normalizedTags = tags.map((tag) => tag.trim().toLocaleLowerCase());
   const duplicateTags = normalizedTags.filter((tag, index) => normalizedTags.indexOf(tag) !== index);
-  const unknownTags = tags.filter((tag) => !canonicalTopics.has(tag.trim().toLocaleLowerCase()));
+  const unknownTags = tags.filter(
+    (tag) => canonicalTopics.get(tag.trim().toLocaleLowerCase()) !== tag.trim(),
+  );
   if (tags.length < 1 || tags.length > 6) {
     errors.tags = `Use one to six unique canonical tags: ${knownTopics.join(', ')}.`;
   } else if (duplicateTags.length > 0) {

@@ -1,10 +1,12 @@
 // scripts/publish-post.mjs
 //
 // The one path for publishing a new post, instead of a bespoke create-*.mjs
-// script per article. Uploads a local cover image to R2 if given, validates
-// the draft with the same validatePost() the Editorial Desk uses, then writes
-// it with the same createPost() the Editorial Desk uses — so a hand-authored
+// script per article. Validates the draft with the same validatePost() the
+// Editorial Desk uses, uploads a local cover image to R2 if given, then writes
+// it with the same createPost() the Editorial Desk uses, so an AI-authored
 // draft can never skip validation the way a one-off migration script did.
+// Humanize the prose before running this command. Preserve confirmed facts,
+// links, and the final `##` heading structure while editing the voice.
 //
 // Usage: node --env-file=.env scripts/publish-post.mjs <draft.json>
 // See scripts/publish-post.example.json for the expected shape. `cover` can
@@ -70,22 +72,24 @@ const payload = JSON.parse(await readFile(draftPath, 'utf-8'));
 
 const isLocalCover =
   payload.cover && !/^https?:\/\//.test(payload.cover) && !payload.cover.startsWith('/');
-if (isLocalCover) {
-  const coverPath = path.resolve(path.dirname(draftPath), payload.cover);
-  payload.cover = await uploadLocalCover(coverPath, payload.title);
-}
 
 const authors = await listAuthors();
 const { valid, errors } = validatePost(payload, {
   existingAuthorIds: authors.map((author) => author.id),
+  allowRelativeCover: isLocalCover,
 });
 
 if (!valid) {
-  console.error('Draft failed validation — nothing was written to Prismic:');
+  console.error('Draft failed validation; nothing was uploaded or written to Prismic:');
   for (const [field, message] of Object.entries(errors)) {
     console.error(`  - ${field}: ${message}`);
   }
   process.exit(1);
+}
+
+if (isLocalCover) {
+  const coverPath = path.resolve(path.dirname(draftPath), payload.cover);
+  payload.cover = await uploadLocalCover(coverPath, payload.title);
 }
 
 const id = await createPost(payload);

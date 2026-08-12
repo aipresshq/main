@@ -10,5 +10,5 @@
   "featured": false,
   "tags": ["AI"],
   "takeaways": ["First takeaway.", "Second takeaway."],
-  "body": "Markdown body of the article goes here."
+  "body": "Opening context.\n\n## What happened\n\nReport the confirmed facts.\n\n## What remains open\n\nState the unanswered questions."
 }

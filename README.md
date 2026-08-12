@@ -47,8 +47,16 @@ for secret setup, password-hash rotation, and reading traffic numbers.
 
 `npm run publish:post -- <draft.json>` writes a draft the same way, from the command line: it
 runs the same `validatePost()`/`createPost()` the Desk's API uses (see `admin/posts-store.mjs`),
-and uploads a local `cover` image path to R2 first if one is given. Prefer this over writing a
-new one-off `scripts/create-*.mjs` file per article — those bypass validation entirely.
+then uploads a local `cover` image to R2 after validation succeeds. Prefer this over writing a
+new one-off `scripts/create-*.mjs` file per article because those bypass validation entirely.
+
+For AI-assisted posts, humanize the prose before submitting the final JSON. Preserve every
+confirmed fact, citation, and link during that edit. Tags and article headings have separate
+jobs: choose one to six unique tags from `src/lib/topics.ts` for category pages, and use at
+least two unique `## Heading` sections for explainers, comparisons, trackers, analysis, and
+tutorials. Those level-two headings create the "In this story" outline. Briefs may use plain
+paragraphs without an outline. The validator checks this final structure before any upload or
+Prismic write.
 
 ## Commands
 
