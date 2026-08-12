@@ -13,68 +13,28 @@ import BriefingBoard from '../components/BriefingBoard.astro';
 import StoryTimeline from '../components/StoryTimeline.astro';
 import TopicDirectory from '../components/TopicDirectory.astro';
 import { formatEditionDate } from '../lib/date';
+import { selectHomepageSections } from '../lib/homepage-sections';
 import { sortPostsNewestFirst } from '../lib/post-order';
 import { slugify } from '../lib/slug';
 import { topicGroups } from '../lib/topics';
 
 const posts = sortPostsNewestFirst(await getCollection('posts'));
-
-const storyCount = posts.length;
-
-// A small catalog can't spare five posts for the hero alone: every post held
-// back here is one fewer available to every section below it. Three still
-// covers a lead plus two picks; a bigger edition can afford the full five.
-const stagePosts = posts.slice(0, Math.min(storyCount, storyCount >= 24 ? 5 : 3));
-const inStage = new Set(stagePosts.map((p) => p.id));
-const remainingPosts = posts.filter((p) => !inStage.has(p.id));
-const latestLimit = storyCount >= 18 ? 6 : storyCount >= 10 ? 2 : storyCount >= 6 ? 2 : 0;
-const latestPosts = remainingPosts.slice(0, latestLimit);
-const allocatedIds = new Set([...inStage, ...latestPosts.map((p) => p.id)]);
-
-const picks = posts.filter((p) => p.data.featured);
-const stagePicks = picks.filter((p) => inStage.has(p.id));
-
-const companyTags = new Set([
-  'OpenAI',
-  'Anthropic',
-  'Google DeepMind',
-  'Meta',
-  'Microsoft',
-  'Mistral',
-]);
-const deskCandidateIds = new Set<string>();
-
-// One per column, not three: a small catalog spends its whole remaining pool
-// on one greedy column otherwise, leaving the other two — and every section
-// below this one — empty regardless of what they're flagged with.
-function collectDeskStories(predicate: (post: (typeof posts)[number]) => boolean) {
-  const selected = remainingPosts
-    .filter(
-      (post) => !allocatedIds.has(post.id) && !deskCandidateIds.has(post.id) && predicate(post),
-    )
-    .slice(0, 1);
-
-  selected.forEach((post) => {
-    deskCandidateIds.add(post.id);
-  });
-  return selected;
-}
-
-const applicationCandidates = collectDeskStories(
-  (post) => post.data.tags.includes('Product Launch') || post.data.tags.includes('AI'),
-);
-const usageCandidates = collectDeskStories((post) => post.data.postType === 'tracker');
-const companyCandidates = collectDeskStories(
-  (post) => post.data.postType !== 'tracker' && post.data.tags.some((tag) => companyTags.has(tag)),
-);
-const deskCandidateCount = deskCandidateIds.size;
-const showDeskIndex = deskCandidateCount >= 2;
-if (showDeskIndex) {
-  deskCandidateIds.forEach((id) => allocatedIds.add(id));
-}
-const applicationsPosts = showDeskIndex ? applicationCandidates : [];
-const usagePosts = showDeskIndex ? usageCandidates : [];
-const companyPosts = showDeskIndex ? companyCandidates : [];
+const {
+  stagePosts,
+  stagePicks,
+  latestPosts,
+  applicationsPosts,
+  usagePosts,
+  companyPosts,
+  relatedNews,
+  showcasePosts,
+  briefingPosts,
+  briefingFeature,
+  timelinePosts,
+  trackers,
+  digest,
+  newsroomPosts,
+} = selectHomepageSections(posts);
 
 const deskColumns = [
   { title: 'Applications', href: '/tag/product-launch/', posts: applicationsPosts },
@@ -82,22 +42,7 @@ const deskColumns = [
   { title: 'Usage & access', href: '/trackers/', posts: usagePosts },
 ];
 
-const relatedNews = remainingPosts
-  .filter((post) => !allocatedIds.has(post.id) && post.data.featured)
-  .slice(0, 6);
-relatedNews.forEach((post) => allocatedIds.add(post.id));
-
-// Every threshold below this line requires only enough posts for the
-// component to render without empty grid cells (verified against each
-// component's markup), not the deeper pool the modules were designed
-// around — an edition with a dozen posts still fills most sections at one
-// or two stories each, rather than staying hidden until the catalog is ten
-// times bigger.
-const availableAfterRelated = remainingPosts.filter((post) => !allocatedIds.has(post.id));
-const deskShowcasePosts =
-  availableAfterRelated.length >= 1 ? availableAfterRelated.slice(0, 3) : [];
-deskShowcasePosts.forEach((post) => allocatedIds.add(post.id));
-const [deskLead, ...deskRemainder] = deskShowcasePosts;
+const [deskLead, ...deskRemainder] = showcasePosts;
 const deskHeadlines = deskRemainder.slice(0, 3);
 const deskSidePosts = deskRemainder.slice(3, 6);
 const deskLowerPosts = deskRemainder.slice(6, 10);
@@ -107,27 +52,6 @@ const showcaseTopics = ['OpenAI', 'Comparisons', 'Research', 'Product Launch', '
     href: `/tag/${slugify(topic)}/`,
   }),
 );
-
-const availableAfterShowcase = remainingPosts.filter((post) => !allocatedIds.has(post.id));
-const trackers = availableAfterShowcase
-  .filter((post) => post.data.postType === 'tracker')
-  .slice(0, 5);
-trackers.forEach((post) => allocatedIds.add(post.id));
-
-// Briefing's list, the timeline, and "more from today" are all recap formats
-// with no unique visual hook of their own (no cover photo, no featured flag)
-// — at low volume they share this last pool rather than exhausting it from
-// each other, the same way deskLead above is already shared between
-// DeskShowcase and BriefingBoard. A dozen posts cannot give every recap
-// format its own exclusive tail; showing the same handful of leftovers a
-// couple of ways reads as "today's rundown," not as a bug.
-const fillerPool = remainingPosts.filter((post) => !allocatedIds.has(post.id));
-const briefingPosts = deskLead ? fillerPool.slice(0, 5) : [];
-const timelinePosts = fillerPool.slice(0, 6);
-const digest = fillerPool.slice(0, 8);
-
-const newsroomPosts = picks.filter((post) => !allocatedIds.has(post.id)).slice(0, 6);
-newsroomPosts.forEach((post) => allocatedIds.add(post.id));
 
 const directoryGroups = topicGroups
   .map((group) => ({
@@ -152,7 +76,7 @@ const directoryGroups = topicGroups
 
   {latestPosts.length > 0 && <LatestSection posts={latestPosts} />}
 
-  {showDeskIndex && <DeskIndex columns={deskColumns} />}
+  <DeskIndex columns={deskColumns} />
 
   {relatedNews.length > 0 && <RelatedNews posts={relatedNews} />}
 
@@ -171,8 +95,8 @@ const directoryGroups = topicGroups
   }
 
   {
-    briefingPosts.length > 0 && deskLead && (
-      <BriefingBoard posts={briefingPosts} feature={deskLead} />
+    briefingPosts.length > 0 && briefingFeature && (
+      <BriefingBoard posts={briefingPosts} feature={briefingFeature} />
     )
   }
 

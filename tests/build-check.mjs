@@ -1729,20 +1729,16 @@ check('homepage lead story is the most recent post', () => {
   assert.ok(html.includes('class="byline-name"'), 'byline not rendered');
 });
 
-check('homepage hero surfaces the current lead story', () => {
+check('homepage hero surfaces its lead and independently selected picks', () => {
   const html = dist('index.html');
-  assert.ok(linksTo(html, primaryPostId), 'current story is missing from the homepage');
   const hero = html.slice(
     html.indexOf('class="hero hero--columns'),
     html.indexOf('</section>', html.indexOf('class="hero hero--columns')),
   );
   assert.ok(hero.includes('class="hero-lead"'), 'lead story is not rendered');
-  // Two of the site's three featured posts land in the stage's top three
-  // slots, so the picks rail now has real candidates to show instead of
-  // hiding for lack of any.
   assert.ok(
     hero.includes('class="hero-picks"'),
-    "Editor's Pick rail should show the featured posts in stage",
+    "Editor's Pick rail should show featured posts outside the recency slice",
   );
   assert.ok(hero.includes('class="hero-just-in"'), 'Just In rail should show the second story');
 });
