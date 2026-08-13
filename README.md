@@ -1,107 +1,164 @@
 # aiPressHQ
 
-Daily AI news, explainers, and trackers. A static Astro site served from a Cloudflare
-Worker, with stories authored in Prismic and an in-house Editorial Desk at
-[admin.aipresshq.com](https://admin.aipresshq.com) (`/admin` under `astro dev` locally).
+aiPressHQ is a server-rendered Astro publication running on Cloudflare Workers. Articles are
+stored in Cloudflare D1 and R2, rendered dynamically, indexed in D1 full-text search, and
+available as soon as publication succeeds.
+
+Production sites:
+
+- Public publication: [aipresshq.com](https://aipresshq.com)
+- Editorial Desk: [admin.aipresshq.com](https://admin.aipresshq.com)
+
+The authoritative technical reference is [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+Operational commands and recovery procedures are in
+[`docs/cloudflare-content-operations.md`](docs/cloudflare-content-operations.md).
 
 ## Requirements
 
-Node as pinned in [`.node-version`](.node-version). The test suites import `.ts` modules
-directly and rely on Node's built-in TypeScript type stripping, so an older Node will fail
-to run them even though the site itself builds.
+- Node.js at the version pinned in [`.node-version`](.node-version)
+- npm
+- A Cloudflare account for remote D1, R2, Worker, and deployment operations
+- A local `.env` only for commands that authenticate to production services
+
+Install dependencies and create local configuration:
 
 ```sh
 npm ci
-cp .env.example .env   # fill in the values you need; the build itself needs none
-npm run dev
+cp .env.example .env
 ```
 
-## How it fits together
+Start Astro in background mode:
 
-| Piece              | Where                                                                |
-| ------------------ | -------------------------------------------------------------------- |
-| Pages and layouts  | [`src/pages/`](src/pages/), [`src/layouts/`](src/layouts/)           |
-| Story content      | Prismic, read at build time by [`src/loaders/`](src/loaders/)        |
-| Authors            | [`src/content/authors/`](src/content/authors/) (Markdown)            |
-| Editorial Desk     | [`admin/`](admin/) (server) + [`public/admin/`](public/admin/)       |
-| Production routing | [`src/worker.ts`](src/worker.ts), [`wrangler.jsonc`](wrangler.jsonc) |
-| Static headers     | [`public/_headers`](public/_headers)                                 |
+```sh
+astro dev --background
+astro dev status
+astro dev logs
+astro dev stop
+```
 
-The build is fully static — Prismic is read at build time, not per request, so publishing a
-story means publishing the Prismic release and then deploying. The Worker exists to serve
-the Editorial Desk on its own hostname (redirecting `/admin` on the public site there), to
-keep non-production hostnames out of search results, and to count page views.
+Use `npx wrangler dev` when testing Worker routing, bindings, security headers, host handling,
+or the production-style admin boundary.
 
-### Search
+## Architecture at a glance
 
-Pagefind indexes article bodies at build time and runs entirely in the browser over WASM and
-a web worker. There is no search backend.
+| Responsibility            | Current implementation                          |
+| ------------------------- | ----------------------------------------------- |
+| Web application           | Astro 7 in server output mode                   |
+| Runtime                   | Cloudflare Worker `main`                        |
+| Article metadata          | D1 binding `CONTENT_DB`                         |
+| Article bodies and covers | R2 binding `IMAGES`                             |
+| Search                    | D1 FTS5 through `/api/search`                   |
+| Authors                   | `src/content/authors/*.md`                      |
+| Editorial UI              | `admin/` and `public/admin/`                    |
+| Public rendering          | `src/pages/` using `getRuntimeContent()`        |
+| Publishing transaction    | `src/lib/content/publisher.ts`                  |
+| Production routing        | `src/worker.ts` and `wrangler.jsonc`            |
+| Contact and corrections   | D1 binding `CONTACT_DB`                         |
+| Page views                | Cloudflare Analytics Engine binding `ANALYTICS` |
+| Static assets             | Cloudflare Workers Assets from `dist/client`    |
+
+## Publishing
+
+There are two supported publishing paths. Both validate the final payload and write directly
+to Cloudflare.
 
 ### Editorial Desk
 
-[admin.aipresshq.com](https://admin.aipresshq.com) is a login-gated single-page app served as
-an HTML string by the Worker (`localhost:4321/admin` under `astro dev`). It writes drafts into
-a pending Prismic Migration Release; nothing it does publishes on its own. See
-[`docs/superpowers/runbooks/admin-production.md`](docs/superpowers/runbooks/admin-production.md)
-for secret setup, password-hash rotation, and reading traffic numbers.
+Sign in at [admin.aipresshq.com](https://admin.aipresshq.com), create or edit a story, and
+publish it. A successful request writes metadata and search data to D1, writes an immutable
+body envelope to R2, and makes the story available immediately.
 
-`npm run publish:post -- <draft.json>` writes a draft the same way, from the command line: it
-runs the same `validatePost()`/`createPost()` the Desk's API uses (see `admin/posts-store.mjs`),
-then uploads a local `cover` image to R2 after validation succeeds. Prefer this over writing a
-new one-off `scripts/create-*.mjs` file per article because those bypass validation entirely.
+### Command line
 
-For AI-assisted posts, humanize the prose before submitting the final JSON. Preserve every
-confirmed fact, citation, and link during that edit. Tags and article headings have separate
-jobs: choose one to six unique tags from `src/lib/topics.ts` for category pages, and use at
-least two unique `## Heading` sections for explainers, comparisons, trackers, analysis, and
-tutorials. Those level-two headings create the "In this story" outline. Briefs may use plain
-paragraphs without an outline. The validator checks this final structure before any upload or
-Prismic write.
+Create a JSON draft following [`scripts/publish-post.example.json`](scripts/publish-post.example.json),
+then run:
+
+```sh
+npm run publish:post -- path/to/draft.json
+```
+
+The command:
+
+1. validates metadata, tags, author, format, body structure, and cover input;
+2. signs in to the production Editorial Desk;
+3. uploads a local cover to R2 when needed;
+4. publishes the article to D1 and R2;
+5. fetches the public URL and fails if live verification does not return success.
+
+Publishing does not require a Git commit, code deployment, or manual release action.
+
+### Content contract
+
+- Authors must exist in `src/content/authors/`.
+- Tags must use the canonical values in `src/lib/topics.ts`.
+- Formats are `brief`, `explainer`, `comparison`, `tracker`, `analysis`, or `tutorial`.
+- Post types are `digest`, `evergreen`, or `tracker`.
+- Briefs may use unheaded paragraphs.
+- Every other format requires at least two unique `##` headings.
+- Those level-two headings generate the “In this story” navigation.
+- Cover alt text, at least one takeaway, and at least one canonical tag are required.
+- AI-assisted prose must be fact-checked and humanized without losing sources or links.
+
+## Runtime behavior
+
+All public content surfaces query D1 at request time. Article pages fetch their body envelope
+from R2 and verify its hash against the D1 record before rendering. Archive routes count all
+matching records and fetch only the requested page. Search reads FTS5 immediately after a
+publish. RSS, tag feeds, format feeds, sitemaps, and `llms.txt` also use runtime content.
+
+The homepage derives its sections from the current catalog. A story is not assigned a unique
+homepage “section” in storage. Its metadata controls eligibility:
+
+- `featured` controls the trending archive and editorial selection signals;
+- `postType: tracker` controls tracker placement;
+- tags and format control category and format routes;
+- publication dates control latest and archive ordering.
+
+The selection helpers avoid duplicate stories across homepage modules.
 
 ## Commands
 
-| Command                                | What it does                                                                                   |
-| -------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `npm run dev`                          | Dev server. Note `_headers` is Cloudflare-only and does **not** apply.                         |
-| `npm run build`                        | Static build to `dist/`, including the Pagefind index.                                         |
-| `npm run preview`                      | Serve `dist/` locally.                                                                         |
-| `npx wrangler dev`                     | Serve `dist/` **through the Worker**, with `_headers` applied.                                 |
-| `npm run lint`                         | ESLint, zero warnings tolerated.                                                               |
-| `npm run format`                       | Prettier, in place. `format:check` for the read-only version.                                  |
-| `npm run check`                        | `astro check` — types across `.astro` and `.ts`.                                               |
-| `npm run test:units`                   | Every suite that needs no credentials.                                                         |
-| `npm test`                             | Asserts against `dist/`. Run a build first.                                                    |
-| `npm run test:prismic`                 | Hits the **live** Prismic write API. Needs `.env`; not run in CI.                              |
-| `npm run test:admin`                   | `test:units` plus `test:prismic`.                                                              |
-| `npm run indexnow`                     | Pings IndexNow. Manual, and only meaningful after a real publish.                              |
-| `npm run publish:post -- <draft.json>` | Validates and writes one new post as a Prismic draft. See `scripts/publish-post.example.json`. |
+| Command                          | Purpose                                                         |
+| -------------------------------- | --------------------------------------------------------------- |
+| `astro dev --background`         | Start the local Astro server in background mode                 |
+| `npx wrangler dev`               | Run the built Worker locally with Cloudflare semantics          |
+| `npm run lint`                   | Run ESLint with zero warnings allowed                           |
+| `npm run format:check`           | Check formatting without editing files                          |
+| `npm run check`                  | Type-check Astro and TypeScript                                 |
+| `npm run test:units`             | Run unit and contract suites with fakes                         |
+| `npm run build`                  | Build the Cloudflare SSR server and client assets               |
+| `npm test`                       | Verify the SSR bundle, bindings, assets, and route contracts    |
+| `npx wrangler deploy --dry-run`  | Validate the deploy bundle without changing production          |
+| `npm run publish:post -- <file>` | Publish one validated article directly                          |
+| `npm run content:parity`         | Check stored body integrity and migration baseline preservation |
+| `npm run indexnow`               | Submit current URLs to IndexNow                                 |
 
-To verify anything header-, CSP-, or Worker-related, use `npx wrangler dev` rather than
-`astro dev` — `_headers`, `_redirects`, and the Worker itself do not exist in the Astro dev
-server, so a policy can look fine there and still be wrong in production.
+## Verification
 
-## Tests
+Before committing a runtime or publishing change, run:
 
-There is no test framework. Suites are plain Node scripts that print `✓`/`✗` and set a
-non-zero exit code, split by what they need:
+```sh
+npm run lint
+npm run format:check
+npm run check
+npm run test:units
+npm run build
+npm test
+npx wrangler deploy --dry-run
+```
 
-- **Unit and contract suites** (`test:units`) use injected fakes and run anywhere.
-- **`tests/build-check.mjs`** (`npm test`) asserts against real built output in `dist/` —
-  emitted HTML, schema, CSP hashes, the wrangler config. It needs a build first.
-- **`test:prismic`** talks to the live Prismic write API and creates real documents, so it is
-  excluded from CI and needs a token in `.env`.
+Publishing-only verification should additionally check the new public URL, `/api/search`,
+`/rss.xml`, and `/sitemap-pages.xml`.
 
-[CI](.github/workflows/ci.yml) runs lint, formatting, types, `test:units`, the build,
-`npm test`, and a `wrangler deploy --dry-run` on every push and pull request.
+## Deployment
 
-## Deploying
+Code and static asset changes require a Worker deployment:
 
 ```sh
 npm run build
+npm test
 npx wrangler deploy
 ```
 
-Secrets live in the Worker, never in the repo — see the runbook. After publishing a Prismic
-release, redeploy so the static edition reflects it — or set up
-[`docs/superpowers/runbooks/auto-deploy-on-publish.md`](docs/superpowers/runbooks/auto-deploy-on-publish.md)
-once and this happens automatically.
+Content changes do not require deployment. Never commit secrets. Production secrets are set
+with `npx wrangler secret put <NAME>` and are documented in the operations runbook.

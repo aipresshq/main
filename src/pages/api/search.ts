@@ -3,7 +3,10 @@ import { allowSearch, getRuntimeContent } from '../../lib/content/runtime.mjs';
 
 export const GET: APIRoute = async ({ request, url }) => {
   if (!(await allowSearch(request))) {
-    return Response.json({ error: 'Too many searches. Try again in a minute.' }, { status: 429, headers: { 'Retry-After': '60' } });
+    return Response.json(
+      { error: 'Too many searches. Try again in a minute.' },
+      { status: 429, headers: { 'Retry-After': '60' } },
+    );
   }
   const query = (url.searchParams.get('q') ?? '').trim().slice(0, 200);
   if (query.length < 2) return Response.json({ results: [] });

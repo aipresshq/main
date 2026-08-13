@@ -1,18 +1,11 @@
 name: Deploy
 
-# Fired by the "main" Worker's /api/prismic-webhook handler once it confirms a
-# Prismic delivery is both authentic and represents real content going live
-# (see src/lib/prismic-webhook.ts) — the build is static, so nothing in
-# production reflects a Prismic change until this runs. workflow_dispatch is
-# a manual fallback for the same sequence without needing a Prismic publish.
+# Code deployment is explicit. Article publishing writes runtime content directly
+# and never invokes this workflow.
 on:
-  repository_dispatch:
-    types: [prismic-publish]
   workflow_dispatch: {}
 
-# A publish that lands mid-deploy should queue behind it, not race it or
-# cancel it — cancelling a half-finished `wrangler deploy` is worse than a
-# short wait.
+# Code releases queue rather than racing or cancelling a deployment in progress.
 concurrency:
   group: deploy
   cancel-in-progress: false
@@ -35,12 +28,12 @@ jobs:
 
       - run: npm ci
 
-      # The read-only Prismic loader needs no token, so this builds the real site.
+      # Builds application code and Workers Assets. Runtime articles stay in D1/R2.
       - name: Build
         run: npm run build
 
       # Asserts against the built output, so it has to follow the build. A
-      # publish is exactly the wrong moment to skip the checks CI already runs.
+      # deployment is exactly the wrong moment to skip the checks CI already runs.
       - name: Verify build output
         run: npm test
 

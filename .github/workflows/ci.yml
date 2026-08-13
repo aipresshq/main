@@ -43,14 +43,12 @@ jobs:
       - name: Type-check Astro and TypeScript
         run: npm run check
 
-      # No credentials needed: these suites use injected fakes. The two suites
-      # that talk to the live Prismic write API (`npm run test:prismic`) are
-      # deliberately excluded — they need a production token and they create
-      # real documents, which is not something CI should do on every push.
+      # No credentials needed: these suites use injected fakes and contract fixtures.
       - name: Unit and contract tests
         run: npm run test:units
 
-      # The read-only Prismic loader needs no token, so this builds the real site.
+      # Builds the Cloudflare SSR server and Workers Assets bundle. Runtime
+      # content credentials are not required during compilation.
       - name: Build
         run: npm run build
 

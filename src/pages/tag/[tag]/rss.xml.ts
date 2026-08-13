@@ -15,8 +15,8 @@ export const GET: APIRoute = async ({ site, params }) => {
   if (!tag) return new Response('Not found.', { status: 404 });
   const base = site?.toString().replace(/\/$/, '') ?? '';
   const posts = sortPostsNewestFirst(
-    (await listHydratedPosts({ tag, limit: 50 })).filter(
-      (post): post is NonNullable<typeof post> => Boolean(post),
+    (await listHydratedPosts({ tag, limit: 50 })).filter((post): post is NonNullable<typeof post> =>
+      Boolean(post),
     ),
   );
 
