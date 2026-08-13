@@ -1,10 +1,8 @@
 ---
-import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Stage from '../components/Stage.astro';
 import LatestSection from '../components/LatestSection.astro';
 import FeatureBand from '../components/FeatureBand.astro';
-import HeadlineGrid from '../components/HeadlineGrid.astro';
 import NewsroomGrid from '../components/NewsroomGrid.astro';
 import DeskIndex from '../components/DeskIndex.astro';
 import RelatedNews from '../components/RelatedNews.astro';
@@ -17,8 +15,9 @@ import { selectHomepageSections } from '../lib/homepage-sections';
 import { sortPostsNewestFirst } from '../lib/post-order';
 import { slugify } from '../lib/slug';
 import { topicGroups } from '../lib/topics';
+import { getRuntimeContent } from '../lib/content/runtime.mjs';
 
-const posts = sortPostsNewestFirst(await getCollection('posts'));
+const posts = sortPostsNewestFirst(await getRuntimeContent().listPosts({ limit: 100 }));
 const {
   stagePosts,
   stagePicks,
@@ -32,7 +31,6 @@ const {
   briefingFeature,
   timelinePosts,
   trackers,
-  digest,
   newsroomPosts,
 } = selectHomepageSections(posts);
 
@@ -105,8 +103,6 @@ const directoryGroups = topicGroups
   {directoryGroups.length > 0 && <TopicDirectory groups={directoryGroups} />}
 
   {trackers.length > 0 && <FeatureBand title="Trackers" href="/trackers/" posts={trackers} />}
-
-  {digest.length > 0 && <HeadlineGrid title="More from today" posts={digest} />}
 
   {
     newsroomPosts.length > 0 && (

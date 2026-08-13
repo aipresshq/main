@@ -1,11 +1,11 @@
 import type { APIRoute } from 'astro';
-import { getCollection } from 'astro:content';
+import { getRuntimeContent } from '../lib/content/runtime.mjs';
 
 // @astrojs/sitemap only emits plain <url> entries: it has no support for
 // Google's image sitemap extension (context.md §6), so that piece is
 // hand-rolled here instead of configured through the integration.
 export const GET: APIRoute = async ({ site }) => {
-  const posts = await getCollection('posts');
+  const posts = await getRuntimeContent().listPosts({ limit: 100 });
   const base = site?.toString().replace(/\/$/, '') ?? '';
 
   const urls = posts

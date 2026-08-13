@@ -1,5 +1,5 @@
 ---
-import { getCollection, getEntry } from 'astro:content';
+import { getEntry } from 'astro:content';
 import ArticleContent from '../../../components/ArticleContent.astro';
 import ArticleLatest from '../../../components/ArticleLatest.astro';
 import ArticleToc from '../../../components/ArticleToc.astro';
@@ -8,16 +8,14 @@ import { getNextOlderPost, sortPostsNewestFirst } from '../../../lib/post-order'
 import { getSuggestedPosts } from '../../../lib/recommendations';
 import { getAuthorId } from '../../../lib/author-reference';
 import '../../../styles/global.css';
+import { getRuntimeContent } from '../../../lib/content/runtime.mjs';
 
-export async function getStaticPaths() {
-  const allPosts = await getCollection('posts');
-  return allPosts.map((post) => ({
-    params: { id: post.id },
-    props: { post, allPosts },
-  }));
-}
-
-const { post, allPosts } = Astro.props;
+const repository = getRuntimeContent();
+const [post, allPosts] = await Promise.all([
+  repository.getPost(Astro.params.id ?? ''),
+  repository.listPosts({ limit: 100 }),
+]);
+if (!post) return new Response('Not found.', { status: 404 });
 const authorId = getAuthorId(post.data.author);
 const author = await getEntry('authors', authorId);
 if (!author) {

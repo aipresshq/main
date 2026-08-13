@@ -1,6 +1,4 @@
 ---
-import type { GetStaticPaths } from 'astro';
-import { getCollection } from 'astro:content';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import CategoryFront from '../../../components/CategoryFront.astro';
 import Pagination from '../../../components/Pagination.astro';
@@ -10,27 +8,18 @@ import { slugify } from '../../../lib/slug';
 import { getTopicDescription, knownTopics } from '../../../lib/topics';
 import { buildCollectionPageSchema, toSafeJsonLd } from '../../../lib/json-ld';
 import { ARCHIVE_PAGE_SIZE } from '../../../lib/pagination';
+import { getRuntimeContent } from '../../../lib/content/runtime.mjs';
+import { paginateEntries } from '../../../lib/content/pagination';
 
-export const getStaticPaths = (async ({ paginate }) => {
-  const allPosts = await getCollection('posts');
-  // Union, not just post-derived tags: a canonical topic (like Tutorials)
-  // gets a page even at zero posts, while an ad-hoc tag a post already uses
-  // still gets one too, so nothing silently disappears before the taxonomy
-  // catches up with content.
-  const postTags = allPosts.flatMap((p) => p.data.tags);
-  const allTags = [...new Set([...knownTopics, ...postTags])];
-
-  return allTags.flatMap((tag) => {
-    const posts = sortPostsNewestFirst(allPosts.filter((p) => p.data.tags.includes(tag)));
-    return paginate(posts, {
-      params: { tag: slugify(tag) },
-      props: { tag, archivePosts: posts },
-      pageSize: ARCHIVE_PAGE_SIZE,
-    });
-  });
-}) satisfies GetStaticPaths;
-
-const { tag, page, archivePosts } = Astro.props;
+const repository = getRuntimeContent();
+const storedTags = await repository.listTags();
+const tag =
+  knownTopics.find((entry) => slugify(entry) === Astro.params.tag) ??
+  storedTags.find((entry) => entry.slug === Astro.params.tag)?.name;
+if (!tag) return new Response('Not found.', { status: 404 });
+const archivePosts = sortPostsNewestFirst(await repository.listPosts({ tag, limit: 100 }));
+const page = paginateEntries(archivePosts, Astro.params.page, ARCHIVE_PAGE_SIZE);
+if (!page) return new Response('Not found.', { status: 404 });
 const basePath = `/tag/${Astro.params.tag}/`;
 const site = Astro.site ?? 'https://aipresshq.com';
 // Schema describes this page's own items, not the whole tag, so page two does

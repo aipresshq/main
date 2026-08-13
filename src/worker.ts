@@ -325,7 +325,9 @@ export default {
       return withNoindex(await handlePrismicWebhook(request, env));
     }
 
-    const response = await env.ASSETS.fetch(request);
+    const response = 'CONTENT_DB' in env && env.CONTENT_DB
+      ? await import('@astrojs/cloudflare/handler').then(({ handle }) => handle(request, env, ctx))
+      : await env.ASSETS.fetch(request);
 
     // The desk is login-gated, but a gate is not an indexing directive — say so
     // explicitly rather than relying on crawlers being turned away by the 401.

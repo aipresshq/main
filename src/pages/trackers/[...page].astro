@@ -1,20 +1,18 @@
 ---
-import type { GetStaticPaths } from 'astro';
-import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import CategoryFront from '../../components/CategoryFront.astro';
 import Pagination from '../../components/Pagination.astro';
 import { formatEditionDate } from '../../lib/date';
 import { sortPostsNewestFirst } from '../../lib/post-order';
 import { ARCHIVE_PAGE_SIZE } from '../../lib/pagination';
+import { getRuntimeContent } from '../../lib/content/runtime.mjs';
+import { paginateEntries } from '../../lib/content/pagination';
 
-export const getStaticPaths = (async ({ paginate }) => {
-  const allPosts = await getCollection('posts');
-  const posts = sortPostsNewestFirst(allPosts.filter((post) => post.data.postType === 'tracker'));
-  return paginate(posts, { pageSize: ARCHIVE_PAGE_SIZE, props: { archivePosts: posts } });
-}) satisfies GetStaticPaths;
-
-const { page, archivePosts } = Astro.props;
+const archivePosts = sortPostsNewestFirst(
+  await getRuntimeContent().listPosts({ postType: 'tracker', limit: 100 }),
+);
+const page = paginateEntries(archivePosts, Astro.params.page, ARCHIVE_PAGE_SIZE);
+if (!page) return new Response('Not found.', { status: 404 });
 const editionPost = page.data[0];
 ---
 

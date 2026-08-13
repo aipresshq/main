@@ -1,7 +1,8 @@
 {
   "name": "main",
   "main": "src/worker.ts",
-  "compatibility_date": "2026-08-06",
+  "compatibility_date": "2026-08-13",
+  "compatibility_flags": ["nodejs_compat"],
   // Cloudflare creates the DNS record and Advanced Certificate for this on deploy —
   // no manual dashboard step needed since the zone is already on Cloudflare nameservers.
   "routes": [
@@ -34,6 +35,12 @@
       "database_name": "aipresshq-contact",
       "database_id": "d5d668c0-f47b-42fd-ad73-7f35aebf2690",
     },
+    {
+      "binding": "CONTENT_DB",
+      "database_name": "aipresshq-content",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations/content",
+    },
   ],
   // Brute-force protection for /admin/api/auth/login and spam protection for
   // the public contact form. Neither binding needs a provisioned resource —
@@ -53,6 +60,11 @@
       "namespace_id": "1002",
       "simple": { "limit": 1, "period": 60 },
     },
+    {
+      "name": "SEARCH_RATE_LIMITER",
+      "namespace_id": "1003",
+      "simple": { "limit": 60, "period": 60 },
+    },
   ],
   // Server-side page-view counting. The site had no analytics of any kind, and
   // every request already passes through the Worker, so views are recorded here
@@ -65,5 +77,6 @@
   // Without this, Worker logs are dropped and a production 500 leaves no trace.
   "observability": {
     "enabled": true,
+    "head_sampling_rate": 1,
   },
 }

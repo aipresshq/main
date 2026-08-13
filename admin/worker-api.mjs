@@ -23,6 +23,7 @@ import { createContactStore } from '../src/lib/contact-store.ts';
 import { createCorrectionsStore } from '../src/lib/corrections-store.ts';
 import { validateCorrection } from '../src/lib/validate-correction.ts';
 import { rateLimitKey } from '../src/lib/rate-limit.ts';
+import { createCloudflareContentAdapters } from './cloudflare-content-adapters.mjs';
 
 // Matches astro.config.mjs's `site` and BaseLayout.astro's canonical fallback —
 // this module builds indexing URLs, which have to be the real public origin.
@@ -729,7 +730,11 @@ export async function handleAdminRequest(request, env, _ctx, dependencies = {}) 
   const authenticated = await verifySession(readCookie(request), env.ADMIN_SESSION_SECRET ?? '');
   if (!authenticated) return json({ error: 'Authentication required.' }, 401);
 
-  const adapters = dependencies.adapters ?? createPrismicAdapters(env, request);
+  const adapters =
+    dependencies.adapters ??
+    (env.CONTENT_DB
+      ? createCloudflareContentAdapters(env, request)
+      : createPrismicAdapters(env, request));
   try {
     if (url.pathname === '/admin/api/authors' && request.method === 'GET') {
       return json(await adapters.listAuthors());

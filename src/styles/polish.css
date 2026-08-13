@@ -1212,8 +1212,8 @@
 
 .home-section-heading-link {
   flex-shrink: 0;
-  padding-bottom: 5px;
-  border-bottom: 2px solid currentColor;
+  padding-bottom: 0;
+  border-bottom: 0;
   font-size: 0.76rem;
   font-weight: 800;
   letter-spacing: 0.1em;

@@ -1,5 +1,5 @@
 ---
-import { getCollection, getEntry } from 'astro:content';
+import { getEntry } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ArticleContent from '../../components/ArticleContent.astro';
 import ArticleLatest from '../../components/ArticleLatest.astro';
@@ -14,16 +14,14 @@ import { getSuggestedPosts } from '../../lib/recommendations';
 import { getAuthorId } from '../../lib/author-reference';
 import { toSafeJsonLd } from '../../lib/json-ld';
 import { getFormatDefinition } from '../../lib/formats';
+import { getRuntimeContent } from '../../lib/content/runtime.mjs';
 
-export async function getStaticPaths() {
-  const allPosts = await getCollection('posts');
-  return allPosts.map((post) => ({
-    params: { id: post.id },
-    props: { post, allPosts },
-  }));
-}
-
-const { post, allPosts } = Astro.props;
+const repository = getRuntimeContent();
+const [post, allPosts] = await Promise.all([
+  repository.getPost(Astro.params.id ?? ''),
+  repository.listPosts({ limit: 100 }),
+]);
+if (!post) return Astro.redirect('/404/', 302);
 const authorId = getAuthorId(post.data.author);
 const author = await getEntry('authors', authorId);
 if (!author) {

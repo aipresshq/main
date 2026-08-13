@@ -1,32 +1,25 @@
 ---
-import type { GetStaticPaths } from 'astro';
-import { getCollection } from 'astro:content';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import CategoryFront from '../../../components/CategoryFront.astro';
 import Pagination from '../../../components/Pagination.astro';
 import { formatEditionDate } from '../../../lib/date';
-import { getFormatDefinition, storyFormats } from '../../../lib/formats';
+import { storyFormats } from '../../../lib/formats';
 import { sortPostsNewestFirst } from '../../../lib/post-order';
 import { buildCollectionPageSchema, toSafeJsonLd } from '../../../lib/json-ld';
 import { ARCHIVE_PAGE_SIZE } from '../../../lib/pagination';
+import { getRuntimeContent } from '../../../lib/content/runtime.mjs';
+import { paginateEntries } from '../../../lib/content/pagination';
 
-export const getStaticPaths = (async ({ paginate }) => {
-  const allPosts = await getCollection('posts');
-
-  return storyFormats.flatMap((definition) => {
-    const posts = sortPostsNewestFirst(
-      allPosts.filter((post) => post.data.format === definition.key),
-    );
-    return paginate(posts, {
-      params: { format: definition.key },
-      props: { format: definition.key, archivePosts: posts },
-      pageSize: ARCHIVE_PAGE_SIZE,
-    });
-  });
-}) satisfies GetStaticPaths;
-
-const { format, page, archivePosts } = Astro.props;
-const definition = getFormatDefinition(format);
+const definition = storyFormats.find((entry) => entry.key === Astro.params.format);
+if (!definition) {
+  return new Response('Not found.', { status: 404 });
+}
+const format = definition.key;
+const archivePosts = sortPostsNewestFirst(
+  await getRuntimeContent().listPosts({ format, limit: 100 }),
+);
+const page = paginateEntries(archivePosts, Astro.params.page, ARCHIVE_PAGE_SIZE);
+if (!page) return new Response('Not found.', { status: 404 });
 const basePath = `/format/${format}/`;
 const site = Astro.site ?? 'https://aipresshq.com';
 // Schema describes this page's own items, not the whole format.

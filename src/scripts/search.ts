@@ -11,7 +11,6 @@ interface PagefindModule {
   search: (query: string) => Promise<{ results: PagefindEntry[] }>;
 }
 
-const PAGEFIND_URL = '/pagefind/pagefind.js';
 const RESULT_LIMIT = 8;
 const RECENT_SEARCHES_KEY = 'aipresshq-recent-searches';
 let pagefindPromise: Promise<PagefindModule> | undefined;
@@ -109,10 +108,24 @@ export function createSearchResult(
 
 export function loadPagefind() {
   if (!pagefindPromise) {
-    pagefindPromise = import(/* @vite-ignore */ PAGEFIND_URL).then(async (module) => {
-      const pagefind = module as unknown as PagefindModule;
-      await pagefind.init();
-      return pagefind;
+    pagefindPromise = Promise.resolve({
+      async init() {},
+      async search(query: string) {
+        const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+        if (!response.ok) throw new Error(`Search failed (${response.status})`);
+        const payload = (await response.json()) as {
+          results?: Array<{ url?: string; title?: string; excerpt?: string }>;
+        };
+        return {
+          results: (payload.results ?? []).map((entry) => ({
+            data: async () => ({
+              url: entry.url,
+              excerpt: entry.excerpt,
+              meta: { title: entry.title },
+            }),
+          })),
+        };
+      },
     });
   }
   return pagefindPromise;

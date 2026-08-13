@@ -54,11 +54,12 @@ export interface PostRecord {
 }
 
 export interface PostEntry {
+  collection: 'posts';
   id: string;
   data: {
     title: string;
     description: string;
-    author: string;
+    author: { collection: 'authors'; id: string };
     pubDate: Date;
     updatedDate?: Date;
     firstPublicationDate: Date;
@@ -73,5 +74,5 @@ export interface PostEntry {
     featured: boolean;
   };
   body: string;
-  rendered?: { html: string; metadata: { headings: ContentHeading[] } };
+  rendered?: { html: string; metadata: { headings: ContentHeading[]; imagePaths: string[] } };
 }

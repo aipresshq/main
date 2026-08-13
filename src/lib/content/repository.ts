@@ -29,6 +29,8 @@ export interface ListPostOptions {
   authorId?: string;
   featured?: boolean;
   postType?: 'digest' | 'evergreen' | 'tracker';
+  pubDateFrom?: string;
+  pubDateBefore?: string;
   limit?: number;
   offset?: number;
 }
@@ -122,11 +124,12 @@ function rowToRecord(row: PostRow): PostRecord {
 
 function recordToEntry(record: PostRecord, envelope?: BodyEnvelope): PostEntry {
   return {
+    collection: 'posts',
     id: record.id,
     data: {
       title: record.title,
       description: record.description,
-      author: record.authorId,
+      author: { collection: 'authors', id: record.authorId },
       pubDate: new Date(record.pubDate),
       updatedDate: record.updatedDate ? new Date(record.updatedDate) : undefined,
       firstPublicationDate: new Date(record.firstPublicationDate),
@@ -142,7 +145,7 @@ function recordToEntry(record: PostRecord, envelope?: BodyEnvelope): PostEntry {
     },
     body: envelope?.source ?? '',
     rendered: envelope
-      ? { html: envelope.html, metadata: { headings: envelope.headings } }
+      ? { html: envelope.html, metadata: { headings: envelope.headings, imagePaths: [] } }
       : undefined,
   };
 }
@@ -184,6 +187,14 @@ export function createContentRepository({ db, bodies }: ContentBindings) {
         conditions.push('p.post_type = ?');
         bindings.push(options.postType);
       }
+      if (options.pubDateFrom) {
+        conditions.push('p.pub_date >= ?');
+        bindings.push(options.pubDateFrom);
+      }
+      if (options.pubDateBefore) {
+        conditions.push('p.pub_date < ?');
+        bindings.push(options.pubDateBefore);
+      }
       const limit = boundedInteger(options.limit, 50, 1, 100);
       const offset = boundedInteger(options.offset, 0, 0, 1_000_000);
       bindings.push(limit, offset);
@@ -222,6 +233,30 @@ export function createContentRepository({ db, bodies }: ContentBindings) {
           'EXISTS (SELECT 1 FROM post_tags filter_pt JOIN tags t ON t.id = filter_pt.tag_id WHERE filter_pt.post_id = p.id AND t.name = ?)',
         );
         bindings.push(options.tag);
+      }
+      if (options.format) {
+        conditions.push('p.format = ?');
+        bindings.push(options.format);
+      }
+      if (options.authorId) {
+        conditions.push('p.author_id = ?');
+        bindings.push(options.authorId);
+      }
+      if (options.featured !== undefined) {
+        conditions.push('p.featured = ?');
+        bindings.push(options.featured ? 1 : 0);
+      }
+      if (options.postType) {
+        conditions.push('p.post_type = ?');
+        bindings.push(options.postType);
+      }
+      if (options.pubDateFrom) {
+        conditions.push('p.pub_date >= ?');
+        bindings.push(options.pubDateFrom);
+      }
+      if (options.pubDateBefore) {
+        conditions.push('p.pub_date < ?');
+        bindings.push(options.pubDateBefore);
       }
       const row = await db
         .prepare(`SELECT COUNT(*) AS count FROM posts p WHERE ${conditions.join(' AND ')}`)

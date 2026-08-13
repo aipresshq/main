@@ -1,31 +1,23 @@
 ---
-import type { GetStaticPaths } from 'astro';
-import { getCollection } from 'astro:content';
+import { getEntry } from 'astro:content';
 import AuthorStoryCard from '../../../components/AuthorStoryCard.astro';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import Pagination from '../../../components/Pagination.astro';
 import { formatEditionDate } from '../../../lib/date';
-import { getAuthorId } from '../../../lib/author-reference';
 import { sortPostsNewestFirst } from '../../../lib/post-order';
 import { toSafeJsonLd } from '../../../lib/json-ld';
 import { ARCHIVE_PAGE_SIZE } from '../../../lib/pagination';
+import { getRuntimeContent } from '../../../lib/content/runtime.mjs';
+import { paginateEntries } from '../../../lib/content/pagination';
 
-export const getStaticPaths = (async ({ paginate }) => {
-  const [authors, allPosts] = await Promise.all([getCollection('authors'), getCollection('posts')]);
-
-  return authors.flatMap((author) => {
-    const posts = sortPostsNewestFirst(
-      allPosts.filter((post) => getAuthorId(post.data.author) === author.id),
-    );
-    return paginate(posts, {
-      params: { author: author.id },
-      props: { author, totalStories: posts.length },
-      pageSize: ARCHIVE_PAGE_SIZE,
-    });
-  });
-}) satisfies GetStaticPaths;
-
-const { author, totalStories, page } = Astro.props;
+const author = await getEntry('authors', Astro.params.author ?? '');
+if (!author) return new Response('Not found.', { status: 404 });
+const archivePosts = sortPostsNewestFirst(
+  await getRuntimeContent().listPosts({ authorId: author.id, limit: 100 }),
+);
+const totalStories = archivePosts.length;
+const page = paginateEntries(archivePosts, Astro.params.page, ARCHIVE_PAGE_SIZE);
+if (!page) return new Response('Not found.', { status: 404 });
 const site = Astro.site ?? 'https://aipresshq.com';
 const authorUrl = new URL(`/authors/${author.id}/`, site).href;
 const socialLinks = [author.data.website, author.data.x, author.data.linkedin].filter(

@@ -14,9 +14,7 @@
 
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { validatePost } from '../admin/validate-post.mjs';
-import { createPost } from '../admin/posts-store.mjs';
 import { listAuthors } from '../admin/authors-store.mjs';
 
 function slugify(value) {
@@ -27,38 +25,35 @@ function slugify(value) {
     .replace(/^-+|-+$/g, '');
 }
 
-const CONTENT_TYPES = {
-  png: 'image/png',
-  webp: 'image/webp',
-  jpg: 'image/jpeg',
-  jpeg: 'image/jpeg',
-};
+async function adminSession(origin) {
+  const password = process.env.ADMIN_LOGIN_PASSWORD;
+  if (!password) throw new Error('ADMIN_LOGIN_PASSWORD is required for direct publishing.');
+  const response = await fetch(`${origin}/admin/api/auth/login`, {
+    method: 'POST',
+    headers: { Origin: origin, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password }),
+  });
+  if (!response.ok) throw new Error(`Editorial Desk login failed (${response.status}).`);
+  const cookie = response.headers.get('set-cookie')?.split(';', 1)[0];
+  if (!cookie) throw new Error('Editorial Desk login did not return a session cookie.');
+  return cookie;
+}
 
-async function uploadLocalCover(coverPath, title) {
+async function uploadLocalCover(origin, cookie, coverPath, title) {
   const body = await readFile(coverPath);
   const extension = path.extname(coverPath).slice(1).toLowerCase() || 'jpg';
-  const contentType = CONTENT_TYPES[extension] ?? 'image/jpeg';
-  const filename = `${slugify(title)}.${extension}`;
-
-  const s3 = new S3Client({
-    region: 'auto',
-    endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-    credentials: {
-      accessKeyId: process.env.R2_ACCESS_KEY_ID,
-      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
-    },
+  const types = { png: 'image/png', webp: 'image/webp', jpg: 'image/jpeg', jpeg: 'image/jpeg', avif: 'image/avif' };
+  const form = new FormData();
+  form.set('slug', slugify(title));
+  form.set('file', new File([body], path.basename(coverPath), { type: types[extension] ?? 'image/jpeg' }));
+  const response = await fetch(`${origin}/admin/api/assets`, {
+    method: 'POST',
+    headers: { Origin: origin, Cookie: cookie },
+    body: form,
   });
-  await s3.send(
-    new PutObjectCommand({
-      Bucket: process.env.R2_BUCKET_NAME,
-      Key: filename,
-      Body: body,
-      ContentType: contentType,
-    }),
-  );
-  const publicUrl = `${process.env.PUBLIC_R2_PUBLIC_URL}/${filename}`;
-  console.log(`Uploaded cover -> ${publicUrl}`);
-  return publicUrl;
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error ?? `Cover upload failed (${response.status}).`);
+  return result.asset.url;
 }
 
 const draftArg = process.argv[2];
@@ -87,12 +82,23 @@ if (!valid) {
   process.exit(1);
 }
 
+const adminOrigin = (process.env.ADMIN_ORIGIN ?? 'https://admin.aipresshq.com').replace(/\/$/, '');
+const cookie = await adminSession(adminOrigin);
+
 if (isLocalCover) {
   const coverPath = path.resolve(path.dirname(draftPath), payload.cover);
-  payload.cover = await uploadLocalCover(coverPath, payload.title);
+  payload.cover = await uploadLocalCover(adminOrigin, cookie, coverPath, payload.title);
 }
 
-const id = await createPost(payload);
-console.log(`\nCreated "${id}" as a Prismic draft.`);
-console.log('Next: publish the pending release in the Prismic dashboard, then:');
-console.log('  npm run build && npx wrangler deploy');
+const response = await fetch(`${adminOrigin}/admin/api/posts`, {
+  method: 'POST',
+  headers: { Origin: adminOrigin, Cookie: cookie, 'Content-Type': 'application/json' },
+  body: JSON.stringify(payload),
+});
+const result = await response.json();
+if (!response.ok) throw new Error(result.error ?? JSON.stringify(result.errors ?? result));
+const liveUrl = `https://aipresshq.com/posts/${result.id}/`;
+const live = await fetch(liveUrl);
+if (!live.ok) throw new Error(`Post was stored but live verification failed (${live.status}): ${liveUrl}`);
+console.log(`\nPublished "${result.id}" directly to Cloudflare.`);
+console.log(liveUrl);

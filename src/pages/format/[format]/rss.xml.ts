@@ -1,21 +1,18 @@
-import type { APIRoute, GetStaticPaths } from 'astro';
-import { getCollection } from 'astro:content';
+import type { APIRoute } from 'astro';
 import { sortPostsNewestFirst } from '../../../lib/post-order';
-import { storyFormats, getFormatDefinition, type StoryFormat } from '../../../lib/formats';
+import { storyFormats, type StoryFormat } from '../../../lib/formats';
 import { buildRssFeed, feedResponse } from '../../../lib/feed';
+import { listHydratedPosts } from '../../../lib/content/runtime.mjs';
 
-export const getStaticPaths = (async () =>
-  storyFormats.map((definition) => ({
-    params: { format: definition.key },
-    props: { format: definition.key },
-  }))) satisfies GetStaticPaths;
-
-export const GET: APIRoute = async ({ site, props }) => {
-  const format = (props as { format: StoryFormat }).format;
-  const definition = getFormatDefinition(format);
+export const GET: APIRoute = async ({ site, params }) => {
+  const definition = storyFormats.find((entry) => entry.key === params.format);
+  if (!definition) return new Response('Not found.', { status: 404 });
+  const format: StoryFormat = definition.key;
   const base = site?.toString().replace(/\/$/, '') ?? '';
   const posts = sortPostsNewestFirst(
-    (await getCollection('posts')).filter((post) => post.data.format === format),
+    (await listHydratedPosts({ format, limit: 50 })).filter(
+      (post): post is NonNullable<typeof post> => Boolean(post),
+    ),
   );
 
   return feedResponse(

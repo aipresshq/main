@@ -1,6 +1,4 @@
 ---
-import type { GetStaticPaths } from 'astro';
-import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import CategoryFront from '../../components/CategoryFront.astro';
 import Pagination from '../../components/Pagination.astro';
@@ -8,7 +6,9 @@ import { formatEditionDate } from '../../lib/date';
 import { sortPostsNewestFirst } from '../../lib/post-order';
 import { ARCHIVE_PAGE_SIZE } from '../../lib/pagination';
 import { buildCollectionPageSchema, toSafeJsonLd } from '../../lib/json-ld';
-import { groupByMonth, monthLabel } from '../../lib/month-archive';
+import { monthLabel } from '../../lib/month-archive';
+import { getRuntimeContent } from '../../lib/content/runtime.mjs';
+import { paginateEntries } from '../../lib/content/pagination';
 
 /**
  * Month archives at /archive/YYYY/MM/.
@@ -23,29 +23,20 @@ import { groupByMonth, monthLabel } from '../../lib/month-archive';
  * getStaticPaths into its own module chunk, where frontmatter consts are not in
  * scope.
  */
-export const getStaticPaths = (async ({ paginate }) => {
-  const allPosts = await getCollection('posts');
-
-  return groupByMonth(allPosts).flatMap(([key, posts]) => {
-    const [year, month] = key.split('-');
-    const ordered = sortPostsNewestFirst(posts);
-    return paginate(ordered, {
-      props: { monthKeyValue: key, archivePosts: ordered },
-      pageSize: ARCHIVE_PAGE_SIZE,
-    }).map((entry) => ({
-      ...entry,
-      params: {
-        // `[...page]` supplies "2" for later pages and undefined for the first,
-        // so the month occupies the same catch-all segment.
-        page: entry.params.page ? `${year}/${month}/${entry.params.page}` : `${year}/${month}`,
-      },
-    }));
-  });
-}) satisfies GetStaticPaths;
-
-const { page, monthKeyValue } = Astro.props;
+const parts = (Astro.params.page ?? '').split('/').filter(Boolean);
+const [year, month, pagePart] = parts;
+if (!/^\d{4}$/.test(year ?? '') || !/^(0[1-9]|1[0-2])$/.test(month ?? '') || parts.length > 3) {
+  return new Response('Not found.', { status: 404 });
+}
+const monthKeyValue = `${year}-${month}`;
+const start = `${monthKeyValue}-01`;
+const nextMonth = new Date(Date.UTC(Number(year), Number(month), 1)).toISOString().slice(0, 10);
+const archivePosts = sortPostsNewestFirst(
+  await getRuntimeContent().listPosts({ pubDateFrom: start, pubDateBefore: nextMonth, limit: 100 }),
+);
+const page = paginateEntries(archivePosts, pagePart, ARCHIVE_PAGE_SIZE);
+if (!page) return new Response('Not found.', { status: 404 });
 const label = monthLabel(monthKeyValue);
-const [year, month] = monthKeyValue.split('-');
 const basePath = `/archive/${year}/${month}/`;
 const site = Astro.site ?? 'https://aipresshq.com';
 const schemas =
@@ -85,7 +76,7 @@ const editionPost = page.data[0];
     title={label}
     description={`Everything published in ${label}, newest first.`}
     posts={page.data}
-    archivePosts={Astro.props.archivePosts}
+    archivePosts={archivePosts}
     showLead={page.currentPage === 1}
     emptyNote={`Nothing was published in ${label}.`}
   />

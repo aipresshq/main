@@ -1,13 +1,13 @@
 import type { APIRoute } from 'astro';
-import { getCollection } from 'astro:content';
 import { sortPostsNewestFirst } from '../lib/post-order';
+import { getRuntimeContent } from '../lib/content/runtime.mjs';
 
 // A curated, low-noise index for LLM/agent tools that check for this file —
 // generated from the same live post collection as the sitemap and RSS feed,
 // so it can never silently drift out of sync the way a hand-written static
 // file would the moment a new post is published.
 export const GET: APIRoute = async ({ site }) => {
-  const posts = sortPostsNewestFirst(await getCollection('posts'));
+  const posts = sortPostsNewestFirst(await getRuntimeContent().listPosts({ limit: 100 }));
   const base = site?.toString().replace(/\/$/, '') ?? '';
 
   const articles = posts
