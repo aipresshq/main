@@ -29,6 +29,10 @@ Run parity again:
 npm run content:parity
 ```
 
+After cutover, target-only posts are expected because new stories publish directly to Cloudflare.
+Use `npm run content:parity -- --strict` only during the initial cutover, when Prismic and
+Cloudflare must contain exactly the same published IDs.
+
 ## Publishing
 
 Validate and publish a JSON draft directly:

@@ -16,6 +16,122 @@ import { getAuthorId } from '../src/lib/author-reference.ts';
 import { storyFormats } from '../src/lib/formats.ts';
 import { topicGroups, knownTopics } from '../src/lib/topics.ts';
 
+// The Cloudflare migration changed Astro from static output to SSR. A server build
+// intentionally has no dist/index.html or dist/posts/* tree, so the legacy static
+// assertions below are only meaningful for a static build. For SSR, verify the
+// deployable Worker bundle, client assets, bindings, and dynamic route contracts.
+const ssrEntry = new URL('../dist/server/entry.mjs', import.meta.url);
+if (existsSync(ssrEntry)) {
+  const root = (path) => new URL(`../${path}`, import.meta.url);
+  const read = (path) => readFileSync(root(path), 'utf8');
+  const exists = (path) => existsSync(root(path));
+  let failed = 0;
+  const check = (name, fn) => {
+    try {
+      fn();
+      console.log(`✓ ${name}`);
+    } catch (error) {
+      failed += 1;
+      console.error(`✗ ${name}`);
+      console.error(`  ${error.message}`);
+    }
+  };
+
+  check('Cloudflare SSR server bundle exists', () => {
+    assert.ok(exists('dist/server/entry.mjs'));
+    assert.ok(exists('dist/server/wrangler.json'));
+    assert.ok(exists('dist/server/chunks'));
+  });
+
+  check('built Worker keeps content, image, contact, analytics, and rate-limit bindings', () => {
+    const config = JSON.parse(read('dist/server/wrangler.json'));
+    assert.equal(config.main, 'entry.mjs');
+    assert.ok(config.d1_databases.some((binding) => binding.binding === 'CONTENT_DB'));
+    assert.ok(config.d1_databases.some((binding) => binding.binding === 'CONTACT_DB'));
+    assert.ok(config.r2_buckets.some((binding) => binding.binding === 'IMAGES'));
+    assert.ok(config.analytics_engine_datasets.some((binding) => binding.binding === 'ANALYTICS'));
+    assert.ok(config.ratelimits.some((binding) => binding.name === 'SEARCH_RATE_LIMITER'));
+  });
+
+  check('production custom domains remain in the deploy bundle', () => {
+    const config = JSON.parse(read('dist/server/wrangler.json'));
+    assert.deepEqual(config.routes.map((route) => route.pattern).sort(), [
+      'admin.aipresshq.com',
+      'aipresshq.com',
+    ]);
+  });
+
+  check('admin and public static assets are emitted for Workers Assets', () => {
+    for (const path of [
+      'dist/client/admin/admin.css',
+      'dist/client/admin/admin.js',
+      'dist/client/admin/authors.json',
+      'dist/client/robots.txt',
+      'dist/client/brand/aipresshq-og-default.png',
+    ])
+      assert.ok(exists(path), `missing ${path}`);
+    assert.ok(readdirSync(root('dist/client/_astro')).some((name) => name.endsWith('.css')));
+  });
+
+  check('Astro is configured for Cloudflare server rendering', () => {
+    const config = read('astro.config.mjs');
+    assert.match(config, /output:\s*['"]server['"]/);
+    assert.match(config, /@astrojs\/cloudflare/);
+    assert.doesNotMatch(config, /astro-pagefind/);
+  });
+
+  check('all content surfaces are dynamic routes backed by the runtime repository', () => {
+    for (const path of [
+      'src/pages/index.astro',
+      'src/pages/posts/[id].astro',
+      'src/pages/latest/[...page].astro',
+      'src/pages/trending/[...page].astro',
+      'src/pages/trackers/[...page].astro',
+      'src/pages/tag/[tag]/[...page].astro',
+      'src/pages/format/[format]/[...page].astro',
+      'src/pages/authors/[author]/[...page].astro',
+      'src/pages/archive/[...page].astro',
+    ]) {
+      const source = read(path);
+      assert.match(
+        source,
+        /getRuntimeContent|paginateRepository/,
+        `${path} bypasses runtime content`,
+      );
+      assert.doesNotMatch(
+        source,
+        /export\s+(?:async\s+)?function\s+getStaticPaths|export\s+const\s+getStaticPaths/,
+        `${path} is still statically enumerated`,
+      );
+    }
+  });
+
+  check('search, feeds, and sitemaps query Cloudflare content at request time', () => {
+    assert.match(read('src/pages/api/search.ts'), /getRuntimeContent/);
+    assert.match(read('src/pages/rss.xml.js'), /getRuntimeContent|listHydratedPosts/);
+    assert.match(read('src/pages/sitemap-pages.xml.ts'), /listSitemapPosts/);
+    assert.match(read('src/pages/image-sitemap.xml.ts'), /listSitemapPosts/);
+  });
+
+  check('production publishing writes D1 and R2 directly and retires rebuild webhooks', () => {
+    assert.match(read('admin/cloudflare-content-adapters.mjs'), /publishPost/);
+    assert.match(read('src/lib/content/publisher.ts'), /storage_ledger/);
+    assert.match(read('src/worker.ts'), /Prismic webhook has been retired[\s\S]*410/);
+    assert.doesNotMatch(read('astro.config.mjs'), /prismic/i);
+  });
+
+  check('homepage cleanup remains encoded in source', () => {
+    const homepage = read('src/pages/index.astro');
+    assert.doesNotMatch(homepage, /More from today/i);
+    const styles = read('src/styles/global.css');
+    assert.match(styles, /text-decoration:\s*none\s*!important/);
+  });
+
+  if (failed) process.exit(1);
+  console.log('\nAll Cloudflare SSR build checks passed.');
+  process.exit(0);
+}
+
 const dist = (path) => readFileSync(new URL(`../dist/${path}`, import.meta.url), 'utf-8');
 const distExists = (path) => existsSync(new URL(`../dist/${path}`, import.meta.url));
 // Raw bytes, for assertions about binary assets (e.g. PNG header dimensions).
