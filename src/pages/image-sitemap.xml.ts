@@ -5,7 +5,7 @@ import { getRuntimeContent } from '../lib/content/runtime.mjs';
 // Google's image sitemap extension (context.md §6), so that piece is
 // hand-rolled here instead of configured through the integration.
 export const GET: APIRoute = async ({ site }) => {
-  const posts = await getRuntimeContent().listPosts({ limit: 100 });
+  const posts = await getRuntimeContent().listSitemapPosts();
   const base = site?.toString().replace(/\/$/, '') ?? '';
 
   const urls = posts
@@ -13,8 +13,8 @@ export const GET: APIRoute = async ({ site }) => {
       (post) => `  <url>
     <loc>${base}/posts/${post.id}/</loc>
     <image:image>
-      <image:loc>${post.data.cover}</image:loc>
-      <image:caption>${escapeXml(post.data.coverAlt)}</image:caption>
+      <image:loc>${post.cover}</image:loc>
+      <image:caption>${escapeXml(post.coverAlt)}</image:caption>
     </image:image>
   </url>`,
     )

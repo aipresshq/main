@@ -475,6 +475,75 @@ await run('asset uploads reject unsupported MIME types and oversized bodies', as
   assert.equal(largeResponse.status, 413);
 });
 
+await run('asset uploads stop before R2 when the storage safety cap would be crossed', async () => {
+  const guardedBucket = {
+    putCalls: 0,
+    async put() {
+      this.putCalls += 1;
+    },
+  };
+  const contentDb = {
+    prepare() {
+      return {
+        async first() {
+          return { used_bytes: 9 * 1024 * 1024 * 1024 };
+        },
+      };
+    },
+  };
+  const form = new FormData();
+  form.set('file', new File(['image'], 'cover.png', { type: 'image/png' }));
+  const response = await handleAssetsApi(
+    new Request(`${ADMIN_ORIGIN}/admin/api/assets`, { method: 'POST', body: form }),
+    { ...adapters, images: guardedBucket, contentDb },
+  );
+  assert.equal(response.status, 507);
+  assert.equal(guardedBucket.putCalls, 0);
+});
+
+await run('asset uploads and deletes update the D1 storage ledger', async () => {
+  const ledgerCalls = [];
+  const contentDb = {
+    prepare(query) {
+      return {
+        bound: [],
+        bind(...values) {
+          this.bound = values;
+          return this;
+        },
+        async first() {
+          return { used_bytes: 0 };
+        },
+        async run() {
+          ledgerCalls.push({ query, values: this.bound });
+          return {};
+        },
+      };
+    },
+  };
+  const form = new FormData();
+  form.set('slug', 'tracked-cover');
+  form.set('file', new File(['image'], 'cover.png', { type: 'image/png' }));
+  const upload = await handleAssetsApi(
+    new Request(`${ADMIN_ORIGIN}/admin/api/assets`, { method: 'POST', body: form }),
+    { ...adapters, contentDb },
+  );
+  assert.equal(upload.status, 201);
+  const uploaded = await upload.json();
+  assert.equal(ledgerCalls[0].values[0], uploaded.asset.key);
+  assert.equal(ledgerCalls[0].values[1], 5);
+
+  const deletion = await handleAssetsApi(
+    new Request(`${ADMIN_ORIGIN}/admin/api/assets?key=${encodeURIComponent(uploaded.asset.key)}`, {
+      method: 'DELETE',
+    }),
+    { ...adapters, contentDb },
+  );
+  assert.equal(deletion.status, 204);
+  assert.match(ledgerCalls[1].query, /lifecycle_status = 'deleted'/);
+  assert.equal(ledgerCalls[1].values[1], uploaded.asset.key);
+});
+
 await run('indexing submit requires authentication like every other admin API route', async () => {
   const response = await handleAdminRequest(
     new Request(`${ADMIN_ORIGIN}/admin/api/indexing/submit`, { method: 'POST' }),

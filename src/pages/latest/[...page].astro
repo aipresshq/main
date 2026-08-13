@@ -3,18 +3,20 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import CategoryFront from '../../components/CategoryFront.astro';
 import Pagination from '../../components/Pagination.astro';
 import { formatEditionDate } from '../../lib/date';
-import { sortPostsNewestFirst } from '../../lib/post-order';
 import { ARCHIVE_PAGE_SIZE } from '../../lib/pagination';
 import { getRuntimeContent } from '../../lib/content/runtime.mjs';
-import { paginateEntries } from '../../lib/content/pagination';
+import { paginateRepository } from '../../lib/content/pagination';
 
 // `[...page]` keeps page one at /latest/ — the URL it has always had — and puts
 // the rest at /latest/2/, so paginating this archive breaks no existing link.
-const archivePosts = sortPostsNewestFirst(
-  await getRuntimeContent().listPosts({ limit: 100, offset: 0 }),
+const page = await paginateRepository(
+  getRuntimeContent(),
+  {},
+  Astro.params.page,
+  ARCHIVE_PAGE_SIZE,
 );
-const page = paginateEntries(archivePosts, Astro.params.page, ARCHIVE_PAGE_SIZE);
 if (!page) return new Response('Not found.', { status: 404 });
+const archivePosts = page.data;
 const editionPost = page.data[0];
 ---
 
@@ -31,6 +33,7 @@ const editionPost = page.data[0];
     description="Every story, newest first: the daily digest alongside trackers, comparisons, and explainers."
     posts={page.data}
     archivePosts={archivePosts}
+    totalStories={page.total}
     showLead={page.currentPage === 1}
     emptyNote="No stories published yet."
   />

@@ -4,22 +4,24 @@ import CategoryFront from '../../../components/CategoryFront.astro';
 import Pagination from '../../../components/Pagination.astro';
 import { formatEditionDate } from '../../../lib/date';
 import { storyFormats } from '../../../lib/formats';
-import { sortPostsNewestFirst } from '../../../lib/post-order';
 import { buildCollectionPageSchema, toSafeJsonLd } from '../../../lib/json-ld';
 import { ARCHIVE_PAGE_SIZE } from '../../../lib/pagination';
 import { getRuntimeContent } from '../../../lib/content/runtime.mjs';
-import { paginateEntries } from '../../../lib/content/pagination';
+import { paginateRepository } from '../../../lib/content/pagination';
 
 const definition = storyFormats.find((entry) => entry.key === Astro.params.format);
 if (!definition) {
   return new Response('Not found.', { status: 404 });
 }
 const format = definition.key;
-const archivePosts = sortPostsNewestFirst(
-  await getRuntimeContent().listPosts({ format, limit: 100 }),
+const page = await paginateRepository(
+  getRuntimeContent(),
+  { format },
+  Astro.params.page,
+  ARCHIVE_PAGE_SIZE,
 );
-const page = paginateEntries(archivePosts, Astro.params.page, ARCHIVE_PAGE_SIZE);
 if (!page) return new Response('Not found.', { status: 404 });
+const archivePosts = page.data;
 const basePath = `/format/${format}/`;
 const site = Astro.site ?? 'https://aipresshq.com';
 // Schema describes this page's own items, not the whole format.
@@ -63,6 +65,7 @@ const editionPost = page.data[0];
     description={definition.description}
     posts={page.data}
     archivePosts={archivePosts}
+    totalStories={page.total}
     showLead={page.currentPage === 1}
     emptyNote={`No ${definition.label.toLowerCase()} published yet.`}
   />

@@ -24,6 +24,7 @@ import { createCorrectionsStore } from '../src/lib/corrections-store.ts';
 import { validateCorrection } from '../src/lib/validate-correction.ts';
 import { rateLimitKey } from '../src/lib/rate-limit.ts';
 import { createCloudflareContentAdapters } from './cloudflare-content-adapters.mjs';
+import { storageStatus } from '../src/lib/content/storage.ts';
 
 // Matches astro.config.mjs's `site` and BaseLayout.astro's canonical fallback —
 // this module builds indexing URLs, which have to be the real public origin.
@@ -356,6 +357,18 @@ export async function handleAssetsApi(request, adapters) {
     if (file.size > MAX_UPLOAD_BYTES) {
       return json({ error: 'Image uploads are limited to 8 MiB.' }, 413);
     }
+    const capacity = adapters.contentDb
+      ? await storageStatus(adapters.contentDb, file.size)
+      : { warning: false, blocked: false };
+    if (capacity.blocked) {
+      return json(
+        {
+          error:
+            'Image storage is near the configured 9 GiB safety cap. Remove unused covers before uploading another.',
+        },
+        507,
+      );
+    }
     const slug = safeSlug(form.get('slug') || file.name || 'cover') || 'cover';
     const key = `covers/${slug}-${crypto.randomUUID()}.${extension}`;
     await bucket.put(key, file, {
@@ -364,6 +377,15 @@ export async function handleAssetsApi(request, adapters) {
         cacheControl: 'public, max-age=31536000, immutable',
       },
     });
+    if (adapters.contentDb) {
+      await adapters.contentDb
+        .prepare(
+          `INSERT INTO storage_ledger(object_key, byte_count, object_type, owner_id, lifecycle_status, created_at)
+           VALUES (?, ?, 'cover', NULL, 'active', ?)`,
+        )
+        .bind(key, file.size, new Date().toISOString())
+        .run();
+    }
     return json(
       {
         asset: {
@@ -372,6 +394,7 @@ export async function handleAssetsApi(request, adapters) {
           uploaded: new Date().toISOString(),
           url: publicAssetUrl(adapters.publicR2Url, key),
         },
+        storageWarning: capacity.warning,
       },
       201,
     );
@@ -381,6 +404,14 @@ export async function handleAssetsApi(request, adapters) {
     const key = new URL(request.url).searchParams.get('key') ?? '';
     if (!COVER_KEY_PATTERN.test(key)) return json({ error: 'Invalid image key.' }, 400);
     await bucket.delete(key);
+    if (adapters.contentDb) {
+      await adapters.contentDb
+        .prepare(
+          "UPDATE storage_ledger SET lifecycle_status = 'deleted', deleted_at = ? WHERE object_key = ?",
+        )
+        .bind(new Date().toISOString(), key)
+        .run();
+    }
     return new Response(null, { status: 204 });
   }
 
@@ -533,7 +564,11 @@ const ANALYTICS_DATASET = 'aipresshq_pageviews';
 async function queryAnalyticsEngine(env, sql) {
   const response = await fetch(
     `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/analytics_engine/sql`,
-    { method: 'POST', headers: { Authorization: `Bearer ${env.CF_ANALYTICS_API_TOKEN}` }, body: sql },
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${env.CF_ANALYTICS_API_TOKEN}` },
+      body: sql,
+    },
   );
   if (!response.ok) {
     throw new Error(`Analytics Engine query failed (${response.status}).`);

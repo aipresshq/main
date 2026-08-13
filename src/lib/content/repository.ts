@@ -35,6 +35,14 @@ export interface ListPostOptions {
   offset?: number;
 }
 
+export interface SitemapPost {
+  id: string;
+  pubDate: string;
+  updatedDate?: string;
+  cover: string;
+  coverAlt: string;
+}
+
 type PostRow = Record<string, unknown> & {
   id: string;
   slug: string;
@@ -77,7 +85,12 @@ const POST_COLUMNS = `
     ) ordered
   ), '[]') AS tags_json`;
 
-function boundedInteger(value: number | undefined, fallback: number, minimum: number, maximum: number) {
+function boundedInteger(
+  value: number | undefined,
+  fallback: number,
+  minimum: number,
+  maximum: number,
+) {
   if (!Number.isFinite(value)) return fallback;
   return Math.min(maximum, Math.max(minimum, Math.trunc(value as number)));
 }
@@ -162,6 +175,33 @@ function escapeFtsQuery(query: string): string {
 
 export function createContentRepository({ db, bodies }: ContentBindings) {
   return {
+    async listSitemapPosts(limit = 45_000): Promise<SitemapPost[]> {
+      const boundedLimit = boundedInteger(limit, 45_000, 1, 45_000);
+      const { results = [] } = await db
+        .prepare(
+          `SELECT id, pub_date, updated_date, cover, cover_alt
+           FROM posts
+           WHERE status = 'published'
+           ORDER BY pub_date DESC, first_publication_date DESC, id ASC
+           LIMIT ?`,
+        )
+        .bind(boundedLimit)
+        .all<{
+          id: string;
+          pub_date: string;
+          updated_date: string | null;
+          cover: string;
+          cover_alt: string;
+        }>();
+      return results.map((row) => ({
+        id: row.id,
+        pubDate: row.pub_date,
+        updatedDate: row.updated_date ?? undefined,
+        cover: row.cover,
+        coverAlt: row.cover_alt,
+      }));
+    },
+
     async listPosts(options: ListPostOptions = {}): Promise<PostEntry[]> {
       const conditions = ["p.status = 'published'"];
       const bindings: unknown[] = [];

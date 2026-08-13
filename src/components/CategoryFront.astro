@@ -23,9 +23,19 @@ export interface Props {
    * so it must not promote its first story to lead treatment.
    */
   showLead?: boolean;
+  /** Total matching stories across every server-side page. */
+  totalStories?: number;
 }
 
-const { title, description, posts, emptyNote, archivePosts = posts, showLead = true } = Astro.props;
+const {
+  title,
+  description,
+  posts,
+  emptyNote,
+  archivePosts = posts,
+  showLead = true,
+  totalStories = posts.length,
+} = Astro.props;
 const categoryId = `category-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
 // The newest story in this archive, not the `featured` one. That flag's job is
 // deciding what appears on /trending/; using it here too meant an editor could
@@ -55,7 +65,7 @@ const initialVisible = 6;
           <p>{description}</p>
           <div class="category-intro-meta" aria-label={`${title} category summary`}>
             <span>
-              {posts.length} {posts.length === 1 ? 'story' : 'stories'}
+              {totalStories} {totalStories === 1 ? 'story' : 'stories'}
             </span>
             {latestDate && <span>Updated {latestDate}</span>}
           </div>

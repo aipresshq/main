@@ -3,13 +3,12 @@ import BaseLayout from '../../../layouts/BaseLayout.astro';
 import CategoryFront from '../../../components/CategoryFront.astro';
 import Pagination from '../../../components/Pagination.astro';
 import { formatEditionDate } from '../../../lib/date';
-import { sortPostsNewestFirst } from '../../../lib/post-order';
 import { slugify } from '../../../lib/slug';
 import { getTopicDescription, knownTopics } from '../../../lib/topics';
 import { buildCollectionPageSchema, toSafeJsonLd } from '../../../lib/json-ld';
 import { ARCHIVE_PAGE_SIZE } from '../../../lib/pagination';
 import { getRuntimeContent } from '../../../lib/content/runtime.mjs';
-import { paginateEntries } from '../../../lib/content/pagination';
+import { paginateRepository } from '../../../lib/content/pagination';
 
 const repository = getRuntimeContent();
 const storedTags = await repository.listTags();
@@ -17,9 +16,9 @@ const tag =
   knownTopics.find((entry) => slugify(entry) === Astro.params.tag) ??
   storedTags.find((entry) => entry.slug === Astro.params.tag)?.name;
 if (!tag) return new Response('Not found.', { status: 404 });
-const archivePosts = sortPostsNewestFirst(await repository.listPosts({ tag, limit: 100 }));
-const page = paginateEntries(archivePosts, Astro.params.page, ARCHIVE_PAGE_SIZE);
+const page = await paginateRepository(repository, { tag }, Astro.params.page, ARCHIVE_PAGE_SIZE);
 if (!page) return new Response('Not found.', { status: 404 });
+const archivePosts = page.data;
 const basePath = `/tag/${Astro.params.tag}/`;
 const site = Astro.site ?? 'https://aipresshq.com';
 // Schema describes this page's own items, not the whole tag, so page two does
@@ -64,6 +63,7 @@ const editionPost = page.data[0];
     description={getTopicDescription(tag)}
     posts={page.data}
     archivePosts={archivePosts}
+    totalStories={page.total}
     showLead={page.currentPage === 1}
     emptyNote={`No stories tagged ${tag} yet.`}
   />

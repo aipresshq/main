@@ -9,18 +9,24 @@ function escapeXml(value: string) {
 export const GET: APIRoute = async ({ site }) => {
   const base = site?.toString().replace(/\/$/, '') ?? 'https://aipresshq.com';
   const repository = getRuntimeContent();
-  const [posts, tags] = await Promise.all([
-    repository.listPosts({ limit: 100 }),
-    repository.listTags(),
-  ]);
-  const staticPaths = ['/', '/latest/', '/trending/', '/trackers/', '/about/', '/contact/', '/corrections/', '/search/'];
+  const [posts, tags] = await Promise.all([repository.listSitemapPosts(), repository.listTags()]);
+  const staticPaths = [
+    '/',
+    '/latest/',
+    '/trending/',
+    '/trackers/',
+    '/about/',
+    '/contact/',
+    '/corrections/',
+    '/search/',
+  ];
   const urls: Array<{ loc: string; lastmod?: string }> = [
     ...staticPaths.map((path) => ({ loc: `${base}${path}` })),
     ...storyFormats.map((format) => ({ loc: `${base}/format/${format.key}/` })),
     ...tags.filter((tag) => tag.count > 0).map((tag) => ({ loc: `${base}/tag/${tag.slug}/` })),
     ...posts.map((post) => ({
       loc: `${base}/posts/${post.id}/`,
-      lastmod: (post.data.updatedDate ?? post.data.pubDate).toISOString().slice(0, 10),
+      lastmod: post.updatedDate ?? post.pubDate,
     })),
   ];
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
