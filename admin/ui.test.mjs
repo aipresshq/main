@@ -27,11 +27,11 @@ await test('renderAdminPage includes the Editorial Desk shell and shared assets'
   assert.ok(html.includes('src="/admin/admin.js"'));
 });
 
-await test('renderAdminPage explains the draft and release boundary', () => {
-  assert.ok(html.includes('Prismic drafts stay private until the release is published'));
+await test('renderAdminPage explains direct Cloudflare publishing', () => {
+  assert.ok(html.includes('Validated stories publish directly to Cloudflare in one step'));
 });
 
-await test('renderAdminPage exposes an explicit release handoff view', () => {
+await test('renderAdminPage exposes an explicit publishing view', () => {
   assert.ok(html.includes('data-view="release"'));
 });
 

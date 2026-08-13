@@ -75,7 +75,7 @@ const { valid, errors } = validatePost(payload, {
 });
 
 if (!valid) {
-  console.error('Draft failed validation; nothing was uploaded or written to Prismic:');
+  console.error('Draft failed validation; nothing was uploaded or written to Cloudflare:');
   for (const [field, message] of Object.entries(errors)) {
     console.error(`  - ${field}: ${message}`);
   }

@@ -158,6 +158,19 @@ await test('non-brief formats accept two unique level-two headings', () => {
   assert.equal(result.valid, true);
 });
 
+await test('migrated HTML keeps its level-two outline contract', () => {
+  const result = validatePost(
+    {
+      ...basePost(),
+      format: 'analysis',
+      sourceFormat: 'html',
+      body: '<p>Opening.</p><h2>What happened</h2><p>Facts.</p><h2>What remains open</h2><p>Limits.</p>',
+    },
+    options,
+  );
+  assert.equal(result.valid, true);
+});
+
 await test('level-one headings are rejected because the article title is the h1', () => {
   const result = validatePost({ ...basePost(), body: '# Duplicate title\n\nCopy.' }, options);
   assert.equal(result.valid, false);

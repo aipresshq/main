@@ -3,7 +3,6 @@ import { createContactStore, type ContactDatabase } from './lib/contact-store.ts
 import { createCorrectionsStore, type CorrectionsDatabase } from './lib/corrections-store.ts';
 import { validateContact } from './lib/validate-contact.ts';
 import { rateLimitKey } from './lib/rate-limit.ts';
-import { isDeployWorthyPrismicEvent } from './lib/prismic-webhook.ts';
 
 export interface AssetFetcher {
   fetch(input: Request | string, init?: RequestInit): Promise<Response>;
@@ -258,52 +257,6 @@ async function handleCorrectionsFeed(env: WorkerEnv): Promise<Response> {
   return json({ corrections }, 200, { 'Cache-Control': 'public, max-age=60' });
 }
 
-const GITHUB_REPO = 'aipresshq/main';
-
-/**
- * Fires the deploy workflow when Prismic content actually goes live.
- *
- * The build is static and reads Prismic only at build time (see README), so
- * publishing a release is otherwise invisible in production until someone
- * runs `npm run build && npx wrangler deploy` by hand. Cross-origin by design
- * — Prismic's servers call this, not a browser — so authentication is the
- * shared secret in the payload (see prismic-webhook.ts) rather than the
- * same-origin check the other POST routes use.
- */
-async function handlePrismicWebhook(request: Request, env: WorkerEnv): Promise<Response> {
-  if (!env.PRISMIC_WEBHOOK_SECRET || !env.GITHUB_DISPATCH_TOKEN) {
-    return json({ error: 'Auto-deploy is not configured on this Worker.' }, 503);
-  }
-
-  let payload: unknown;
-  try {
-    payload = await request.json();
-  } catch {
-    return json({ error: 'Request body must be valid JSON.' }, 400);
-  }
-
-  const record = (payload ?? {}) as Record<string, unknown>;
-  if (!isDeployWorthyPrismicEvent(record, env.PRISMIC_WEBHOOK_SECRET)) {
-    return json({ triggered: false }, 200);
-  }
-
-  const dispatch = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/dispatches`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${env.GITHUB_DISPATCH_TOKEN}`,
-      Accept: 'application/vnd.github+json',
-      'Content-Type': 'application/json',
-      'User-Agent': 'aipresshq-prismic-webhook',
-    },
-    body: JSON.stringify({ event_type: 'prismic-publish' }),
-  });
-
-  if (!dispatch.ok) {
-    return json({ triggered: false, error: `GitHub dispatch failed (${dispatch.status})` }, 502);
-  }
-  return json({ triggered: true }, 200);
-}
-
 export default {
   async fetch(request: Request, env: WorkerEnv, ctx: WorkerExecutionContext) {
     const url = new URL(request.url);
@@ -322,7 +275,7 @@ export default {
     }
 
     if (url.pathname === '/api/prismic-webhook' && request.method === 'POST') {
-      return withNoindex(await handlePrismicWebhook(request, env));
+      return withNoindex(json({ error: 'The Prismic webhook has been retired.' }, 410));
     }
 
     const response = 'CONTENT_DB' in env && env.CONTENT_DB

@@ -487,21 +487,6 @@ await run('no request-identifying data is recorded', async () => {
   assert.ok(!serialized.includes('Macintosh'), 'user agents must not be recorded');
 });
 
-function withFetch(handler, fn) {
-  const original = globalThis.fetch;
-  globalThis.fetch = handler;
-  return fn().finally(() => {
-    globalThis.fetch = original;
-  });
-}
-
-const WEBHOOK_SECRET = 'test-secret';
-const webhookEnv = {
-  ...assetEnv(),
-  PRISMIC_WEBHOOK_SECRET: WEBHOOK_SECRET,
-  GITHUB_DISPATCH_TOKEN: 'test-token',
-};
-
 function webhookRequest(body) {
   return new Request('https://aipresshq.com/api/prismic-webhook', {
     method: 'POST',
@@ -510,94 +495,11 @@ function webhookRequest(body) {
   });
 }
 
-const releasePublish = {
-  type: 'api-update',
-  secret: WEBHOOK_SECRET,
-  documents: ['some-post'],
-};
-
-await run('a real release publish dispatches the deploy workflow', async () => {
-  let dispatched;
-  const response = await withFetch(
-    async (url, init) => {
-      dispatched = { url: String(url), init };
-      return new Response(null, { status: 204 });
-    },
-    () => worker.fetch(webhookRequest(releasePublish), webhookEnv, { waitUntil() {} }),
-  );
-  assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { triggered: true });
-  assert.equal(dispatched.url, 'https://api.github.com/repos/aipresshq/main/dispatches');
-  assert.equal(dispatched.init.headers.Authorization, 'Bearer test-token');
-  assert.deepEqual(JSON.parse(dispatched.init.body), { event_type: 'prismic-publish' });
-});
-
-await run('a dashboard test trigger is accepted but does not dispatch', async () => {
-  let called = false;
-  const response = await withFetch(
-    async () => {
-      called = true;
-      return new Response(null, { status: 204 });
-    },
-    () =>
-      worker.fetch(webhookRequest({ ...releasePublish, type: 'test-trigger' }), webhookEnv, {
-        waitUntil() {},
-      }),
-  );
-  assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { triggered: false });
-  assert.equal(called, false, 'a non-deploy-worthy event must never call out to GitHub');
-});
-
-await run('the wrong secret is refused without dispatching', async () => {
-  let called = false;
-  const response = await withFetch(
-    async () => {
-      called = true;
-      return new Response(null, { status: 204 });
-    },
-    () =>
-      worker.fetch(webhookRequest({ ...releasePublish, secret: 'wrong' }), webhookEnv, {
-        waitUntil() {},
-      }),
-  );
-  assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { triggered: false });
-  assert.equal(called, false);
-});
-
-await run('a failed GitHub dispatch is reported rather than swallowed', async () => {
-  const response = await withFetch(
-    async () => new Response('bad credentials', { status: 401 }),
-    () => worker.fetch(webhookRequest(releasePublish), webhookEnv, { waitUntil() {} }),
-  );
-  assert.equal(response.status, 502);
-});
-
-await run('the webhook fails closed when auto-deploy secrets are not configured', async () => {
-  const response = await worker.fetch(webhookRequest(releasePublish), assetEnv(), {
+await run('the retired Prismic webhook cannot trigger a deployment', async () => {
+  const response = await worker.fetch(webhookRequest({ type: 'api-update' }), assetEnv(), {
     waitUntil() {},
   });
-  assert.equal(response.status, 503);
-});
-
-await run('a non-JSON webhook body is rejected', async () => {
-  const response = await worker.fetch(
-    new Request('https://aipresshq.com/api/prismic-webhook', {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: 'not json',
-    }),
-    webhookEnv,
-    { waitUntil() {} },
-  );
-  assert.equal(response.status, 400);
-});
-
-await run('the webhook response carries a noindex header', async () => {
-  const response = await withFetch(
-    async () => new Response(null, { status: 204 }),
-    () => worker.fetch(webhookRequest(releasePublish), webhookEnv, { waitUntil() {} }),
-  );
+  assert.equal(response.status, 410);
+  assert.deepEqual(await response.json(), { error: 'The Prismic webhook has been retired.' });
   assert.match(response.headers.get('X-Robots-Tag') ?? '', /noindex/);
 });

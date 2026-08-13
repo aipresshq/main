@@ -20,6 +20,8 @@
     "test:admin": "npm run test:units && npm run test:prismic",
     "indexnow": "node scripts/indexnow-ping.mjs",
     "publish:post": "node --env-file=.env scripts/publish-post.mjs",
+    "content:migrate": "node --env-file=.env scripts/migrate-prismic-to-cloudflare.mjs",
+    "content:parity": "node --env-file=.env scripts/content-parity.mjs",
     "astro": "astro"
   },
   "dependencies": {

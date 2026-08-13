@@ -119,14 +119,14 @@ export function renderAdminPage() {
             <button type="button" data-view="posts">Posts <span>02</span></button>
             <button type="button" data-view="editor">New story <span>03</span></button>
             <button type="button" data-view="assets">Cover desk <span>04</span></button>
-            <button type="button" data-view="release">Release handoff <span>05</span></button>
+            <button type="button" data-view="release">Publishing <span>05</span></button>
             <button type="button" data-view="contact">Contact desk <span>06</span></button>
             <button type="button" data-view="analytics">Analytics <span>07</span></button>
             <button type="button" data-view="corrections">Corrections <span>08</span></button>
           </nav>
           <div class="admin-rail-note">
             <span class="admin-kicker">Publishing rule</span>
-            <p>Prismic drafts stay private until the release is published.</p>
+            <p>Validated stories publish directly to Cloudflare in one step.</p>
           </div>
         </aside>
 
@@ -135,7 +135,7 @@ export function renderAdminPage() {
           <section class="admin-login" data-admin-login hidden>
             <span class="admin-kicker">Private desk</span>
             <h1>Sign in to the editorial desk.</h1>
-            <p>Use the desk password to manage Prismic drafts, covers, and the next release.</p>
+            <p>Use the desk password to manage Cloudflare stories, covers, and publication.</p>
             <form data-admin-login-form>
               <label class="admin-label">
                 <span>Password</span>

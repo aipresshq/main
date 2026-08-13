@@ -1,7 +1,6 @@
 import { defineCollection, reference } from 'astro:content';
 import { z } from 'astro/zod';
 import { glob } from 'astro/loaders';
-import { prismicPostsLoader } from './loaders/prismic-posts.ts';
 
 const cover = z
   .string()
@@ -29,7 +28,7 @@ const authors = defineCollection({
 // mechanism the whole project is built around: don't loosen this schema to
 // let a post skip a required field.
 const posts = defineCollection({
-  loader: prismicPostsLoader(),
+  loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/posts' }),
   schema: z.object({
     title: z.string(),
     description: z.string(),
@@ -37,7 +36,7 @@ const posts = defineCollection({
     author: reference('authors'),
     pubDate: z.coerce.date(),
     updatedDate: z.coerce.date().optional(),
-    // Prismic's own publish timestamp (full precision, not just a date) —
+    // The original publish timestamp (full precision, not just a date) —
     // pubDate is editorial and date-only, so several same-day stories tie on
     // it. This breaks that tie by actual publish order instead of falling
     // through to alphabetical UID, which has no relationship to recency.

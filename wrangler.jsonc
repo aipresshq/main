@@ -38,7 +38,7 @@
     {
       "binding": "CONTENT_DB",
       "database_name": "aipresshq-content",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "c75f4f49-0402-4d88-956a-42a15a39bb8a",
       "migrations_dir": "migrations/content",
     },
   ],

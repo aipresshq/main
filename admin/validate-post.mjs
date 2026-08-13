@@ -36,6 +36,14 @@ function markdownHeadings(body) {
     .map((token) => ({ depth: token.depth, text: token.text.trim() }));
 }
 
+function htmlHeadings(body) {
+  if (!isNonEmptyString(body)) return [];
+  return [...body.matchAll(/<h([1-6])(?:\s[^>]*)?>([\s\S]*?)<\/h\1>/gi)].map((match) => ({
+    depth: Number(match[1]),
+    text: match[2].replace(/<[^>]+>/g, '').trim(),
+  }));
+}
+
 export function validatePost(payload, { existingAuthorIds, allowRelativeCover = false }) {
   const errors = {};
 
@@ -107,7 +115,8 @@ export function validatePost(payload, { existingAuthorIds, allowRelativeCover = 
   if (!isNonEmptyString(payload.body)) {
     errors.body = 'Body content is required.';
   } else {
-    const headings = markdownHeadings(payload.body);
+    const headings =
+      payload.sourceFormat === 'html' ? htmlHeadings(payload.body) : markdownHeadings(payload.body);
     const outlineHeadings = headings.filter((heading) => heading.depth === 2);
     const outlineSlugs = outlineHeadings.map((heading) => githubSlug(heading.text));
     const hasDuplicateOutlineSlug = outlineSlugs.some(
